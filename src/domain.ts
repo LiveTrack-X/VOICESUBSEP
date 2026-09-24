@@ -1,13 +1,48 @@
+import { parseDocuments, type ProjectDocuments } from "./documents";
 /** Portable editing data. All times are seconds on the original source media. */
 export type Mode = "standard" | "overlap";
 export type ReviewReason =
-  "overlap" | "unassigned" | "speaker_count" | "timing";
-export type Speaker = { id: string; name: string; color: string };
+  "overlap" | "unassigned" | "speaker_count" | "timing" | "speaker_boundary";
+export type CaptionStyle = {
+  fontFamily: "sans" | "serif" | "mono";
+  fontSize: number;
+  textColor: string;
+  bold: boolean;
+  outline: boolean;
+  backgroundColor: string;
+  backgroundOpacity: number;
+  position: "top" | "middle" | "bottom";
+  align: "left" | "center" | "right";
+  showSpeaker: boolean;
+};
+export const DEFAULT_CAPTION_STYLE: CaptionStyle = {
+  fontFamily: "sans",
+  fontSize: 15,
+  textColor: "#ffffff",
+  bold: false,
+  outline: false,
+  backgroundColor: "#0c1222",
+  backgroundOpacity: 85,
+  position: "bottom",
+  align: "center",
+  showSpeaker: true,
+};
+export type Speaker = {
+  id: string;
+  name: string;
+  color: string;
+  subtitleStyle?: Partial<CaptionStyle>;
+};
 export type Word = {
   start: number;
   end: number;
   text: string;
   probability?: number;
+};
+export type SubtitleLanguage = "ko" | "en" | "ja" | "zh" | "es";
+export type CaptionTranslation = {
+  sourceText: string;
+  texts: Partial<Record<SubtitleLanguage, string>>;
 };
 export type Caption = {
   id: string;
@@ -18,7 +53,21 @@ export type Caption = {
   reasons: ReviewReason[];
   reviewed: boolean;
   words?: Word[];
+  style?: Partial<CaptionStyle>;
+  translation?: CaptionTranslation;
 };
+
+/** Resolve only at display time so partial overrides keep inheriting defaults. */
+export function resolveCaptionStyle(
+  caption: Caption | undefined,
+  speaker: Speaker | undefined,
+): CaptionStyle {
+  return {
+    ...DEFAULT_CAPTION_STYLE,
+    ...speaker?.subtitleStyle,
+    ...caption?.style,
+  };
+}
 export type NoteTag = "edit" | "highlight" | "subtitle" | "check";
 export type Note = {
   id: string;
@@ -28,8 +77,10 @@ export type Note = {
   tag: NoteTag;
   done: boolean;
 };
+/** An excluded interval on the original source, never on the edited output. */
+export type CutRange = { id: string; start: number; end: number };
 export type Project = {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   id: string;
   name: string;
   mediaName: string | null;
@@ -39,12 +90,15 @@ export type Project = {
   speakers: Speaker[];
   captions: Caption[];
   notes: Note[];
+  cuts?: CutRange[];
+  documents?: ProjectDocuments;
   updatedAt: string;
 };
 
 export const MAX_PROJECT_BYTES = 8 * 1024 * 1024;
 export const MAX_CAPTIONS = 20_000;
 export const MAX_NOTES = 5_000;
+export const MAX_CUTS = 200;
 export const MAX_TIME_SECONDS = 7 * 24 * 60 * 60;
 const MAX_WORDS = 300_000;
 const COLORS = ["#a78bfa", "#fbbf24", "#2dd4bf", "#60a5fa"];
@@ -53,6 +107,7 @@ const REASONS: ReviewReason[] = [
   "unassigned",
   "speaker_count",
   "timing",
+  "speaker_boundary",
 ];
 const TAGS: NoteTag[] = ["edit", "highlight", "subtitle", "check"];
 
@@ -219,6 +274,53 @@ function choice<T extends string>(
   return value as T;
 }
 
+function styleColor(value: unknown, path: string): string {
+  const color = string(value, path, 7);
+  if (!/^#[0-9a-fA-F]{6}$/.test(color))
+    invalid(path, "#RRGGBB 색상이 필요합니다.");
+  return color;
+}
+
+function parseCaptionStyle(value: unknown, path: string): Partial<CaptionStyle> {
+  const item = object(value, path, [
+    "fontFamily",
+    "fontSize",
+    "textColor",
+    "bold",
+    "outline",
+    "backgroundColor",
+    "backgroundOpacity",
+    "position",
+    "align",
+    "showSpeaker",
+  ]);
+  const style: Partial<CaptionStyle> = {};
+  if (item.fontFamily !== undefined)
+    style.fontFamily = choice<CaptionStyle["fontFamily"]>(item.fontFamily, `${path}.fontFamily`, ["sans", "serif", "mono"]);
+  if (item.fontSize !== undefined) {
+    const size = number(item.fontSize, `${path}.fontSize`, 48);
+    if (size < 12) invalid(`${path}.fontSize`, "12~48 사이의 숫자가 필요합니다.");
+    style.fontSize = size;
+  }
+  if (item.textColor !== undefined)
+    style.textColor = styleColor(item.textColor, `${path}.textColor`);
+  if (item.bold !== undefined)
+    style.bold = boolean(item.bold, `${path}.bold`);
+  if (item.outline !== undefined)
+    style.outline = boolean(item.outline, `${path}.outline`);
+  if (item.backgroundColor !== undefined)
+    style.backgroundColor = styleColor(item.backgroundColor, `${path}.backgroundColor`);
+  if (item.backgroundOpacity !== undefined)
+    style.backgroundOpacity = number(item.backgroundOpacity, `${path}.backgroundOpacity`, 100);
+  if (item.position !== undefined)
+    style.position = choice<CaptionStyle["position"]>(item.position, `${path}.position`, ["top", "middle", "bottom"]);
+  if (item.align !== undefined)
+    style.align = choice<CaptionStyle["align"]>(item.align, `${path}.align`, ["left", "center", "right"]);
+  if (item.showSpeaker !== undefined)
+    style.showSpeaker = boolean(item.showSpeaker, `${path}.showSpeaker`);
+  return style;
+}
+
 function array(value: unknown, path: string, max: number): unknown[] {
   if (!Array.isArray(value) || value.length > max)
     invalid(path, `최대 ${max}개의 목록이 필요합니다.`);
@@ -262,10 +364,27 @@ export function parseProject(text: string): Project {
     "speakers",
     "captions",
     "notes",
+    "cuts",
     "updatedAt",
+    "documents",
   ]);
-  if (root.schemaVersion !== 1)
-    invalid("schemaVersion", "프로젝트 버전 1만 지원합니다.");
+  if (root.schemaVersion !== 1 && root.schemaVersion !== 2)
+    invalid("schemaVersion", "Only project versions 1 and 2 are supported.");
+  if (root.schemaVersion === 1 && root.cuts !== undefined)
+    invalid("cuts", "Cut edits require project version 2.");
+  const duration = number(root.duration, "duration");
+  let cuts: CutRange[] | undefined;
+  if (root.schemaVersion === 2) {
+    const cutIds = new Set<string>();
+    cuts = array(root.cuts, "cuts", MAX_CUTS).map((value, i) => {
+      const path = `cuts[${i}]`;
+      const item = object(value, path, ["id", "start", "end"]);
+      const start = number(item.start, `${path}.start`, duration);
+      const end = number(item.end, `${path}.end`, duration);
+      if (end <= start) invalid(path, "Cut end must be after its start.");
+      return { id: uniqueId(item.id, `${path}.id`, cutIds), start, end };
+    });
+  }
   const speakerCount = number(root.speakerCount, "speakerCount", 4);
   if (!Number.isInteger(speakerCount) || speakerCount < 1)
     invalid("speakerCount", "참가자는 1명, 2명, 3명, 4명 이상 중 선택하세요.");
@@ -274,15 +393,18 @@ export function parseProject(text: string): Project {
   const speakers = array(root.speakers, "speakers", 32).map(
     (value, i): Speaker => {
       const path = `speakers[${i}]`;
-      const item = object(value, path, ["id", "name", "color"]);
+      const item = object(value, path, ["id", "name", "color", "subtitleStyle"]);
       const color = string(item.color, `${path}.color`, 7);
       if (!/^#[0-9a-fA-F]{6}$/.test(color))
         invalid(`${path}.color`, "#RRGGBB 색상이 필요합니다.");
-      return {
+      const speaker: Speaker = {
         id: uniqueId(item.id, `${path}.id`, speakerIds),
         name: string(item.name, `${path}.name`, 80, true),
         color,
       };
+      if (item.subtitleStyle !== undefined)
+        speaker.subtitleStyle = parseCaptionStyle(item.subtitleStyle, `${path}.subtitleStyle`);
+      return speaker;
     },
   );
   if (speakers.length === 0)
@@ -301,6 +423,8 @@ export function parseProject(text: string): Project {
         "reasons",
         "reviewed",
         "words",
+        "style",
+        "translation",
       ]);
       const start = number(item.start, `${path}.start`);
       const end = number(item.end, `${path}.end`);
@@ -327,6 +451,23 @@ export function parseProject(text: string): Project {
         reasons,
         reviewed: boolean(item.reviewed, `${path}.reviewed`),
       };
+      if (item.style !== undefined)
+        caption.style = parseCaptionStyle(item.style, `${path}.style`);
+      if (item.translation !== undefined) {
+        const translationPath = `${path}.translation`;
+        const translation = object(item.translation, translationPath, ["sourceText", "texts"]);
+        const languages: SubtitleLanguage[] = ["ko", "en", "ja", "zh", "es"];
+        const texts = object(translation.texts, `${translationPath}.texts`, languages);
+        const parsedTexts: CaptionTranslation["texts"] = {};
+        for (const language of languages) {
+          if (texts[language] !== undefined)
+            parsedTexts[language] = string(texts[language], `${translationPath}.texts.${language}`, 8_000);
+        }
+        caption.translation = {
+          sourceText: string(translation.sourceText, `${translationPath}.sourceText`, 10_000, true),
+          texts: parsedTexts,
+        };
+      }
       if (item.words !== undefined) {
         const words = array(item.words, `${path}.words`, 10_000);
         wordCount += words.length;
@@ -394,13 +535,13 @@ export function parseProject(text: string): Project {
   ) {
     invalid("updatedAt", "ISO 8601 날짜가 필요합니다.");
   }
-  return {
-    schemaVersion: 1,
+  const project: Project = {
+    schemaVersion: root.schemaVersion,
     id: id(root.id, "id"),
     name: string(root.name, "name", 160, true),
     mediaName:
       root.mediaName === null ? null : string(root.mediaName, "mediaName", 512),
-    duration: number(root.duration, "duration"),
+    duration,
     mode: choice(root.mode, "mode", ["standard", "overlap"]),
     speakerCount,
     speakers,
@@ -408,6 +549,9 @@ export function parseProject(text: string): Project {
     notes,
     updatedAt,
   };
+  if (cuts !== undefined) project.cuts = cuts;
+  if (root.documents !== undefined) project.documents = parseDocuments(root.documents);
+  return project;
 }
 
 function milliseconds(seconds: number): number {

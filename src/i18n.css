@@ -1,0 +1,11 @@
+/* Translated labels may be longer than the original Korean text. */
+.sidebar-section > select { width: 100%; max-width: 100%; }
+.sidebar .segmented button { min-width: 0; white-space: normal; }
+.sidebar-section { min-width: 0; }
+.form-grid label small { color: var(--muted); line-height: 1.5; font-weight: 400; }
+.analysis-options .checkbox-label { align-items: flex-start; }
+.analysis-options .checkbox-label input { flex-shrink: 0; }
+.dialog-actions { flex-wrap: wrap; }
+.dialog-actions button { max-width: 100%; white-space: normal; }
+.notes-panel .panel-heading { flex-wrap: wrap; gap: 8px; }
+.style-toggles { flex-wrap: wrap; }

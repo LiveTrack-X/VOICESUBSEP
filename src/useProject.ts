@@ -1,10 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createProject, parseProject, type Project } from "./domain";
+import {
+  createProjectSession,
+  editProjectSession,
+  isCurrentProjectSession,
+  persistProjectSession,
+  PROJECT_SAVE_ERROR,
+  PROJECT_INVALID_ERROR,
+  PROJECT_RECOVERY_ERROR,
+  PROJECT_BACKUP_ERROR,
+  PROJECT_STORAGE_KEY,
+  redoProjectSession,
+  replaceProjectSession,
+  undoProjectSession,
+  type ProjectSession,
+} from "./projectSession";
 
-const STORAGE_KEY = "voicesubsep.project.v1";
 function restore(): { project: Project; error: string } {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(PROJECT_STORAGE_KEY);
     return { project: raw ? parseProject(raw) : createProject(), error: "" };
   } catch {
     return {
@@ -17,88 +31,75 @@ function restore(): { project: Project; error: string } {
 
 export function useProject() {
   const [initial] = useState(restore);
-  const [history, setHistory] = useState<{
-    past: Project[];
-    current: Project;
-    future: Project[];
-  }>({ past: [], current: initial.project, future: [] });
+  const [session, setSession] = useState(() => createProjectSession(initial.project, !initial.error));
+  // Updated during actions, before React commits: pagehide and stale timers must
+  // never put the preceding project back into storage during a transition.
+  const activeSession = useRef(session);
   const [saveState, setSaveState] = useState(initial.error || "자동 저장됨");
-  const [canAutosave, setCanAutosave] = useState(!initial.error);
+  const [recoveryWarning, setRecoveryWarning] = useState(!!initial.error);
+
+  function persist(snapshot: ProjectSession) {
+    const result = persistProjectSession(snapshot, activeSession.current);
+    if (result === "skipped") return;
+    setRecoveryWarning(result !== "saved");
+    if (result === "saved") setSaveState("자동 저장됨");
+    else if (result === "invalid") setSaveState(PROJECT_INVALID_ERROR);
+    else if (result === "blocked") setSaveState(PROJECT_RECOVERY_ERROR);
+    else if (result === "saved_without_backup") setSaveState(PROJECT_BACKUP_ERROR);
+    else setSaveState(PROJECT_SAVE_ERROR);
+  }
+
   useEffect(() => {
-    if (!canAutosave) return;
-    const flush = () => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(history.current));
-      } catch {
-        /* The normal save path surfaces storage errors. */
-      }
-    };
+    if (!session.canAutosave) return;
+    const flush = () => persist(activeSession.current);
     const onVisibility = () => {
       if (document.visibilityState === "hidden") flush();
     };
     window.addEventListener("pagehide", flush);
     document.addEventListener("visibilitychange", onVisibility);
-    const timer = window.setTimeout(() => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(history.current));
-        setSaveState("자동 저장됨");
-      } catch {
-        setSaveState(
-          "자동 저장 공간이 부족합니다. 프로젝트 파일로 저장하세요.",
-        );
-      }
-    }, 500);
+    const timer = window.setTimeout(() => persist(session), 500);
     return () => {
       clearTimeout(timer);
       window.removeEventListener("pagehide", flush);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [history.current, canAutosave]);
+  }, [session]);
+
+  function commit(next: ProjectSession) {
+    if (next === activeSession.current) return;
+    activeSession.current = next;
+    setSession(next);
+    if (next.canAutosave) setSaveState("저장 중…");
+  }
   function update(change: Project | ((previous: Project) => Project)) {
-    setHistory((h) => {
-      const next = typeof change === "function" ? change(h.current) : change;
-      return {
-        past: [...h.past.slice(-39), h.current],
-        current: { ...next, updatedAt: new Date().toISOString() },
-        future: [],
-      };
-    });
-    if (canAutosave) setSaveState("저장 중…");
+    if (!isCurrentProjectSession(session, activeSession.current)) return;
+    commit(editProjectSession(activeSession.current, change));
   }
   function replace(project: Project) {
-    update(project);
-    setCanAutosave(true);
+    if (!isCurrentProjectSession(session, activeSession.current)) return;
+    const next = replaceProjectSession(project);
+    commit(next);
+    // Persist before returning, including when the app is reloaded within the
+    // normal 500 ms autosave window. Failed writes leave the old backup intact.
+    persist(next);
   }
   function undo() {
-    setHistory((h) =>
-      h.past.length
-        ? {
-            past: h.past.slice(0, -1),
-            current: h.past.at(-1)!,
-            future: [h.current, ...h.future],
-          }
-        : h,
-    );
+    if (!isCurrentProjectSession(session, activeSession.current)) return;
+    commit(undoProjectSession(activeSession.current));
   }
   function redo() {
-    setHistory((h) =>
-      h.future.length
-        ? {
-            past: [...h.past, h.current],
-            current: h.future[0],
-            future: h.future.slice(1),
-          }
-        : h,
-    );
+    if (!isCurrentProjectSession(session, activeSession.current)) return;
+    commit(redoProjectSession(activeSession.current));
   }
   return {
-    project: history.current,
+    project: session.current,
     update,
     replace,
     undo,
     redo,
-    canUndo: !!history.past.length,
-    canRedo: !!history.future.length,
+    canUndo: !!session.past.length,
+    canRedo: !!session.future.length,
     saveState,
+    recoveryWarning,
   };
 }

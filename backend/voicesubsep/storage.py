@@ -28,6 +28,9 @@ class Storage:
         self.jobs = self.root / "jobs"
         self._lock_file = None
         self._write_lock = threading.RLock()
+        # Upload deduplication, new job reservations and explicit cache cleanup
+        # must agree on whether a source is still in use.
+        self.media_lock = threading.RLock()
 
     def contained(self, path: Path) -> Path:
         resolved = path.resolve()

@@ -1,4 +1,5 @@
 import type { Caption, Speaker } from "./domain";
+import { clientDiagnostics } from "./diagnostics";
 
 export type MediaInfo = {
   id: string;
@@ -6,6 +7,11 @@ export type MediaInfo = {
   duration: number;
   audioTracks: { index: number; label: string; channels: number }[];
   url: string;
+  hasVideo?: boolean;
+  frameRate?: number | null;
+  frameRateFraction?: string | null;
+  bytes?: number;
+  sha256?: string;
 };
 export type Health = {
   status: string;
@@ -45,15 +51,24 @@ export type Job = {
   error?: string;
   result?: AnalysisResult;
 };
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) { super(message); this.name = "ApiError"; }
+}
 export async function request<T>(
   url: string,
   options?: RequestInit,
 ): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    signal: options?.signal ?? AbortSignal.timeout(15_000),
-  });
+  let response: Response;
+  // Record the operation, never request bodies, query strings or reflected validation input.
+  const operation = `${options?.method ?? "GET"} ${url.split("?")[0]!.replace(/\/[a-f0-9]{32}(?=\/|$)/gu, "/:id")}`;
+  try {
+    response = await fetch(url, { ...options, signal: options?.signal ?? AbortSignal.timeout(15_000) });
+  } catch (error) {
+    if (!(error instanceof Error && error.name === "AbortError")) clientDiagnostics.record("api", "connection-failed", operation);
+    throw error;
+  }
   if (!response.ok) {
+    if (response.status !== 404) clientDiagnostics.record("api", "request-failed", `${operation} (${response.status})`);
     let message = `요청 실패 (${response.status})`;
     try {
       const body = await response.json();
@@ -64,18 +79,33 @@ export async function request<T>(
     } catch {
       /* not JSON */
     }
-    throw new Error(message);
+    throw new ApiError(message, response.status);
   }
-  return response.json() as Promise<T>;
+  try { return await response.json() as T; }
+  catch (error) { clientDiagnostics.record("api", "invalid-response", operation); throw error; }
 }
-export async function uploadMedia(file: File): Promise<MediaInfo> {
-  const form = new FormData();
-  form.append("file", file);
-  return request<MediaInfo>("/api/media", {
-    method: "POST",
-    body: form,
-    signal: AbortSignal.timeout(30 * 60_000),
-  });
+// Each editor keeps the same File object. Concurrent dialog mounts share a
+// single upload; later mounts validate the saved ID after server restarts or
+// manual cleanup. Filenames never establish identity.
+const mediaUploads = new WeakMap<File, { info?: MediaInfo; pending?: Promise<MediaInfo> }>();
+export function uploadMedia(file: File): Promise<MediaInfo> {
+  const entry = mediaUploads.get(file) ?? {};
+  mediaUploads.set(file, entry);
+  if (entry.pending) return entry.pending;
+  const operation = async () => {
+    if (entry.info) {
+      try { return entry.info = await request<MediaInfo>(`/api/media/${entry.info.id}`); }
+      catch (error) { if (!(error instanceof ApiError) || error.status !== 404) throw error; entry.info = undefined; }
+    }
+    const capacity = await request<{maxUploadBytes:number}>("/api/cache");
+    if (file.size > capacity.maxUploadBytes) throw new Error(`파일이 업로드 한도 (${(capacity.maxUploadBytes / 1024 ** 3).toFixed(1)} GB)를 초과합니다.`);
+    const form = new FormData();
+    form.append("file", file);
+    entry.info = await request<MediaInfo>("/api/media", {method:"POST", body:form, signal:AbortSignal.timeout(30 * 60_000)});
+    return entry.info;
+  };
+  entry.pending = operation().finally(() => { entry.pending = undefined; });
+  return entry.pending;
 }
 export function download(
   name: string,

@@ -1,0 +1,67 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { installCapturePermissions } = require('./capture-permissions.cjs');
+
+function fixture(response = 1, platform = 'win32') {
+  const handlers = {}; let prompts = 0; let enumerations = 0; let destroyed = false;
+  const contents = { mainFrame: {}, isDestroyed: () => destroyed, getURL: () => 'voicesubsep://app/' };
+  const win = { webContents: contents, isDestroyed: () => destroyed };
+  installCapturePermissions({ session: {
+    setPermissionCheckHandler: (fn) => { handlers.check = fn; },
+    setPermissionRequestHandler: (fn) => { handlers.permission = fn; },
+    setDisplayMediaRequestHandler: (fn) => { handlers.display = fn; },
+  }, getWindow: () => win, getUiUrl: () => 'voicesubsep://app/', platform,
+  dialog: { showMessageBox: async () => { prompts++; return { response }; } },
+  desktopCapturer: { getSources: async (options) => { enumerations++; assert.deepEqual(options.thumbnailSize, { width: 0, height: 0 }); return [{ id: 'screen:1', name: 'Display 1' }]; } },
+  });
+  const details = { isMainFrame: true, requestingUrl: 'voicesubsep://app/', mediaTypes: ['audio'] };
+  const request = { frame: contents.mainFrame, securityOrigin: 'voicesubsep://app', audioRequested: true, videoRequested: true, userGesture: true };
+  return { handlers, contents, details, request, counts: () => ({ prompts, enumerations }), destroy: () => { destroyed = true; } };
+}
+
+test('does not ask or open devices when handlers are installed; every permission check remains ungranted', () => {
+  const f = fixture(); assert.deepEqual(f.counts(), { prompts: 0, enumerations: 0 }); assert.equal(f.handlers.check(), false);
+});
+test('microphone requires trusted top-level audio-only request and affirmative native consent', async () => {
+  for (const response of [0, 1]) {
+    const f = fixture(response);
+    const allowed = await new Promise((resolve) => f.handlers.permission(f.contents, 'media', resolve, f.details));
+    assert.equal(allowed, response === 1); assert.equal(f.counts().prompts, 1);
+  }
+});
+test('rejects camera, subframes, foreign URLs, nonmedia and different webContents without prompting', async () => {
+  const f = fixture();
+  for (const [contents, permission, details] of [[f.contents, 'media', { ...f.details, mediaTypes: ['video', 'audio'] }], [f.contents, 'media', { ...f.details, isMainFrame: false }], [f.contents, 'media', { ...f.details, requestingUrl: 'https://evil.example/' }], [f.contents, 'geolocation', f.details], [{ ...f.contents }, 'media', f.details]]) {
+    assert.equal(await new Promise((resolve) => f.handlers.permission(contents, permission, resolve, details)), false);
+  }
+  assert.equal(f.counts().prompts, 0);
+});
+test('system audio requires a fresh gesture, own frame, audio request, and Windows', async () => {
+  for (const patch of [{ userGesture: false }, { frame: {} }, { audioRequested: false }, { videoRequested: false }, { securityOrigin: 'https://evil.example' }]) {
+    const f = fixture(); assert.deepEqual(await new Promise((resolve) => f.handlers.display({ ...f.request, ...patch }, resolve)), {}); assert.equal(f.counts().enumerations, 0);
+  }
+  const f = fixture(1, 'linux'); assert.deepEqual(await new Promise((resolve) => f.handlers.display(f.request, resolve)), {});
+});
+test('system audio returns selected screen plus unmuted loopback only after consent', async () => {
+  const f = fixture(); assert.deepEqual(await new Promise((resolve) => f.handlers.display(f.request, resolve)), { video: { id: 'screen:1', name: 'Display 1' }, audio: 'loopback' });
+  const denied = fixture(0); assert.deepEqual(await new Promise((resolve) => denied.handlers.display(denied.request, resolve)), {});
+});
+test('navigation/destruction while a permission prompt is open invalidates approval', async () => {
+  const f = fixture(); const result = new Promise((resolve) => f.handlers.permission(f.contents, 'media', resolve, f.details)); f.destroy(); assert.equal(await result, false);
+});
+
+test('combined capture can ask for microphone immediately after display callback', async () => {
+  const f = fixture();
+  const microphone = await new Promise(resolve => f.handlers.display(f.request, selection => {
+    assert.equal(selection.audio, 'loopback');
+    f.handlers.permission(f.contents, 'media', resolve, f.details);
+  }));
+  assert.equal(microphone, true); assert.equal(f.counts().prompts, 2);
+});
+
+test('a destroyed request callback is never invoked twice', async () => {
+  const f = fixture(); let callbacks = 0;
+  await new Promise(resolve => f.handlers.display(f.request, () => { callbacks++; resolve(); throw new Error('frame destroyed'); }));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(callbacks, 1);
+});

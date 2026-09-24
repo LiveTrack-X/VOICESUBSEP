@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useI18n } from "../i18n";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
   Check,
   Clock3,
@@ -22,6 +23,7 @@ export type NotesPanelProps = {
   update: (fn: (p: Project) => Project) => void;
   time: number;
   seek: (time: number) => void;
+  reveal: { id: string } | null;
   onError: (message: string) => void;
 };
 
@@ -37,15 +39,28 @@ export function NotesPanel({
   update,
   time,
   seek,
+  reveal,
   onError,
 }: NotesPanelProps) {
+  const { t } = useI18n();
   const [focusId, setFocusId] = useState<string | null>(null);
   const textInputs = useRef(new Map<string, HTMLTextAreaElement>());
+  const cards = useRef(new Map<string, HTMLElement>());
+  const list = useRef<HTMLDivElement>(null);
   const notes = [...project.notes].sort((a, b) => a.start - b.start);
   const pending = project.notes.filter((note) => !note.done).length;
   const currentTime = Number.isFinite(time)
     ? Math.max(0, Math.min(time, project.duration || MAX_TIME_SECONDS))
     : 0;
+  useLayoutEffect(() => {
+    const card = reveal && cards.current.get(reveal.id);
+    const container = list.current;
+    if (!card || !container) return;
+    const item = card.getBoundingClientRect();
+    const box = container.getBoundingClientRect();
+    container.scrollTop += item.top - box.top - Math.max(0, (container.clientHeight - card.clientHeight) / 2);
+    container.scrollLeft += item.left - box.left - Math.max(0, (container.clientWidth - card.clientWidth) / 2);
+  }, [reveal]);
 
   useEffect(() => {
     if (!focusId) return;
@@ -65,7 +80,7 @@ export function NotesPanel({
   function addNote() {
     if (project.notes.length >= MAX_NOTES) {
       onError(
-        `메모는 프로젝트당 최대 ${MAX_NOTES.toLocaleString()}개까지 저장할 수 있습니다.`,
+        t("메모는 프로젝트당 최대 {count}개까지 저장할 수 있습니다.", { count: MAX_NOTES }),
       );
       return;
     }
@@ -100,20 +115,20 @@ export function NotesPanel({
       const start = field === "start" ? (value as number) : note.start;
       const end = field === "end" ? value : note.end;
       if (end !== null && end < start)
-        throw new Error("메모 종료 시간은 시작 시간보다 빠를 수 없습니다.");
+        throw new Error(t("메모 종료 시간은 시작 시간보다 빠를 수 없습니다."));
       if (
         project.duration > 0 &&
         (start > project.duration || (end !== null && end > project.duration))
       ) {
         throw new Error(
-          `메모 시간은 영상 길이 ${formatTime(project.duration)} 이내로 입력하세요.`,
+          t("메모 시간은 영상 길이 {time} 이내로 입력하세요.", { time: formatTime(project.duration) }),
         );
       }
       input.value = value === null ? "" : formatTime(value);
       if (value !== note[field]) change(note.id, { [field]: value });
     } catch (error) {
       input.value = note[field] === null ? "" : formatTime(note[field]);
-      onError(error instanceof Error ? error.message : "시간을 확인해 주세요.");
+      onError(error instanceof Error ? t(error.message) : t("시간을 확인해 주세요."));
     }
   }
 
@@ -132,14 +147,14 @@ export function NotesPanel({
   }
 
   return (
-    <aside className="notes-panel panel" aria-label="편집 메모">
+    <aside className="notes-panel panel" aria-label={t("편집 메모")}>
       <div className="panel-heading">
         <div className="notes-heading">
           <MessageSquareText size={18} aria-hidden="true" />
-          <h2>편집 메모</h2>
+          <h2>{t('편집 메모')}</h2>
           <span
             className="notes-count"
-            aria-label={`완료 전 메모 ${pending}개`}
+            aria-label={t("완료 전 메모 {count}개", { count: pending })}
           >
             {pending}
           </span>
@@ -148,52 +163,49 @@ export function NotesPanel({
           type="button"
           className="subtle-button"
           onClick={addNote}
-          aria-label="현재 시간에 메모 추가"
+          aria-label={t("현재 시간에 메모 추가")}
         >
-          <Plus size={15} aria-hidden="true" />
-          메모 추가
-        </button>
+          <Plus size={15} aria-hidden="true" />{t('메모 추가')}</button>
       </div>
       <p className="notes-hint">
         <Clock3 size={13} aria-hidden="true" />
-        <span>현재 위치 {formatTime(currentTime)} · 원본 영상 기준</span>
+        <span>{t("현재 위치 {time} · 원본 영상 기준", { time: formatTime(currentTime) })}</span>
       </p>
-      <div className="notes-list">
+      <div className="notes-list" ref={list}>
         {notes.length === 0 ? (
           <div className="empty-state notes-empty">
             <MessageSquareText size={32} strokeWidth={1.5} aria-hidden="true" />
-            <strong>놓치고 싶지 않은 순간을 기록하세요</strong>
-            <p>
-              컷 편집, 강조할 장면, 확인할 대사를
-              <br />
-              재생 시간과 함께 남길 수 있어요.
-            </p>
+            <strong>{t('놓치고 싶지 않은 순간을 기록하세요')}</strong>
+            <p>{t('컷 편집, 강조할 장면, 확인할 대사를')}<br />{t('재생 시간과 함께 남길 수 있어요.')}</p>
             <button type="button" className="subtle-button" onClick={addNote}>
-              <Plus size={15} aria-hidden="true" />첫 메모 남기기
-            </button>
+              <Plus size={15} aria-hidden="true" />{t('첫 메모 남기기')}</button>
           </div>
         ) : (
           notes.map((note, index) => (
             <article
               key={note.id}
-              className={`note-card ${note.done ? "is-done" : ""}`}
-              aria-label={`메모 ${index + 1}`}
+              ref={(card) => {
+                if (card) cards.current.set(note.id, card);
+                else cards.current.delete(note.id);
+              }}
+              className={`note-card ${note.done ? "is-done" : ""} ${reveal?.id === note.id ? "selected" : ""}`}
+              aria-label={t("메모 {number}", { number: index + 1 })}
             >
               <div className="note-time">
                 <button
                   type="button"
                   className="icon-button note-seek"
                   onClick={() => seek(note.start)}
-                  title="이 위치로 이동"
-                  aria-label={`메모 ${index + 1} 위치 ${formatTime(note.start)}로 이동`}
+                  title={t("이 위치로 이동")}
+                  aria-label={t("메모 {number} 위치 {time}로 이동", { number: index + 1, time: formatTime(note.start) })}
                 >
                   <Play size={13} aria-hidden="true" />
                 </button>
                 <label className="note-time-field">
-                  <span>시작</span>
+                  <span>{t('시작')}</span>
                   <input
                     key={`${note.id}-start-${note.start}`}
-                    aria-label={`메모 ${index + 1} 시작 시간`}
+                    aria-label={t("메모 {number} 시작 시간", { number: index + 1 })}
                     defaultValue={formatTime(note.start)}
                     placeholder="00:00:00.000"
                     maxLength={24}
@@ -207,12 +219,12 @@ export function NotesPanel({
                   –
                 </span>
                 <label className="note-time-field">
-                  <span>종료 · 선택</span>
+                  <span>{t('종료 · 선택')}</span>
                   <input
                     key={`${note.id}-end-${note.end}`}
-                    aria-label={`메모 ${index + 1} 종료 시간 선택 입력`}
+                    aria-label={t("메모 {number} 종료 시간 선택 입력", { number: index + 1 })}
                     defaultValue={note.end === null ? "" : formatTime(note.end)}
-                    placeholder="선택 입력"
+                    placeholder={t("선택 입력")}
                     maxLength={24}
                     onBlur={(event) =>
                       editTime(note, "end", event.currentTarget)
@@ -227,8 +239,8 @@ export function NotesPanel({
                   if (element) textInputs.current.set(note.id, element);
                   else textInputs.current.delete(note.id);
                 }}
-                aria-label={`메모 ${index + 1} 내용`}
-                placeholder="이 장면에서 할 편집을 적어보세요…"
+                aria-label={t("메모 {number} 내용", { number: index + 1 })}
+                placeholder={t("이 장면에서 할 편집을 적어보세요…")}
                 value={note.text}
                 rows={3}
                 maxLength={10_000}
@@ -239,7 +251,7 @@ export function NotesPanel({
               <div className="note-footer">
                 <select
                   className={`note-tag tag-${note.tag}`}
-                  aria-label={`메모 ${index + 1} 분류`}
+                  aria-label={t("메모 {number} 분류", { number: index + 1 })}
                   value={note.tag}
                   onChange={(event) =>
                     change(note.id, { tag: event.target.value as NoteTag })
@@ -247,7 +259,7 @@ export function NotesPanel({
                 >
                   {TAGS.map((tag) => (
                     <option key={tag.value} value={tag.value}>
-                      {tag.label}
+                      {t(tag.label)}
                     </option>
                   ))}
                 </select>
@@ -255,17 +267,17 @@ export function NotesPanel({
                   type="button"
                   className={`subtle-button note-done ${note.done ? "active" : ""}`}
                   aria-pressed={note.done}
-                  aria-label={`메모 ${index + 1} ${note.done ? "완료 취소" : "완료 표시"}`}
+                  aria-label={t(note.done ? "메모 {number} 완료 취소" : "메모 {number} 완료 표시", { number: index + 1 })}
                   onClick={() => change(note.id, { done: !note.done })}
                 >
                   <Check size={14} aria-hidden="true" />
-                  {note.done ? "완료됨" : "완료"}
+                  {note.done ? t("완료됨") : t("완료")}
                 </button>
                 <button
                   type="button"
                   className="icon-button note-delete"
-                  title="메모 삭제"
-                  aria-label={`메모 ${index + 1} 삭제`}
+                  title={t("메모 삭제")}
+                  aria-label={t("메모 {number} 삭제", { number: index + 1 })}
                   onClick={() =>
                     update((previous) => ({
                       ...previous,

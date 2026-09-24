@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, protocol, session, shell } = require('electron');
+const { app, BrowserWindow, desktopCapturer, dialog, ipcMain, protocol, session, shell } = require('electron');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -8,8 +8,11 @@ const { APP_URL, sameOrigin, externalUrl, backendPaths, backendArguments } = req
 const { createProxyHandler } = require('./proxy.cjs');
 const { UpdateController } = require('./updater.cjs');
 const { hasExited, stopOwnedBackend } = require('./backend-lifecycle.cjs');
+const { createAppLogger } = require('./startup-log.cjs');
+const { installCapturePermissions } = require('./capture-permissions.cjs');
 
 app.setName('VOICESUBSEP');
+if (process.platform === 'win32') app.setAppUserModelId('com.livetrack.voicesubsep');
 protocol.registerSchemesAsPrivileged([{ scheme: 'voicesubsep', privileges: {
   standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true,
 } }]);
@@ -20,20 +23,14 @@ let backendExit;
 let stopping;
 let quitting = false;
 let uiUrl = APP_URL;
-let logFile;
+let appLog;
 let backendOrigin;
 let backendToken;
 let preparingUpdate = false;
 const expectedExits = new WeakSet();
 
 function log(message) {
-  if (!logFile) return;
-  try {
-    if (fs.existsSync(logFile) && fs.statSync(logFile).size > 4 * 1024 * 1024) {
-      fs.renameSync(logFile, `${logFile}.previous`);
-    }
-    fs.appendFileSync(logFile, String(message).slice(0, 32768));
-  } catch { /* Logging must not stop the editor. */ }
+  appLog?.write(message);
 }
 
 function freePort() {
@@ -103,8 +100,6 @@ async function startBackend() {
     throw new Error('배포 파일에 백엔드 또는 웹 편집기가 없습니다. 전체 설치본으로 다시 설치하세요.');
   }
   fs.mkdirSync(paths.dataDir, { recursive: true });
-  fs.mkdirSync(paths.logsDir, { recursive: true });
-  logFile = path.join(paths.logsDir, 'backend.log');
   const port = await freePort();
   const origin = `http://127.0.0.1:${port}`;
   backendOrigin = origin;
@@ -160,14 +155,14 @@ function openExternal(value) {
 }
 
 async function start() {
+  appLog = createAppLogger(path.join(app.getPath('userData'), 'logs'));
   if (!app.isPackaged) {
     const devUrl = process.env.VOICESUBSEP_DEV_URL || 'http://127.0.0.1:5173/';
     if (!sameOrigin(devUrl, 'http://127.0.0.1:5173/')) throw new Error('개발 UI는 http://127.0.0.1:5173/만 허용합니다.');
     uiUrl = devUrl;
   } else await startBackend();
 
-  session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
-  session.defaultSession.setPermissionCheckHandler(() => false);
+  installCapturePermissions({ session: session.defaultSession, getWindow: () => mainWindow, getUiUrl: () => uiUrl, dialog, desktopCapturer });
   const { autoUpdater } = require('electron-updater');
   const metadata = require(path.join(app.getAppPath(), 'package.json'));
   const updates = new UpdateController({ updater: autoUpdater, version: app.getVersion(),
@@ -193,6 +188,7 @@ async function start() {
   installIpc(updates);
   mainWindow = new BrowserWindow({
     title: 'VOICESUBSEP', width: 1440, height: 940, minWidth: 1000, minHeight: 680,
+    icon: path.join(__dirname, 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     backgroundColor: '#101114', show: false, autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, webviewTag: false },
   });

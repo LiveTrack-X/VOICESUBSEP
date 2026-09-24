@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "voicesubsep"
-version = "0.1.1"
+version = "0.2.0"
 description = "Local speaker subtitle editor inference service"
 requires-python = ">=3.10"
 dependencies = [
@@ -15,8 +15,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8,<10", "httpx>=0.27,<1"]
+test = ["pytest>=8,<10", "httpx>=0.27,<1", "numpy>=1.26,<3"]
 whisper = ["faster-whisper>=1.1,<2"]
+vst = ["pedalboard==0.9.25"]
 diarization = [
   "torch>=2.11,<2.12",
   "transformers @ https://github.com/huggingface/transformers/archive/4b28d51d0d5f17ec20c23a187d0475a8e68810c8.zip",

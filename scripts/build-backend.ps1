@@ -48,6 +48,16 @@ if (-not $useTorchCuda) {
     $nvidiaPackages = @('nvidia-cublas-cu12', 'nvidia-cudnn-cu12', 'nvidia-cuda-runtime-cu12', 'nvidia-cuda-nvrtc-cu12')
 }
 $runtimePackages = @('torch', 'transformers', 'librosa', 'numba', 'llvmlite', 'scipy', 'soundfile', 'soxr', 'safetensors', 'numpy')
+# VST support is optional in source installs. If its native runtime is present,
+# freeze the worker and preserve the exact wheel's GPL notices/metadata too.
+$vstRuntimeCheck = @'
+import importlib.util
+print('present' if importlib.util.find_spec('pedalboard') else 'absent')
+'@
+$vstRuntimeState = & $pythonExe -c $vstRuntimeCheck
+if ($LASTEXITCODE -ne 0) { throw 'Optional VST runtime discovery failed.' }
+$includeVstRuntime = ([string]$vstRuntimeState).Trim() -eq 'present'
+if ($includeVstRuntime) { $runtimePackages += 'pedalboard' }
 $noticePackages = $runtimePackages + $nvidiaPackages
 # These imports are lazy or selected by the model's processor_config.json.
 # Do not collect all transformers models or model-conversion utilities.
@@ -153,6 +163,8 @@ if ($CheckDependenciesOnly) {
     Write-Host ("Nemotron runtime modules present: {0}; original notice files: {1}." -f $nemotronModules.Count, $noticeChecks.Count)
     if ($useTorchCuda) { Write-Host 'CUDA source: torch/lib (NVIDIA package DLLs will not be duplicated).' }
     else { Write-Host 'CUDA source: separate NVIDIA packages (torch/lib is incomplete).' }
+    if ($includeVstRuntime) { Write-Host 'VST3 worker: optional Pedalboard runtime will be included.' }
+    else { Write-Host 'VST3 worker: Pedalboard is not installed; VST processing will report runtime unavailable.' }
     return
 }
 
@@ -207,6 +219,11 @@ for path in models.iterdir():
         '--recursive-copy-metadata', 'torch', '--recursive-copy-metadata', 'transformers', '--recursive-copy-metadata', 'librosa',
         '--add-binary', ($ffmpegExe + ';tools'), '--add-binary', ($ffprobeExe + ';tools'))
     if (-not $ReuseBuildCache) { $arguments += '--clean' }
+    $arguments += @('--hidden-import', 'voicesubsep.vst_worker')
+    if ($includeVstRuntime) {
+        # The package loads native extensions and accompanying Windows DLLs.
+        $arguments += @('--collect-all', 'pedalboard', '--hidden-import', 'pedalboard_native', '--copy-metadata', 'pedalboard')
+    }
     # Standard hooks handle torch DLLs/source, librosa lazy-loader .pyi/data,
     # llvmlite DLLs, scipy.libs and soundfile's libsndfile. No collect-all torch
     # or transformers pass is needed on top of those hooks.

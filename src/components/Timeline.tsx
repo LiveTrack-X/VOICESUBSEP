@@ -1,19 +1,130 @@
-import { useState } from "react";
-import { ZoomIn, ZoomOut } from "lucide-react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, ZoomIn, ZoomOut } from "lucide-react";
 import { formatTime, type Project } from "../domain";
+import { request, uploadMedia, type MediaInfo } from "../api";
+import { CaptionTimelineLane } from "./CaptionTimelineLane";
+import { resizeCaption, waveformPath } from "../timelineEditing";
+import { NoteTimelineLane } from "./NoteTimelineLane";
+import { normalizeCuts } from "../cuts";
+import { useI18n } from "../i18n";
+import "./timeline-layout.css";
+
+const LAYOUT_STORAGE_KEY = "voicesubsep-timeline-layout-v1";
+const DEFAULT_HEIGHT = 180;
+const MIN_HEIGHT = 100;
+const MAX_HEIGHT = 480;
+type TimelineLayout = { height: number; collapsed: boolean };
+
+function readLayout(): TimelineLayout {
+  const defaults = { height: DEFAULT_HEIGHT, collapsed: false };
+  try {
+    const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    if (!raw || raw.length > 256) return defaults;
+    const saved: unknown = JSON.parse(raw);
+    if (!saved || typeof saved !== "object") return defaults;
+    const value = saved as Record<string, unknown>;
+    if (value.version !== 1 || typeof value.collapsed !== "boolean" || typeof value.height !== "number" || !Number.isFinite(value.height)) return defaults;
+    return { height: Math.round(Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, value.height))), collapsed: value.collapsed };
+  } catch {
+    return defaults;
+  }
+}
+
+function saveLayout(layout: TimelineLayout) {
+  try { localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify({ version: 1, ...layout })); }
+  catch { /* The current layout remains usable when local storage is unavailable. */ }
+}
 
 export function Timeline({
   project,
+  file,
+  update,
+  onError,
   time,
-  seek,
-  select,
+  preview,
+  selected,
+  previewNote,
+  selectedNote,
 }: {
   project: Project;
+  file: File | null;
+  update: (change: (project: Project) => Project) => void;
+  onError: (message: string) => void;
   time: number;
-  seek: (t: number) => void;
-  select: (id: string) => void;
+  preview: (time: number, captionId?: string, speakerId?: string) => void;
+  selected: string | null;
+  previewNote: (id: string) => void;
+  selectedNote: string | null;
 }) {
+  const {t}=useI18n();
   const [zoom, setZoom] = useState(1);
+  const [layout, setLayout] = useState(readLayout);
+  const [maxHeight, setMaxHeight] = useState(MAX_HEIGHT);
+  const [resizing, setResizing] = useState(false);
+  const [waveform,setWaveform] = useState<{peaks:{values:number[];secondsPerPoint:number};duration:number}|null>(null);
+  const [media,setMedia] = useState<MediaInfo|null>(null);
+  const [audioTrack,setAudioTrack] = useState(0);
+  const [waveBusy,setWaveBusy] = useState(false);
+  const captionGroups=useMemo(()=>{
+    const groups=new Map<string,Project["captions"]>();
+    for(const caption of project.captions){const key=caption.speakerId??"";const rows=groups.get(key)??[];rows.push(caption);groups.set(key,rows);}
+    return groups;
+  },[project.captions]);
+  const waveGeneration=useRef(0);
+  useEffect(()=>{waveGeneration.current++;setWaveform(null);setMedia(null);setAudioTrack(0);setWaveBusy(false);return()=>{waveGeneration.current++;};},[file]);
+  async function loadWaveform() {
+    if(!file)return;
+    const generation=++waveGeneration.current;setWaveBusy(true);
+    try {
+      const info=await uploadMedia(file);
+      if(generation!==waveGeneration.current)return;
+      setMedia(info);
+      const track=info.audioTracks.some(track=>track.index===audioTrack)?audioTrack:info.audioTracks[0]?.index;
+      if(track===undefined)throw new Error(t("분석할 오디오 트랙이 없습니다."));
+      setAudioTrack(track);
+      const wave=await request<{peaks:{values:number[];secondsPerPoint:number};duration:number}>(`/api/media/${info.id}/waveform?audioTrack=${track}&points=2000`,{signal:AbortSignal.timeout(200000)});
+      if(generation===waveGeneration.current)setWaveform(wave);
+    }catch(error){if(generation===waveGeneration.current)onError((error as Error).message);}
+    finally{if(generation===waveGeneration.current)setWaveBusy(false);}
+  }
+  function changeBoundary(id:string,edge:"start"|"end",position:number) {
+    update(p=>{
+      const current=p.captions.find(c=>c.id===id);if(!current)return p;
+      const next=resizeCaption(current,edge,position,p.duration);if(next===current)return p;
+      return {...p,captions:p.captions.map(c=>c.id===id?next:c)};
+    });
+  }
+  const sectionRef = useRef<HTMLElement>(null);
+  const dragRef = useRef<{ pointerId: number; startY: number; height: number } | null>(null);
+  const latestLayout = useRef(layout);
+  latestLayout.current = layout;
+  const contentId = useId();
+  const height = Math.min(layout.height, maxHeight);
+  const clampHeight = (value: number) => Math.round(Math.max(MIN_HEIGHT, Math.min(maxHeight, value)));
+  const commitLayout = (next: TimelineLayout) => {
+    latestLayout.current = next;
+    setLayout(next);
+    saveLayout(next);
+  };
+
+  useLayoutEffect(() => {
+    const workspace = sectionRef.current?.parentElement;
+    if (!workspace) return;
+    const measure = () => {
+      const available = workspace.clientHeight;
+      if (available > 0) setMaxHeight(Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, Math.floor(available * 0.45), available - 240)));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(workspace);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => saveLayout(layout), 150);
+    return () => window.clearTimeout(timeout);
+  }, [layout]);
+  useEffect(() => () => saveLayout(latestLayout.current), []);
   const duration = Math.max(
     30,
     project.duration,
@@ -28,17 +139,74 @@ export function Timeline({
   const lanes = [
     ...speakers,
     ...(project.captions.some((c) => !c.speakerId)
-      ? [{ id: "", name: "미배정", color: "#8892a3" }]
+      ? [{ id: "", name: t("미배정"), color: "#8892a3" }]
       : []),
   ];
   return (
-    <section className="timeline" aria-label="인물별 타임라인">
+    <section
+      ref={sectionRef}
+      className={`timeline timeline-adjustable${layout.collapsed ? " timeline-collapsed" : ""}${resizing ? " timeline-resizing" : ""}`}
+      style={{ height: layout.collapsed ? 42 : height }}
+      aria-label={t("인물별 타임라인")}
+    >
+      {!layout.collapsed && <div
+        className="timeline-resize-handle"
+        role="separator"
+        tabIndex={0}
+        aria-label={t("타임라인 높이 조절")}
+        aria-orientation="horizontal"
+        aria-controls={contentId}
+        aria-valuemin={MIN_HEIGHT}
+        aria-valuemax={maxHeight}
+        aria-valuenow={height}
+        aria-valuetext={t("타임라인 높이 {height}px", { height })}
+        title={t("드래그하거나 위·아래 방향키로 높이 조절 · 두 번 클릭하여 기본 높이")}
+        onPointerDown={event => {
+          if (!event.isPrimary || event.button !== 0) return;
+          event.preventDefault();
+          event.currentTarget.focus();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          dragRef.current = { pointerId: event.pointerId, startY: event.clientY, height };
+          setResizing(true);
+        }}
+        onPointerMove={event => {
+          const drag = dragRef.current;
+          if (!drag || drag.pointerId !== event.pointerId) return;
+          const nextHeight = clampHeight(drag.height + drag.startY - event.clientY);
+          setLayout(current => current.height === nextHeight ? current : { ...current, height: nextHeight });
+        }}
+        onPointerUp={event => {
+          if (dragRef.current?.pointerId !== event.pointerId) return;
+          dragRef.current = null;
+          setResizing(false);
+          event.currentTarget.releasePointerCapture(event.pointerId);
+          saveLayout(latestLayout.current);
+        }}
+        onPointerCancel={() => { dragRef.current = null; setResizing(false); }}
+        onLostPointerCapture={() => { dragRef.current = null; setResizing(false); }}
+        onDoubleClick={() => commitLayout({ ...layout, height: clampHeight(DEFAULT_HEIGHT) })}
+        onKeyDown={event => {
+          const step = event.shiftKey ? 40 : 16;
+          const nextHeight = event.key === "ArrowUp" ? height + step
+            : event.key === "ArrowDown" ? height - step
+              : event.key === "Home" ? MIN_HEIGHT
+                : event.key === "End" ? maxHeight : null;
+          if (nextHeight === null) return;
+          event.preventDefault();
+          commitLayout({ ...layout, height: clampHeight(nextHeight) });
+        }}
+      ><span /></div>}
       <div className="timeline-heading">
-        <h2>타임라인</h2>
-        <span>원본 시간 기준</span>
-        <div>
+        <h2>{t("타임라인")}</h2>
+        <span className="timeline-heading-hint">{t("클릭하면 해당 위치부터 재생 · 원본 시간 기준")}</span>
+        <div className="timeline-heading-actions">
+          {!layout.collapsed&&<>
+            {!!media&&media.audioTracks.length>1&&<select aria-label={t("파형 오디오 트랙")} disabled={waveBusy} value={audioTrack} onChange={e=>{setAudioTrack(Number(e.target.value));setWaveform(null);}}>{media.audioTracks.map(track=><option key={track.index} value={track.index}>{track.label}</option>)}</select>}
+            <button disabled={!file||waveBusy} onClick={()=>void loadWaveform()}>{t(waveBusy?"파형 준비 중":"파형 불러오기")}</button>
+          </>}
+          {!layout.collapsed && <div className="timeline-zoom-controls">
           <button
-            aria-label="타임라인 축소"
+            aria-label={t("타임라인 축소")}
             disabled={zoom <= 1}
             onClick={() => setZoom((z) => z / 2)}
           >
@@ -46,73 +214,69 @@ export function Timeline({
           </button>
           <span>{zoom}×</span>
           <button
-            aria-label="타임라인 확대"
+            aria-label={t("타임라인 확대")}
             disabled={zoom >= 8}
             onClick={() => setZoom((z) => z * 2)}
           >
             <ZoomIn size={15} />
           </button>
+          </div>}
+          <button
+            className="timeline-collapse-button"
+            aria-expanded={!layout.collapsed}
+            aria-controls={contentId}
+            aria-label={t(layout.collapsed ? "타임라인 펼치기" : "타임라인 접기")}
+            title={t(layout.collapsed ? "타임라인 펼치기" : "타임라인 접기")}
+            onClick={() => commitLayout({ ...layout, collapsed: !layout.collapsed })}
+          >
+            {layout.collapsed ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            <span>{t(layout.collapsed ? "펼치기" : "접기")}</span>
+          </button>
         </div>
       </div>
-      <div className="timeline-scroll">
+      <div className="timeline-scroll" id={contentId} hidden={layout.collapsed}>
         <div
           className="timeline-content"
           style={{ minWidth: `${zoom * 100}%` }}
         >
-          <div className="timeline-ruler">
-            <span />
+          <div
+            className="timeline-ruler"
+            onClick={(e) => {
+              const box = e.currentTarget.getBoundingClientRect();
+              preview(
+                Math.max(0, Math.min(1, (e.clientX - box.left) / box.width)) * duration,
+              );
+            }}
+          >
             {Array.from({ length: 7 }, (_, i) => (
               <button
                 key={i}
-                style={{ left: `calc(96px + (100% - 112px) * ${i / 6})` }}
-                onClick={() => seek((duration * i) / 6)}
+                style={{ left: `${(i / 6) * 100}%` }}
+                aria-label={t("{time}부터 재생",{time:formatTime((duration * i) / 6)})}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  preview((duration * i) / 6);
+                }}
               >
                 {formatTime((duration * i) / 6).slice(3, 8)}
               </button>
             ))}
           </div>
-          {lanes.map((s) => (
-            <div className="timeline-lane" key={s.id}>
-              <div className="lane-label">
-                <span className="speaker-dot" style={{ background: s.color }} />
-                {s.name}
-              </div>
-              <div
-                className="lane-track"
-                onClick={(e) => {
-                  const box = e.currentTarget.getBoundingClientRect();
-                  seek(((e.clientX - box.left) / box.width) * duration);
-                }}
-              >
-                <span
-                  className="playhead"
-                  style={{ left: `${(time / duration) * 100}%` }}
-                />
-                {project.captions
-                  .filter((c) => (c.speakerId ?? "") === s.id)
-                  .map((c) => (
-                    <button
-                      className="caption-block"
-                      aria-label={`${s.name} ${formatTime(c.start)} ${c.text}`}
-                      title={`${s.name} · ${c.text}`}
-                      key={c.id}
-                      style={{
-                        left: `${(c.start / duration) * 100}%`,
-                        width: `${((c.end - c.start) / duration) * 100}%`,
-                        background: s.color,
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        select(c.id);
-                        seek(c.start);
-                      }}
-                    >
-                      {c.text}
-                    </button>
-                  ))}
-              </div>
+          <NoteTimelineLane
+            notes={project.notes}
+            duration={duration}
+            time={time}
+            selected={selectedNote}
+            preview={previewNote}
+          />
+          {waveform&&<div className="timeline-lane waveform-lane"><div className="lane-label">{t("오디오 파형")}</div><div className="lane-track" onClick={event=>{const box=event.currentTarget.getBoundingClientRect();preview(Math.max(0,Math.min(1,(event.clientX-box.left)/box.width))*duration);}}><svg viewBox="0 0 1000 32" preserveAspectRatio="none" aria-label={t("오디오 파형")}><path d={waveformPath(waveform.peaks.values,waveform.peaks.secondsPerPoint,duration)}/></svg><span className="playhead" style={{left:`${time/duration*100}%`}}/></div></div>}
+          {!!project.cuts?.length&&<div className="timeline-lane cut-lane">
+            <div className="lane-label">{t("제외 구간")}</div>
+            <div className="lane-track"><span className="playhead" style={{left:`${time/duration*100}%`}}/>
+              {normalizeCuts(project.cuts,project.duration).map(cut=><button key={cut.id} className="cut-block" style={{left:`${cut.start/duration*100}%`,width:`${(cut.end-cut.start)/duration*100}%`}} title={`${formatTime(cut.start)} → ${formatTime(cut.end)}`} aria-label={t("제외 구간 {start}부터 {end}",{start:formatTime(cut.start),end:formatTime(cut.end)})} onClick={()=>preview(cut.start)}>{t("제외")}</button>)}
             </div>
-          ))}
+          </div>}
+          {lanes.map(s=><CaptionTimelineLane key={s.id} speaker={s} captions={captionGroups.get(s.id)??[]} duration={duration} mediaDuration={project.duration} time={time} selected={selected} preview={preview} onResize={changeBoundary}/>)}
         </div>
       </div>
     </section>

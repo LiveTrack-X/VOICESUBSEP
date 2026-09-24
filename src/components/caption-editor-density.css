@@ -1,0 +1,186 @@
+.caption-editor .caption-density-toggle {
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-height: 28px;
+}
+
+.caption-editor .caption-density-toggle[aria-pressed="true"] {
+  color: var(--purple);
+  background: #f0ecfb;
+  border-color: #ded5f7;
+}
+
+.caption-editor .caption-seek-icon {
+  display: none;
+}
+
+/* Content sizing also follows wrapping when the editor width changes. A long
+   caption scrolls inside its field instead of taking over the whole list. */
+.caption-editor .caption-content textarea {
+  field-sizing: content;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.caption-editor .caption-row > *,
+.caption-editor .caption-content {
+  min-width: 0;
+}
+
+.caption-review-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.caption-review-controls input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  min-height: 15px;
+  padding: 0;
+  margin: 0;
+}
+
+.caption-navigation,
+.caption-pagination,
+.caption-bulk-actions,
+.caption-replace-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.caption-navigation,
+.caption-pagination {
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.caption-pagination {
+  justify-content: center;
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+}
+
+.caption-navigation button,
+.caption-pagination button,
+.caption-pagination select,
+.caption-bulk-tools button,
+.caption-bulk-tools input,
+.caption-bulk-tools select {
+  min-height: 27px;
+  padding: 3px 6px;
+  font-size: 11px;
+  max-width: 100%;
+}
+
+.caption-bulk-tools {
+  border-bottom: 1px solid var(--border);
+  padding: 5px 12px;
+  flex-shrink: 0;
+  max-height: 190px;
+  overflow: auto;
+  font-size: 11px;
+}
+
+.caption-bulk-tools summary { cursor: pointer; padding: 2px 0; }
+.caption-bulk-actions,
+.caption-replace-controls { padding-top: 7px; }
+.caption-bulk-tools label,
+.caption-pagination label { display: flex; align-items: center; gap: 5px; }
+.caption-bulk-tools .muted { font-size: 10px; margin: 6px 0 0; }
+.caption-replace-controls input { width: 130px; }
+.caption-bulk-notice { margin: 0; padding: 5px 12px; font-size: 11px; flex-shrink: 0; }
+.project-recovery-list { display: grid; gap: 10px; }
+.project-recovery-entry { border: 1px solid var(--border); border-radius: 6px; padding: 10px; min-width: 0; }
+.project-recovery-entry p { overflow-wrap: anywhere; font-size: 12px; }
+.project-recovery-entry h3 { font-size: 13px; margin: 0 0 7px; }
+.recovery-cleanup { margin-top: 12px; font-size: 12px; }
+
+.caption-density-compact .caption-row {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  min-height: 54px;
+}
+
+.caption-density-compact .caption-times {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 1px 3px;
+  align-items: center;
+  min-width: 0;
+}
+
+.caption-density-compact .caption-times .seek-button {
+  grid-row: span 2;
+  justify-content: center;
+  width: 24px;
+  min-height: 32px;
+  border: 1px solid #e3e7f0;
+  border-radius: 4px;
+  color: #65718a;
+}
+
+.caption-density-compact .caption-seek-icon {
+  display: block;
+}
+
+.caption-density-compact .caption-seek-time {
+  display: none;
+}
+
+.caption-density-compact .caption-times input {
+  min-height: 19px;
+  padding: 1px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.caption-density-compact .caption-speaker {
+  min-height: 28px;
+  margin-top: 0;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.caption-density-compact .caption-content textarea {
+  min-height: 28px;
+  max-height: 160px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  line-height: 1.5;
+}
+
+.caption-density-compact .review-reasons {
+  margin-top: 1px;
+  gap: 3px;
+}
+
+.caption-density-compact .review-reasons span {
+  padding: 1px 4px;
+}
+
+.caption-density-compact .review-button {
+  min-width: 28px;
+  min-height: 28px;
+  margin-top: 0;
+}
+
+@media (max-width: 680px) {
+  .caption-density-compact .caption-times {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .caption-density-compact .caption-times .seek-button {
+    grid-row: auto;
+    width: 100%;
+    min-height: 24px;
+  }
+}

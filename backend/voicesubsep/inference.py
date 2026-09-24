@@ -152,6 +152,58 @@ def _extract_audio(media_path: Path, audio_track: int, destination: Path, cancel
     return max(audio_duration, media_duration), int(selected.get("channels") or 1)
 
 
+def prepare_preprocessing_audio(media_path: Path, audio_track: int, destination: Path,
+                                cancelled: Cancelled = lambda: False) -> tuple[float, int]:
+    """Decode one source track for VST effects, preserving the player's time origin.
+
+    VST effects receive stereo 48 kHz PCM16 before the speech-model downsample.
+    RF64 permits recordings longer than the ordinary WAV 4 GiB boundary. The
+    original track and its silence/delayed start are never trimmed or replaced.
+    """
+    ffmpeg, ffprobe = shutil.which("ffmpeg"), shutil.which("ffprobe")
+    if not ffmpeg or not ffprobe:
+        raise RuntimeError("FFmpeg와 ffprobe가 필요합니다. 설치 후 PATH를 확인하세요.")
+    metadata = json.loads(_run([
+        ffprobe, "-v", "error", "-protocol_whitelist", "file,pipe", "-show_streams", "-show_format", "-of", "json", str(media_path),
+    ], cancelled))
+    selected = next((stream for stream in metadata.get("streams", []) if
+                     stream.get("index") == audio_track and stream.get("codec_type") == "audio"), None)
+    if selected is None:
+        raise RuntimeError("선택한 오디오 트랙이 없습니다. 미디어를 다시 열고 트랙을 선택하세요.")
+    _run([
+        ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-threads", "2",
+        "-copyts", "-start_at_zero", "-protocol_whitelist", "file,pipe", "-i", str(media_path),
+        "-map", f"0:{audio_track}", "-vn", "-sn", "-dn", "-filter_threads", "1",
+        "-af", "aresample=48000:async=1:first_pts=0", "-ac", "2", "-ar", "48000",
+        "-c:a", "pcm_s16le", "-rf64", "auto", str(destination),
+    ], cancelled)
+    prepared = json.loads(_run([
+        ffprobe, "-v", "error", "-protocol_whitelist", "file,pipe", "-show_format", "-of", "json", str(destination),
+    ], cancelled))
+    audio_duration = _number(prepared.get("format", {}).get("duration")) or 0.0
+    if audio_duration <= 0:
+        raise RuntimeError("선택한 오디오 트랙에 처리할 샘플이 없습니다.")
+    media_duration = _number(metadata.get("format", {}).get("duration")) or 0.0
+    return max(audio_duration, media_duration), int(selected.get("channels") or 1)
+
+
+def resample_preprocessing_audio(source: Path, destination: Path,
+                                 cancelled: Cancelled = lambda: False) -> None:
+    """Downsample the host's time-aligned output without adding/removing gaps."""
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        raise RuntimeError("FFmpeg가 필요합니다. 설치 후 PATH를 확인하세요.")
+    _run([
+        ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-threads", "2",
+        "-protocol_whitelist", "file,pipe", "-i", str(source), "-map", "0:a:0", "-vn", "-sn", "-dn",
+        "-filter_threads", "1", "-af", "aresample=16000", "-ac", "1", "-ar", "16000",
+        "-c:a", "pcm_s16le", str(destination),
+    ], cancelled)
+    with wave.open(str(destination), "rb") as wav:
+        if wav.getnframes() <= 0 or wav.getframerate() != 16000 or wav.getnchannels() != 1 or wav.getsampwidth() != 2:
+            raise RuntimeError("VST 처리 음성을 분석용 16 kHz 모노로 변환하지 못했습니다.")
+
+
 def _release_memory() -> None:
     gc.collect()
     torch = sys.modules.get("torch")
@@ -364,6 +416,70 @@ def _attribute(start: float, end: float, intervals: list[dict]) -> tuple[str | N
     return None, ["unassigned"] + (["timing"] if len(ranked) > 1 else [])
 
 
+def _validate_speaker_boundary_ms(value: int) -> None:
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 800:
+        raise RuntimeError("화자 경계 보정은 0~800ms 사이의 정수여야 합니다.")
+
+
+def _compensate_speaker_boundaries(atoms: list[tuple[dict, str | None, list[str]]],
+                                  intervals: list[dict], tolerance_ms: int) -> int:
+    """Repair short boundary words using only immediate, strictly assigned anchors.
+
+    Keep original words/timestamps and detected activity intact. The snapshot
+    prevents a repaired word becoming evidence for further repairs. Words with
+    no actual activity intersection are never attributed by proximity alone.
+    """
+    if not tolerance_ms:
+        return 0
+    strict_atoms = list(atoms)
+    repaired = 0
+    epsilon = 1e-6
+    for index, (word, identity, reasons) in enumerate(strict_atoms):
+        if identity is not None or "unassigned" not in reasons or any(
+            reason in reasons for reason in ("overlap", "timing")
+        ):
+            continue
+        start, end = word["start"], word["end"]
+        width = end - start
+        if width <= 0 or width > 0.8 + epsilon:
+            continue
+        relevant = [item for item in intervals if item["end"] > start and item["start"] < end]
+        candidates = {item["speaker"] for item in relevant}
+        if len(candidates) != 1:
+            continue
+        candidate = next(iter(candidates))
+        covered = sum(min(end, item["end"]) - max(start, item["start"]) for item in relevant)
+        if width - covered > tolerance_ms / 1000 + epsilon:
+            continue
+        anchors = []
+        conflict = False
+        for neighbor_index in (index - 1, index + 1):
+            if not 0 <= neighbor_index < len(strict_atoms):
+                continue
+            neighbor, neighbor_identity, neighbor_reasons = strict_atoms[neighbor_index]
+            gap = start - neighbor["end"] if neighbor_index < index else neighbor["start"] - end
+            if gap < -epsilon:
+                conflict = True  # Intersecting ASR words have uncertain timing.
+                break
+            if gap > 0.2 + epsilon or neighbor_identity is None:
+                continue
+            if neighbor_identity != candidate:
+                conflict = True
+                break
+            if any(reason in neighbor_reasons for reason in ("overlap", "timing", "unassigned")):
+                continue
+            bridge_start, bridge_end = min(start, neighbor["start"]), max(end, neighbor["end"])
+            if any(item["speaker"] != candidate and item["end"] > bridge_start
+                   and item["start"] < bridge_end for item in intervals):
+                continue
+            anchors.append(neighbor_index)
+        if anchors and not conflict:
+            atoms[index] = (word, candidate, ["speaker_boundary" if reason == "unassigned" else reason
+                                             for reason in reasons])
+            repaired += 1
+    return repaired
+
+
 def _overlap_windows(intervals: list[dict]) -> list[tuple[float, float]]:
     events: dict[float, int] = {}
     for interval in intervals:
@@ -383,8 +499,10 @@ def _overlap_windows(intervals: list[dict]) -> list[tuple[float, float]]:
 
 
 def build_result(records: list[dict], diarization_segments: list[dict] | None, *, duration: float,
-                 speaker_count: int, mode: str, cancelled: Cancelled = lambda: False) -> dict:
+                 speaker_count: int, mode: str, speaker_boundary_ms: int = 500,
+                 cancelled: Cancelled = lambda: False) -> dict:
     """Pure attribution/segmentation; source times and silent gaps are preserved."""
+    _validate_speaker_boundary_ms(speaker_boundary_ms)
     if not math.isfinite(duration) or duration <= 0:
         raise RuntimeError("미디어 길이를 확인할 수 없습니다.")
     intervals = merge_speaker_intervals(diarization_segments or [], duration)
@@ -410,6 +528,7 @@ def build_result(records: list[dict], diarization_segments: list[dict] | None, *
             warnings.append("화자 구분을 끈 상태이므로 겹침 구간도 자동 검출하지 않았습니다.")
     captions: list[dict] = []
     invalid = 0
+    boundary_repairs = 0
     for record in sorted(records, key=lambda item: _number(item.get("start")) or 0):
         _checkpoint(cancelled)
         source_words = record.get("words") or []
@@ -433,10 +552,12 @@ def build_result(records: list[dict], diarization_segments: list[dict] | None, *
             probability = _number(word.get("probability"))
             if probability is not None:
                 clean_word["probability"] = max(0, min(1, probability))
-            atoms.append((clean_word, speaker_ids.get(identity), reasons))
+            atoms.append((clean_word, identity, reasons))
         atoms.sort(key=lambda item: (item[0]["start"], item[0]["end"]))
+        boundary_repairs += _compensate_speaker_boundaries(atoms, intervals, speaker_boundary_ms)
         group: dict | None = None
-        for word, speaker_id, reasons in atoms:
+        for word, identity, reasons in atoms:
+            speaker_id = speaker_ids.get(identity)
             # Keep speaker changes, review boundaries and long silent gaps intact.
             can_append = group is not None and group["speakerId"] == speaker_id and group["reasons"] == reasons
             can_append = can_append and word["start"] - group["end"] <= 0.7 and word["end"] - group["start"] <= 6.0
@@ -459,6 +580,8 @@ def build_result(records: list[dict], diarization_segments: list[dict] | None, *
         warnings.append(f"시간이 유효하지 않거나 비어 있는 단어 {invalid}개를 자막으로 만들지 못했습니다. 해당 원문 구간을 확인하세요.")
     if not captions:
         warnings.append("생성된 대사 자막이 없습니다. 무음 또는 전사 누락인지 원본을 확인하세요.")
+    if boundary_repairs:
+        warnings.append(f"화자 경계 보정 {speaker_boundary_ms}ms로 짧은 단어 {boundary_repairs}개를 인접 화자에 연결했습니다. 경계 보정 표시를 확인하세요.")
     if any("overlap" in caption["reasons"] for caption in captions):
         warnings.append("여러 화자가 동시에 활동한 단어는 인물 미지정으로 남겼습니다. 모든 겹친 대사가 복원됐다는 뜻은 아닙니다.")
     # Independently report detected overlap even when Whisper returned no words
@@ -473,8 +596,10 @@ def build_result(records: list[dict], diarization_segments: list[dict] | None, *
 
 def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int,
             whisper_model: str, language: str, device: str, diarization: bool,
-            progress: Progress, cancelled: Cancelled) -> dict:
+            progress: Progress, cancelled: Cancelled, speaker_boundary_ms: int = 500,
+            preprocessing: dict | None = None) -> dict:
     _checkpoint(cancelled)
+    _validate_speaker_boundary_ms(speaker_boundary_ms)
     if mode not in {"standard", "overlap"} or device not in {"cpu", "cuda"}:
         raise RuntimeError("지원하지 않는 분석 모드 또는 장치입니다.")
     if whisper_model not in WHISPER_MODELS or isinstance(speaker_count, bool) or not 1 <= speaker_count <= 4:
@@ -483,6 +608,14 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
         raise RuntimeError("오디오 트랙 인덱스가 유효하지 않습니다.")
     if not media_path.is_file():
         raise RuntimeError("분석할 원본 미디어를 찾을 수 없습니다.")
+    if preprocessing is not None and (not isinstance(preprocessing, dict)
+            or preprocessing.get("applyTo", "asr") not in {"asr", "both"}
+            or not isinstance(preprocessing.get("chain"), list)):
+        raise RuntimeError("VST 사전처리 설정이 유효하지 않습니다.")
+    chain = preprocessing["chain"] if preprocessing else []
+    if any(not isinstance(item, dict) for item in chain):
+        raise RuntimeError("VST 체인 항목이 유효하지 않습니다.")
+    enabled_chain = [item for item in chain if item.get("enabled", True)]
     _whisper_class()
     if diarization:
         _nemotron_classes()  # Fail before extraction/ASR if requested engine is missing.
@@ -498,24 +631,58 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
                 progress(stage, low + fraction * (high - low))
             return report
 
+        asr_path = diarization_path = wav_path
+        preprocessing_report = None
+        engine_start, diarization_end = 0.10, 0.40
+        if enabled_chain:
+            from .vst_host import VSTCancelled, process_chain
+
+            raw_path = Path(directory) / "vst-original-48k.wav"
+            processed_path = Path(directory) / "vst-processed-48k.wav"
+            asr_path = Path(directory) / "vst-processed-16k.wav"
+            progress("VST 처리용 48 kHz 오디오 준비", 0.11)
+            prepare_preprocessing_audio(media_path, audio_track, raw_path, cancelled)
+            _checkpoint(cancelled)
+            try:
+                preprocessing_report = process_chain(
+                    raw_path, processed_path, enabled_chain, cancelled=cancelled,
+                    progress=mapped_progress(0.12, 0.23, 0.0, 1.0),
+                )
+            except VSTCancelled as exc:
+                raise AnalysisCancelled("VST 사전처리 취소 요청을 처리했습니다.") from exc
+            _checkpoint(cancelled)
+            resample_preprocessing_audio(processed_path, asr_path, cancelled)
+            if preprocessing.get("applyTo", "asr") == "both":
+                diarization_path = asr_path
+            engine_start, diarization_end = 0.25, 0.50
+            progress("VST 처리 음성을 분석용 16 kHz로 준비", engine_start)
+
         # Detect turns before ASR, then unload Nemotron. Decode windows cover
         # the WHOLE audio, including overlap and any speech Nemotron missed.
         # This prevents one initial language choice from hiding another person
         # and bounds word alignment at speaker changes without shifting time.
-        diarized = _diarize(wav_path, device=device,
-                            progress=mapped_progress(0.10, 0.40, 0.67, 0.94),
+        diarized = _diarize(diarization_path, device=device,
+                            progress=mapped_progress(engine_start, diarization_end, 0.67, 0.94),
                             cancelled=cancelled) if diarization else None
         _checkpoint(cancelled)
         clips = speaker_change_clips(diarized, duration) if diarized is not None else None
-        records = _transcribe(wav_path, model_name=whisper_model, language=language, device=device,
+        records = _transcribe(asr_path, model_name=whisper_model, language=language, device=device,
                               duration=duration, clip_timestamps=clips,
-                              progress=mapped_progress(0.40 if diarization else 0.10, 0.94, 0.10, 0.64),
+                              progress=mapped_progress(diarization_end if diarization else engine_start, 0.94, 0.10, 0.64),
                               cancelled=cancelled)
         _checkpoint(cancelled)
         progress("단어·화자 시간 연결 및 검수 표시", 0.96)
-        result = build_result(records, diarized, duration=duration, speaker_count=speaker_count, mode=mode, cancelled=cancelled)
+        result = build_result(records, diarized, duration=duration, speaker_count=speaker_count, mode=mode,
+                              speaker_boundary_ms=speaker_boundary_ms, cancelled=cancelled)
         if channels > 1:
             result["warnings"].insert(0, f"선택한 오디오 트랙 #{audio_track}의 {channels}개 채널을 분석용 모노로 변환했습니다. 원본과 다른 트랙은 보존했습니다.")
+        if preprocessing_report is not None:
+            target = "음성 인식과 화자 구분" if diarization and preprocessing.get("applyTo", "asr") == "both" else "음성 인식"
+            result["warnings"].append(f"VST 체인 {len(enabled_chain)}개를 {target}에 적용했습니다. 원본 미디어와 자막 시간 기준은 유지했습니다.")
+            if diarization and preprocessing.get("applyTo", "asr") != "both":
+                result["warnings"].append("화자 구분은 처리 전 원본 음성으로 실행했습니다.")
+            result["warnings"].extend(str(warning) for warning in preprocessing_report.get("warnings", []))
+            result["preprocessing"] = {"applyTo": preprocessing.get("applyTo", "asr"), "report": preprocessing_report}
         _checkpoint(cancelled)
         progress("분석 완료", 1.0)
         return result

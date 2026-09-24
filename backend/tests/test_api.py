@@ -170,7 +170,36 @@ def test_job_defaults_and_turbo_alias(tmp_path, model):
         assert created.status_code == 202
         assert wait_job(client, created.json()["id"])["status"] == "completed"
         assert seen["device"] == "cuda"
+        assert seen["speaker_boundary_ms"] == 500
         assert seen["whisper_model"] == ("large-v3" if model is None else "large-v3-turbo")
+
+
+@pytest.mark.parametrize("boundary_ms", [0, 200, 500, 800])
+def test_boundary_setting_reaches_word_assignment(tmp_path, boundary_ms):
+    from voicesubsep.inference import build_result
+
+    def analyze(path, **kwargs):
+        assert kwargs["speaker_boundary_ms"] == boundary_ms
+        words = [{"start": 1.0, "end": 1.4, "text": "The"},
+                 {"start": 1.4, "end": 2.0, "text": " next sentence."}]
+        return build_result(
+            [{"start": 1.0, "end": 2.0, "words": words}],
+            [{"start": 1.3, "end": 2.0, "speaker": "A"}],
+            duration=4.0, speaker_count=1, mode="standard",
+            speaker_boundary_ms=kwargs["speaker_boundary_ms"],
+        )
+
+    with client_for(tmp_path, probe=fake_probe, analyzer=analyze) as client:
+        media = upload(client)
+        response = client.post("/api/jobs", json=request_for(media["id"], speakerBoundaryMs=boundary_ms))
+        assert response.status_code == 202
+        job = wait_job(client, response.json()["id"])
+        assert job["status"] == "completed", job
+        first = job["result"]["captions"][0]
+        assert first["speakerId"] == ("speaker-1" if boundary_ms >= 300 else None)
+        assert ("speaker_boundary" in first["reasons"]) == (boundary_ms >= 300)
+        assert first["text"] == "The"
+        assert (first["start"], first["end"]) == (1.0, 1.4)
 
 
 def test_desktop_origin_can_replace_dev_origins(tmp_path):
@@ -188,6 +217,8 @@ def test_desktop_origin_can_replace_dev_origins(tmp_path):
     {"audioTrack": -1}, {"audioTrack": 4097}, {"audioTrack": 0},
     {"whisperModel": "../../elsewhere"}, {"device": "auto"}, {"mode": "unknown"},
     {"mediaId": "../private"}, {"language": "ko; del"}, {"diarization": "false"}, {"path": "C:/private.wav"},
+    {"speakerBoundaryMs": -1}, {"speakerBoundaryMs": 801}, {"speakerBoundaryMs": True},
+    {"speakerBoundaryMs": "500"}, {"speakerBoundaryMs": 0.5}, {"speakerBoundaryMs": None},
 ])
 def test_job_request_validation(tmp_path, changes):
     with client_for(tmp_path, probe=fake_probe) as client:

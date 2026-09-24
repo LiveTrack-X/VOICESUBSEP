@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .storage import Storage, new_id, valid_id
+from .diagnostics import Diagnostics
 
 Analyzer = Callable[..., dict[str, Any]]
 TERMINAL = {"completed", "failed", "cancelled"}
@@ -27,8 +28,9 @@ def default_analyzer(media_path: Path, **kwargs: Any) -> dict[str, Any]:
 
 
 class JobManager:
-    def __init__(self, storage: Storage, analyzer: Analyzer | None = None):
+    def __init__(self, storage: Storage, analyzer: Analyzer | None = None, *, diagnostics: Diagnostics | None = None):
         self.storage = storage
+        self.diagnostics = diagnostics
         self.analyzer = analyzer or default_analyzer
         self._jobs: dict[str, dict[str, Any]] = {}
         self._cancellations: dict[str, threading.Event] = {}
@@ -53,6 +55,8 @@ class JobManager:
                     if record["status"] in {"queued", "running"}:
                         record.update(status="failed", stage="interrupted", error="The backend stopped before this job finished. Start a new analysis.", updatedAt=timestamp())
                         self.storage.write_json(path, record)
+                        if self.diagnostics:
+                            self.diagnostics.record("analysis", "interrupted", record["error"], level="warning", jobId=path.stem)
                     self._jobs[path.stem] = record
                 except (OSError, ValueError):
                     continue
@@ -103,6 +107,28 @@ class JobManager:
                 raise KeyError(job_id)
             return copy.deepcopy({key: record[key] for key in ("id", "status", "stage", "progress", "error", "result") if key in record})
 
+    def history(self) -> list[dict]:
+        with self._mutex:
+            return [{"id": r["id"], "kind": "analysis", "status": r["status"],
+                     "createdAt": r.get("createdAt", ""), "mediaId": r.get("request", {}).get("mediaId"),
+                     "projectId": r.get("request", {}).get("projectId"),
+                     "projectName": r.get("request", {}).get("projectName", ""),
+                     "progress": r.get("progress", 0), "stage": r.get("stage", ""),
+                     "hasResult": bool(r.get("result"))} for r in self._jobs.values()]
+
+    def referenced_media_ids(self) -> set[str]:
+        with self._mutex:
+            return {r.get("request", {}).get("mediaId") for r in self._jobs.values()} - {None}
+
+    def remove(self, job_id: str) -> None:
+        with self._mutex:
+            record = self._jobs[job_id]
+            if record["status"] not in TERMINAL:
+                raise PermissionError("Cancel the running job before removing its history.")
+            self.storage.job_path(job_id).unlink(missing_ok=True)
+            del self._jobs[job_id]
+            # Cancelled queue entries remain harmless tombstones until drained.
+
     def cancel(self, job_id: str) -> dict[str, Any]:
         with self._mutex:
             record = self._jobs.get(job_id)
@@ -119,6 +145,8 @@ class JobManager:
 
     def _run(self, job_id: str) -> None:
         with self._mutex:
+            if job_id not in self._jobs:
+                return
             record = self._jobs[job_id]
             event = self._cancellations[job_id]
             if record["status"] != "queued" or event.is_set():
@@ -137,13 +165,19 @@ class JobManager:
 
         try:
             _, media_path = self.storage.get_media(request["mediaId"])
-            result = self.analyzer(
-                media_path,
-                audio_track=request["audioTrack"], mode=request["mode"],
+            options = dict(audio_track=request["audioTrack"], mode=request["mode"],
                 speaker_count=request["speakerCount"], whisper_model=request["whisperModel"],
                 language=request["language"], device=request["device"],
-                diarization=request["diarization"], progress=progress, cancelled=event.is_set,
+                speaker_boundary_ms=request.get("speakerBoundaryMs", 500),
+                diarization=request["diarization"],
+                **({"preprocessing": request["preprocessing"]} if request.get("preprocessing") is not None else {}),
             )
+            if request.get("trackSpeakers"):
+                from .multitrack import analyze_tracks
+                result = analyze_tracks(self.analyzer, media_path, selections=request["trackSpeakers"],
+                                        options=options, progress=progress, cancelled=event.is_set)
+            else:
+                result = self.analyzer(media_path, **options, progress=progress, cancelled=event.is_set)
             with self._mutex:
                 # An analyzer returning a completed result wins a late cancellation race.
                 # Cancellation is reported only when the analyzer acknowledges it.
@@ -153,6 +187,8 @@ class JobManager:
                 if type(exc).__name__ == "AnalysisCancelled":
                     self._update(record, status="cancelled", stage="cancelled")
                 else:
+                    if self.diagnostics:
+                        self.diagnostics.exception("analysis", "failed", exc, jobId=job_id)
                     self._update(record, status="failed", stage="failed", error=(str(exc) or type(exc).__name__)[:3000])
 
     def _work(self) -> None:

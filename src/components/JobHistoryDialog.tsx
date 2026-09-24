@@ -1,0 +1,106 @@
+import { useEffect, useRef, useState } from "react";
+import { ApiError, download, request, uploadMedia, type AnalysisResult, type Job } from "../api";
+import type { Project } from "../domain";
+import { jobUrl, readHistory, sameAnalysisSource, type CacheInfo, type HistoryItem } from "../jobHistory";
+import { useI18n } from "../i18n";
+import { Dialog } from "./Dialog";
+import { RenderDialog } from "./RenderDialog";
+
+export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
+  project:Project; file:File|null; onClose:()=>void; onApplyAnalysis:(result:AnalysisResult)=>void;
+}) {
+  const {t}=useI18n();
+  const [items,setItems]=useState<HistoryItem[]>([]);
+  const [cache,setCache]=useState<CacheInfo|null>(null);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [renderId,setRenderId]=useState<string|null>(null);
+  const [analysis,setAnalysis]=useState<{item:HistoryItem;job:Job}|null>(null);
+  const [mediaId,setMediaId]=useState<string|null>(null);
+  const [verifiedFile,setVerifiedFile]=useState<File|null>(null);
+  const [confirm,setConfirm]=useState<string|null>(null);
+  const [count,setCount]=useState(30);
+  const alive=useRef(true);
+  const sequence=useRef(0);
+  const bytes=(value:number)=>`${(value/1024**3).toFixed(2)} GB`;
+  const statusLabel={queued:"분석 대기",running:"분석 중",completed:"분석 완료",failed:"분석 실패",cancelled:"분석 취소됨"};
+  const renderStatusLabel={queued:"렌더 대기 중",running:"렌더링 중",completed:"렌더 완료",failed:"렌더 실패",cancelled:"렌더 취소"};
+  async function refresh(){
+    const current=++sequence.current;
+    try {
+      const [history,storage]=await Promise.all([readHistory(),request<CacheInfo>("/api/cache")]);
+      if(alive.current&&current===sequence.current){setItems(history.items);setCache(storage);setError("");}
+    }catch(e){if(alive.current&&current===sequence.current)setError((e as Error).message);}
+    finally{if(alive.current&&current===sequence.current)setLoading(false);}
+  }
+  useEffect(()=>{alive.current=true;void refresh();const timer=window.setInterval(()=>void refresh(),5000);return()=>{alive.current=false;sequence.current++;clearInterval(timer);};},[]);
+  async function inspectAnalysis(item:HistoryItem){
+    setBusy(true);setError("");setMediaId(null);setVerifiedFile(null);
+    try{
+      const job=await request<Job>(jobUrl(item));
+      if(!alive.current)return;
+      setAnalysis({item,job});
+      if(file&&item.projectId===project.id){
+        const linked=await uploadMedia(file);
+        if(alive.current){setMediaId(linked.id);setVerifiedFile(file);}
+      }
+    }catch(e){if(alive.current)setError((e as Error).message);}
+    finally{if(alive.current)setBusy(false);}
+  }
+  async function remove(url:string){
+    setBusy(true);setError("");
+    try{await request(url,{method:"DELETE"});if(alive.current){setConfirm(null);setAnalysis(null);await refresh();}}
+    catch(e){if(alive.current)setError((e as Error).message);}
+    finally{if(alive.current)setBusy(false);}
+  }
+  async function cancel(item:HistoryItem){
+    setBusy(true);
+    try{await request(jobUrl(item),{method:"DELETE"});await refresh();}
+    catch(e){if(alive.current){setError((e as Error).message);if(e instanceof ApiError&&e.status===404)void refresh();}}
+    finally{if(alive.current)setBusy(false);}
+  }
+  if(renderId)return <RenderDialog project={project} file={null} resumeId={renderId} onClose={()=>setRenderId(null)}/>;
+  const canApply=analysis&&file&&verifiedFile===file&&mediaId&&sameAnalysisSource(analysis.item,project.id,mediaId)&&analysis.job.status==="completed"&&analysis.job.result;
+  return <Dialog title={t("작업 이력 및 저장 공간")} onClose={onClose} closeDisabled={busy}>
+    <p>{t("분석과 내보내기는 창을 닫아도 계속됩니다. 완료된 결과를 여기서 다시 열 수 있습니다.")}</p>
+    {loading&&<p role="status">{t("불러오는 중…")}</p>}
+    {error&&<p className="error-box" role="alert">{error}</p>}
+    <button disabled={busy} onClick={()=>void refresh()}>{t("새로고침")}</button>
+    {!loading&&!items.length&&<p>{t("저장된 작업이 없습니다.")}</p>}
+    <div className="history-list">{items.slice(0,count).map(item=>{
+      const running=item.status==="queued"||item.status==="running";
+      return <section key={`${item.kind}-${item.id}`} style={{borderBottom:"1px solid var(--border, #dce1eb)",padding:"12px 0"}}>
+        <strong>{item.kind==="analysis"?t("로컬 음성 분석"):t("편집본 내보내기")} · {item.projectName||item.mediaName}</strong>
+        <p>{item.mediaName} · {item.createdAt?new Date(item.createdAt).toLocaleString():""} · {t(item.kind==="analysis"?statusLabel[item.status]:renderStatusLabel[item.status])} {running?`${Math.round(item.progress*100)}%`:""}</p>
+        <div className="dialog-actions">
+          <button disabled={busy} onClick={()=>item.kind==="render"?setRenderId(item.id):void inspectAnalysis(item)}>{t("결과 및 진행 확인")}</button>
+          {running?<button disabled={busy} onClick={()=>void cancel(item)}>{t("작업 취소")}</button>:
+            confirm===item.id?<><span>{t("이 작업의 결과 파일도 삭제합니다.")}</span><button disabled={busy} onClick={()=>void remove(`/api/history/${item.kind}/${item.id}`)}>{t("삭제 확인")}</button><button onClick={()=>setConfirm(null)}>{t("취소")}</button></>:
+            <button disabled={busy} onClick={()=>setConfirm(item.id)}>{t("작업 기록 삭제")}</button>}
+        </div>
+      </section>;
+    })}</div>
+    {items.length>count&&<button onClick={()=>setCount(value=>value+30)}>{t("더 보기")}</button>}
+    {analysis&&<section className="export-section">
+      <h3>{t("분석 결과 확인")}</h3><p>{analysis.item.mediaName} · {t(statusLabel[analysis.job.status])}</p>
+      {analysis.job.error&&<p className="error-box">{analysis.job.error}</p>}
+      {analysis.job.result&&<><p>{t("자막 {captions}개 · 감지된 인물 {speakers}명",{captions:analysis.job.result.captions.length,speakers:analysis.job.result.speakers.length})}</p>
+        <p>{t("같은 프로젝트와 원본 파일이 연결된 경우에만 결과를 적용할 수 있습니다.")}</p>
+        <p>{t("적용하면 기존 자막이 교체됩니다. 노트는 유지됩니다.")}</p>
+        <div className="dialog-actions"><button onClick={()=>download(`analysis-${analysis.item.id}.json`,JSON.stringify(analysis.job.result,null,2),"application/json;charset=utf-8")}>{t("분석 결과 JSON 저장")}</button>
+          <button className="primary" disabled={busy||!canApply} onClick={()=>{if(canApply)onApplyAnalysis(analysis.job.result!);}}>{t("결과 적용")}</button></div></>}
+    </section>}
+    {cache&&<section className="export-section"><h3>{t("미디어 캐시")}</h3>
+      <p>{t("사용 중 {used} · 정리 가능 {free} · 디스크 여유 {disk}",{used:bytes(cache.bytes),free:bytes(cache.reclaimableBytes),disk:bytes(cache.freeBytes)})}</p>
+      <p>{t("앱이 복사한 원본만 정리합니다. 분석·내보내기·미리듣기에서 사용하는 파일은 보호됩니다. 사용자의 원본 파일은 삭제하지 않습니다.")}</p>
+      <p>{t("작업 결과를 더 이상 보관하지 않을 때 작업 기록을 먼저 삭제하세요.")}</p>
+      {cache.items.map(item=><div key={item.id} className="dialog-actions" style={{justifyContent:"space-between"}}>
+        <span>{item.name} · {bytes(item.bytes)} {item.protected?`· ${t("작업에서 사용 중")}`:""}</span>
+        {confirm===item.id?<><button disabled={busy} onClick={()=>void remove(`/api/media/${item.id}`)}>{t("삭제 확인")}</button><button onClick={()=>setConfirm(null)}>{t("취소")}</button></>:
+          <button disabled={busy||item.protected} onClick={()=>setConfirm(item.id)}>{t("복사본 삭제")}</button>}
+      </div>)}
+    </section>}
+    <div className="dialog-actions"><button disabled={busy} onClick={onClose}>{t("닫기")}</button></div>
+  </Dialog>;
+}

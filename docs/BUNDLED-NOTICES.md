@@ -3,6 +3,7 @@
 The Windows backend build preserves original installed notices without editing the source files:
 
 - PyTorch, Transformers, librosa, Numba, llvmlite, SciPy, SoundFile, soxr, safetensors and NumPy: complete installed `*.dist-info` directories, including their original license and notice files, under `_internal/`. Runtime dependency metadata for PyTorch, Transformers and librosa is also retained.
+- Optional Pedalboard VST3 runtime: when installed in the build environment, its Python package, `pedalboard_native` extension and original `*.dist-info` license/notice files are included. Pedalboard is GPL-3.0; retaining notices alone does not satisfy all redistribution/source obligations. Third-party VST3 plugins and their licenses are not bundled.
 - CUDA libraries: when the installed `torch/lib` contains every DLL required by the backend's GPU probe, the build uses that copy for both PyTorch and CTranslate2 and preserves the actual PyTorch wheel's original `LICENSE` and `NOTICE`. It does not add a second cuBLAS/cuDNN runtime from separately installed NVIDIA packages. If the torch copy is incomplete, the NVIDIA cuBLAS, cuDNN, CUDA Runtime and NVRTC package directories and complete `*.dist-info` directories, including `licenses/License.txt`, are included instead.
 - FFmpeg and FFprobe: original `LICENSE`/`COPYING`, `README` and other notice files found beside the executables or in their installation root, under `_internal/third-party/ffmpeg/`. A separately installed FFprobe uses `_internal/third-party/ffprobe/`.
 

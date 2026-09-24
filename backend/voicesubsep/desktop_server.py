@@ -31,7 +31,13 @@ def create_desktop_app(*, data_dir: Path, web_dir: Path, port: int, token: str,
     return application
 
 
-def main() -> None:
+def main() -> int | None:
+    # The frozen worker uses this same executable. Dispatch before requiring
+    # server arguments, importing uvicorn, opening storage, or binding a port.
+    if sys.argv[1:2] == ["--vst-worker"]:
+        from voicesubsep.vst_worker import main as worker_main
+
+        return worker_main(sys.argv[2:])
     parser = argparse.ArgumentParser(description="VOICESUBSEP local desktop service")
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--data-dir", type=Path, required=True)
@@ -58,4 +64,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -131,6 +131,149 @@ def test_segment_without_words_is_retained_and_marked_for_timing():
     assert "timing" in output["captions"][0]["reasons"]
 
 
+def boundary_result(words, intervals=None, **options):
+    if intervals is None:
+        intervals = [{"start": 1.3, "end": 3, "speaker": "A"}]
+    return infer.build_result([record(words[0]["start"], words[-1]["end"], words=words)], intervals,
+                              duration=60, speaker_count=1, mode="standard", **options)
+
+
+@pytest.mark.parametrize("text", [" The", " 오늘은", " えー", " a"])
+def test_boundary_compensation_is_language_independent_and_keeps_word_evidence(text):
+    words = [{"start": 1, "end": 1.4, "text": text, "probability": 0.975},
+             {"start": 1.4, "end": 2, "text": " next", "probability": 0.99}]
+    output = boundary_result(words)
+    assert [caption["speakerId"] for caption in output["captions"]] == ["speaker-1", "speaker-1"]
+    assert output["captions"][0]["reasons"] == ["speaker_boundary"]
+    assert output["captions"][0]["reviewed"] is False
+    assert [word for caption in output["captions"] for word in caption["words"]] == words
+    assert any("500ms" in warning and "1개" in warning for warning in output["warnings"])
+
+
+@pytest.mark.parametrize("tolerance,expected", [(0, None), (200, None), (299, None),
+                                                (300, "speaker-1"), (500, "speaker-1"), (800, "speaker-1")])
+def test_boundary_tolerance_is_explicit_and_zero_restores_strict_attribution(tolerance, expected):
+    words = [{"start": 1, "end": 1.4, "text": " The"}, {"start": 1.4, "end": 2, "text": " next"}]
+    output = boundary_result(words, speaker_boundary_ms=tolerance)
+    assert output["captions"][0]["speakerId"] == expected
+    if expected is None:
+        assert output["captions"][0]["reasons"] == ["unassigned"]
+        assert not any("경계 보정" in warning for warning in output["warnings"])
+
+
+def test_boundary_compensation_can_use_previous_strict_word_at_speech_end():
+    words = [{"start": 1, "end": 1.6, "text": " preceding"}, {"start": 1.6, "end": 2, "text": " word"}]
+    output = boundary_result(words, [{"start": 1, "end": 1.7, "speaker": "A"}])
+    assert output["captions"][-1]["speakerId"] == "speaker-1"
+    assert output["captions"][-1]["reasons"] == ["speaker_boundary"]
+
+
+@pytest.mark.parametrize("start,end,activity_start", [(20.03, 20.43, 20.30), (36.63, 37.15, 37.03)])
+def test_boundary_compensation_repairs_observed_the_timing_mismatch(start, end, activity_start):
+    # Times retained from the saved synthetic smoke, with a strict next-word
+    # anchor. No model execution or assumption about unseen ASR record edges.
+    words = [{"start": start, "end": end, "text": " The"},
+             {"start": end, "end": end + 0.2, "text": " next"}]
+    intervals = [{"start": activity_start, "end": end + 0.5, "speaker": "A"}]
+    strict = boundary_result(words, intervals, speaker_boundary_ms=0)
+    corrected = boundary_result(words, intervals, speaker_boundary_ms=500)
+    assert strict["captions"][0]["speakerId"] is None
+    assert corrected["captions"][0]["speakerId"] == "speaker-1"
+    assert corrected["captions"][0]["reasons"] == ["speaker_boundary"]
+
+
+@pytest.mark.parametrize("intervals", [
+    [{"start": 1.3, "end": 3, "speaker": "A"}, {"start": 1.35, "end": 1.37, "speaker": "B"}],
+    [{"start": 1, "end": 1.2, "speaker": "B"}, {"start": 1.2, "end": 3, "speaker": "A"}],
+    [{"start": 1.4, "end": 3, "speaker": "A"}],
+    [],
+])
+def test_boundary_compensation_never_claims_overlap_transition_or_zero_activity(intervals):
+    words = [{"start": 1, "end": 1.4, "text": " The"}, {"start": 1.4, "end": 2, "text": " next"}]
+    output = boundary_result(words, intervals, speaker_boundary_ms=800)
+    assert output["captions"][0]["speakerId"] is None
+    assert "speaker_boundary" not in output["captions"][0]["reasons"]
+
+
+def test_boundary_compensation_requires_immediate_strict_anchor_and_does_not_cascade():
+    words = [{"start": 1, "end": 1.3, "text": " first"}, {"start": 1.3, "end": 1.5, "text": " second"},
+             {"start": 1.5, "end": 2, "text": " anchor"}]
+    intervals = [{"start": 1.2, "end": 1.4, "speaker": "A"}, {"start": 1.55, "end": 2, "speaker": "A"}]
+    output = boundary_result(words, intervals)
+    assert output["captions"][0]["speakerId"] is None
+    assert output["captions"][1]["reasons"] == ["speaker_boundary"]
+    assert output["captions"][2]["reasons"] == []
+
+
+@pytest.mark.parametrize("gap,expected", [(0.2, "speaker-1"), (0.201, None)])
+def test_boundary_compensation_does_not_bridge_word_gaps_above_200ms(gap, expected):
+    words = [{"start": 1, "end": 1.4, "text": " The"},
+             {"start": 1.4 + gap, "end": 2.5, "text": " next"}]
+    assert boundary_result(words)["captions"][0]["speakerId"] == expected
+
+
+def test_boundary_compensation_never_crosses_another_speaker_between_word_and_anchor():
+    words = [{"start": 1, "end": 1.4, "text": " The"}, {"start": 1.6, "end": 2, "text": " next"}]
+    intervals = [{"start": 1.3, "end": 1.45, "speaker": "A"},
+                 {"start": 1.6, "end": 2, "speaker": "A"},
+                 {"start": 1.45, "end": 1.55, "speaker": "B"}]
+    assert boundary_result(words, intervals)["captions"][0]["speakerId"] is None
+
+
+def test_conflicting_immediate_strict_neighbor_blocks_other_matching_anchor():
+    words = [{"start": 0.4, "end": 1, "text": " other"}, {"start": 1, "end": 1.4, "text": " The"},
+             {"start": 1.4, "end": 2, "text": " next"}]
+    intervals = [{"start": 0.4, "end": 1, "speaker": "B"}, {"start": 1.3, "end": 3, "speaker": "A"}]
+    assert boundary_result(words, intervals)["captions"][1]["speakerId"] is None
+
+
+@pytest.mark.parametrize("words,intervals", [
+    ([{"start": 1, "end": 1.81, "text": " long"}, {"start": 1.81, "end": 2.5, "text": " next"}],
+     [{"start": 1.5, "end": 3, "speaker": "A"}]),
+    ([{"start": -0.1, "end": 0.4, "text": " clipped"}, {"start": 0.4, "end": 1, "text": " next"}],
+     [{"start": 0.3, "end": 3, "speaker": "A"}]),
+    ([{"start": 1, "end": 1.4, "text": " The"}], [{"start": 1.3, "end": 3, "speaker": "A"}]),
+    ([{"start": 1, "end": 1.4, "text": " The"}, {"start": 1.39, "end": 2, "text": " next"}],
+     [{"start": 1.3, "end": 3, "speaker": "A"}]),
+])
+def test_boundary_compensation_rejects_long_clipped_isolated_and_intersecting_words(words, intervals):
+    assert boundary_result(words, intervals, speaker_boundary_ms=800)["captions"][0]["speakerId"] is None
+
+
+def test_boundary_compensation_does_not_use_anchor_across_asr_records_or_segment_fallback():
+    intervals = [{"start": 1.3, "end": 3, "speaker": "A"}]
+    for first in (record(1, 1.4, " The"), record(1, 1.4, " The", words=[])):
+        output = infer.build_result([first, record(1.4, 2, " next")], intervals,
+                                   duration=60, speaker_count=1, mode="standard")
+        assert output["captions"][0]["speakerId"] is None
+
+
+@pytest.mark.parametrize("invalid", [True, False, -1, 801, 500.0, "500", None, float("nan")])
+def test_boundary_setting_validation_precedes_model_loading(invalid, monkeypatch, tmp_path):
+    with pytest.raises(RuntimeError, match="0~800ms"):
+        infer.build_result([], [], duration=60, speaker_count=1, mode="standard", speaker_boundary_ms=invalid)
+    monkeypatch.setattr(infer, "_whisper_class", lambda: pytest.fail("Should not load a model"))
+    with pytest.raises(RuntimeError, match="0~800ms"):
+        infer.analyze(tmp_path / "absent.wav", audio_track=0, mode="standard", speaker_count=1,
+                      whisper_model="tiny", language="ko", device="cpu", diarization=True,
+                      progress=lambda *_: None, cancelled=lambda: False, speaker_boundary_ms=invalid)
+
+
+def test_analysis_passes_boundary_setting_to_attribution(monkeypatch, tmp_path):
+    source = tmp_path / "source.wav"
+    source.touch()
+    monkeypatch.setattr(infer, "_whisper_class", lambda: object)
+    monkeypatch.setattr(infer, "_nemotron_classes", lambda: object)
+    monkeypatch.setattr(infer, "_extract_audio", lambda *_: (60, 1))
+    monkeypatch.setattr(infer, "_diarize", lambda *_, **__: [{"start": 1.3, "end": 3, "speaker": "A"}])
+    words = [{"start": 1, "end": 1.4, "text": " The"}, {"start": 1.4, "end": 2, "text": " next"}]
+    monkeypatch.setattr(infer, "_transcribe", lambda *_, **__: [record(1, 2, words=words)])
+    output = infer.analyze(source, audio_track=0, mode="standard", speaker_count=1,
+                           whisper_model="tiny", language="ko", device="cpu", diarization=True,
+                           progress=lambda *_: None, cancelled=lambda: False, speaker_boundary_ms=0)
+    assert output["captions"][0]["speakerId"] is None
+
+
 def test_cancellation_before_analysis_never_loads_engine(monkeypatch, tmp_path):
     monkeypatch.setattr(infer, "_whisper_class", lambda: pytest.fail("Should not load an engine"))
     with pytest.raises(infer.AnalysisCancelled):

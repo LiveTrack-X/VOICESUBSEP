@@ -40,3 +40,38 @@ test('split payload configuration does not relax feed URL validation', () => {
     assert.throws(() => configuration({ VOICESUBSEP_UPDATE_URL: feed }));
   }
 });
+
+test('desktop icon configuration is accepted by the installed builder schema', async () => {
+  const { validateConfiguration } = require('app-builder-lib/out/util/config/config');
+  await validateConfiguration(configuration(), { isEnabled: false });
+});
+
+test('Windows application and both installers use a packaged multi-resolution icon', () => {
+  const config = configuration();
+  const root = path.join(__dirname, '..');
+  const icon = config.win.icon;
+  for (const installer of [config.nsis, config.nsisWeb]) {
+    assert.equal(installer.installerIcon, icon);
+    assert.equal(installer.uninstallerIcon, icon);
+  }
+  assert.ok(config.files.includes(icon), 'the runtime icon must be included explicitly; buildResources alone is not packaged');
+  const bytes = fs.readFileSync(path.join(root, icon));
+  assert.equal(bytes.readUInt16LE(0), 0);
+  assert.equal(bytes.readUInt16LE(2), 1, 'ICO image type');
+  const count = bytes.readUInt16LE(4);
+  const sizes = new Set();
+  for (let i = 0; i < count; i += 1) {
+    const entry = 6 + i * 16;
+    const width = bytes[entry] || 256;
+    const height = bytes[entry + 1] || 256;
+    assert.equal(width, height);
+    const length = bytes.readUInt32LE(entry + 8);
+    const offset = bytes.readUInt32LE(entry + 12);
+    assert.ok(length > 0 && offset >= 6 + count * 16 && offset + length <= bytes.length, 'ICO entries must point to complete image data');
+    sizes.add(width);
+  }
+  for (const size of [16, 32, 48, 256]) assert.ok(sizes.has(size), `missing ${size}px icon for Windows scaling`);
+  const png = 'desktop/assets/icon.png';
+  assert.ok(config.files.includes(png));
+  assert.equal(fs.readFileSync(path.join(root, png)).subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+});

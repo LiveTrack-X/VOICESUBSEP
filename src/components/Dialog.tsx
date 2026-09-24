@@ -1,3 +1,4 @@
+import { useI18n } from "../i18n";
 import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 
@@ -12,6 +13,7 @@ export function Dialog({
   children: ReactNode;
   closeDisabled?: boolean;
 }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -68,7 +70,7 @@ export function Dialog({
           <h2>{title}</h2>
           <button
             className="icon-button"
-            aria-label="닫기"
+            aria-label={t("닫기")}
             disabled={closeDisabled}
             onClick={onClose}
           >

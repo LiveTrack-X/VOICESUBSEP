@@ -1,0 +1,23 @@
+.dialog:has(.document-tabs) { width: min(980px, 96vw); }
+.document-tabs,.document-pagination,.minutes-heading,.document-evidence,.document-manual { display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
+.document-tabs button[aria-pressed="true"] { background:#eee8ff;color:#6442ca; }
+.interview-roles,.minutes-fields { display:flex;gap:12px;flex-wrap:wrap; }
+.interview-roles label,.minutes-fields label { display:flex;align-items:center;gap:8px; }
+.interview-roles { margin:16px 0; }
+.document-transcript,.minutes-list { margin:12px 0;max-height:45vh;overflow:auto; }
+.document-transcript article,.minutes-list article { border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0;background:#fbfcff; }
+.document-transcript article > button { margin-right:12px;font-variant-numeric:tabular-nums; }
+.document-transcript article > select { float:right; }
+.document-transcript article p { margin:10px 0 0;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere; }
+.document-transcript .interview-question { border-left:3px solid var(--purple); }
+.document-transcript .interview-answer { margin-left:20px; }
+.document-generation { border:1px solid var(--border);padding:12px;border-radius:8px;margin-bottom:14px; }
+.document-generation summary { cursor:pointer;font-weight:600; }
+.document-generation > label { display:inline-flex;align-items:center;gap:8px;margin:8px; }
+.document-manual select { flex:1;min-width:0; }
+.minutes-heading > span { flex:1;color:#8676a6;font-size:11px; }
+.minutes-list textarea { width:100%;min-height:70px;margin:10px 0; }
+.minutes-fields label { flex:1;min-width:0; }
+.minutes-fields input { width:100%;min-width:0; }
+.document-evidence { margin-top:10px; }
+.document-evidence button { font-size:11px; }

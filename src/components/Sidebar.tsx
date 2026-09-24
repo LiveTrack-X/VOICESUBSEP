@@ -1,5 +1,8 @@
-import { AudioLines, Film, Info, Upload } from "lucide-react";
-import type { Project } from "../domain";
+import { useI18n, LOCALES, localeNames, type Locale } from "../i18n";
+import { useState } from "react";
+import { AudioLines, Film, Info, Upload, Palette } from "lucide-react";
+import { DEFAULT_CAPTION_STYLE, type Project } from "../domain";
+import { CaptionStyleDialog } from "./CaptionStyleDialog";
 
 export function Sidebar({
   project,
@@ -16,58 +19,55 @@ export function Sidebar({
   busy: boolean;
   hasMedia: boolean;
 }) {
+  const { t, locale, setLocale } = useI18n();
+  const [styleSpeakerId, setStyleSpeakerId] = useState<string | null>(null);
+  const styleSpeaker = project.speakers.find((s) => s.id === styleSpeakerId);
   const visibleSpeakers = project.speakers.filter(
     (s, i) =>
       i < project.speakerCount ||
       project.captions.some((c) => c.speakerId === s.id),
   );
+  const assignedSpeakerCount = new Set(project.captions.map(c=>c.speakerId).filter(id=>id!==null)).size;
   return (
     <aside className="sidebar">
-      <h2>프로젝트</h2>
+      <h2>{t('프로젝트')}</h2>
+      <div className="sidebar-section"><label htmlFor="ui-language">{t("앱 화면 언어")}</label><select id="ui-language" aria-label={t("앱 화면 언어")} value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>{LOCALES.map((code) => <option key={code} value={code}>{localeNames[code]}</option>)}</select><p className="setting-hint">{t("음성 인식 언어와 별도로 설정합니다.")}</p></div>
       <div className="sidebar-section media-section">
-        <label>미디어 소스</label>
+        <label>{t('미디어 소스')}</label>
         <button className="media-drop" onClick={onMedia} disabled={busy}>
           <Film size={28} />
           <strong>
-            {project.mediaName ? "영상 다시 연결" : "영상 불러오기"}
+            {hasMedia ? t("연결된 미디어") : project.mediaName ? t("원본 미디어 다시 연결") : t("미디어 불러오기")}
           </strong>
-          <span>{project.mediaName ?? "영상·음성 파일을 선택하세요"}</span>
-          <small>원본 파일은 이 기기에서 처리합니다</small>
+          <span>{project.mediaName ?? t("영상·음성 파일을 선택하세요")}</span>
+          <small>{t(hasMedia ? "원본 파일은 이 기기에서 처리합니다" : project.mediaName ? "저장된 자막은 유지되며, 원본 파일 연결이 필요합니다." : "원본 파일은 이 기기에서 처리합니다")}</small>
         </button>
       </div>
       <div className="sidebar-section">
-        <label>
-          자막 설정 <Info size={13} />
+        <label>{t('자막 설정')}<Info size={13} />
         </label>
         <div className="segmented">
           <button
             aria-pressed={project.mode === "standard"}
             onClick={() => update((p) => ({ ...p, mode: "standard" }))}
-          >
-            일반 대화
-          </button>
+          >{t('일반 대화')}</button>
           <button
             aria-pressed={project.mode === "overlap"}
             onClick={() => update((p) => ({ ...p, mode: "overlap" }))}
-          >
-            동시 발화
-          </button>
+          >{t('동시 발화')}</button>
         </div>
         {project.mode === "overlap" && (
-          <p className="setting-hint">
-            겹친 대사는 검수 대상으로 표시됩니다. 음원 분리는 후속 기능입니다.
-          </p>
+          <p className="setting-hint">{t('겹친 대사는 검수 대상으로 표시됩니다. 음원 분리는 후속 기능입니다.')}</p>
         )}
       </div>
       <div className="sidebar-section">
-        <label>
-          참가자 <Info size={13} />
+        <label>{t('다음 분석 예상 인원')}<Info size={13} />
         </label>
         <div className="speaker-count">
           {[1, 2, 3, 4].map((n) => (
             <button
               key={n}
-              aria-label={n === 4 ? "참가자 4명 이상" : `참가자 ${n}명`}
+              aria-label={n === 4 ? t("참가자 4명 이상") : t("참가자 {count}명", { count: n })}
               aria-pressed={project.speakerCount === n}
               onClick={() =>
                 update((p) => {
@@ -76,25 +76,45 @@ export function Sidebar({
                   while (speakers.length < n)
                     speakers.push({
                       id: crypto.randomUUID(),
-                      name: `인물 ${String.fromCharCode(65 + speakers.length)}`,
+                      name: t("인물 {name}", { name: String.fromCharCode(65 + speakers.length) }),
                       color: colors[speakers.length % 4],
                     });
                   return { ...p, speakerCount: n, speakers };
                 })
               }
             >
-              {n === 4 ? "4명 이상" : n}
+              {n === 4 ? t("4명 이상") : n}
             </button>
           ))}
         </div>
+        <p className="setting-hint">{assignedSpeakerCount > 0
+          ? t("현재 자막 인물 {count}명 · 예상 인원은 다음 분석의 검수 기준이며, 인물을 강제로 합치지 않습니다.", { count: assignedSpeakerCount })
+          : t("예상 인원은 다음 분석의 검수 기준이며, 감지된 인물을 강제로 합치지 않습니다.")}</p>
       </div>
       <div className="sidebar-section speaker-names">
-        <label>인물 이름</label>
+        <label>{t('인물 이름 · 색상')}</label>
+        <p className="setting-hint">{t('색상과 자막 스타일을 인물별로 정하세요.')}</p>
         {visibleSpeakers.map((s, i) => (
           <div className="speaker-name" key={s.id}>
-            <span className="speaker-dot" style={{ background: s.color }} />
             <input
-              aria-label={`인물 ${i + 1} 이름`}
+              className="speaker-color"
+              type="color"
+              aria-label={t("인물 {number} 색상", { number: i + 1 })}
+              title={t("{name} 색상 변경", { name: s.name || t("인물 {name}", { name: i + 1 }) })}
+              value={s.color}
+              onChange={(e) => {
+                const color = e.target.value;
+                update((p) => ({
+                  ...p,
+                  speakers: p.speakers.map((x) =>
+                    x.id === s.id ? { ...x, color } : x,
+                  ),
+                }));
+              }}
+            />
+            <input
+              type="text"
+              aria-label={t("인물 {number} 이름", { number: i + 1 })}
               value={s.name}
               maxLength={80}
               onChange={(e) =>
@@ -106,23 +126,47 @@ export function Sidebar({
                 }))
               }
             />
+            <button
+              className="speaker-style-button"
+              aria-label={t("인물 {number} 자막 스타일", { number: i + 1 })}
+              title={t("{name} 자막 스타일", { name: s.name || t("인물 {name}", { name: i + 1 }) })}
+              onClick={() => setStyleSpeakerId(s.id)}
+            >
+              <Palette size={16} />
+            </button>
           </div>
         ))}
       </div>
       <button
         className="primary analyze-button"
-        disabled={busy || !hasMedia}
+        disabled={busy}
         onClick={onAnalyze}
-        title={!hasMedia ? "먼저 영상 또는 음성 파일을 연결하세요" : undefined}
+        title={!hasMedia ? t("먼저 영상 또는 음성 파일을 연결하세요") : undefined}
       >
-        <AudioLines size={19} />
-        음성 분석
-      </button>
+        <AudioLines size={19} />{t(hasMedia ? "음성 분석" : "원본 연결 후 분석")}</button>
       {!hasMedia && project.mediaName && (
         <p className="setting-hint">
-          <Upload size={13} /> 저장된 자막은 유지됩니다. 재생할 원본을 다시
-          연결하세요.
-        </p>
+          <Upload size={13} />{t('저장된 자막은 유지됩니다. 재생할 원본을 다시 연결하세요.')}</p>
+      )}
+      {styleSpeaker && (
+        <CaptionStyleDialog
+          key={`${project.id}-${styleSpeaker.id}`}
+          title={t("{name} · 기본 자막 스타일", { name: styleSpeaker.name || t("인물") })}
+          description={t("이 인물의 자막에 적용됩니다. 자막 한 개에 별도로 지정한 항목은 유지됩니다.")}
+          value={styleSpeaker.subtitleStyle}
+          inherited={DEFAULT_CAPTION_STYLE}
+          name={styleSpeaker.name}
+          nameColor={styleSpeaker.color}
+          text={project.captions.find((c) => c.speakerId === styleSpeaker.id)?.text ?? t("이 인물의 자막은 이렇게 표시됩니다.")}
+          resetLabel={t("기본값으로 되돌리기")}
+          onApply={(subtitleStyle) => update((p) => ({
+            ...p,
+            speakers: p.speakers.map((s) => s.id === styleSpeaker.id
+              ? { ...s, subtitleStyle }
+              : s),
+          }))}
+          onClose={() => setStyleSpeakerId(null)}
+        />
       )}
     </aside>
   );

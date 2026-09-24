@@ -1,6 +1,8 @@
 # Windows 설치형 앱과 업데이트
 
-이 문서는 Electron 설치형 앱의 실행·빌드·업데이트 계약입니다. 원격 업데이트 서버 공개나 코드 서명 완료를 뜻하지 않습니다. 기존 웹 개발 실행은 계속 `npm start`로 사용할 수 있습니다.
+이 문서는 Electron 설치형 앱의 실행·빌드·업데이트 계약입니다. **v0.2.0 설치 파일·검증·GitHub 게시·서명·feed 구성의 현재 상태는 [v0.2.0 릴리즈 기록](releases/v0.2.0.md)을 기준으로 확인합니다.** 원격 업데이트 서버 공개나 코드 서명 완료를 뜻하지 않습니다. 설치와 일반 사용은 [사용자 가이드](USER-GUIDE.md), 웹 개발 실행은 `npm start`를 참고하세요.
+
+v0.2.0은 비공개 저장소의 **Windows Preview 시험 릴리즈**입니다. 코드 서명과 인증 feed가 없어 수동 설치하며 updater는 `unconfigured`로 빌드합니다. GitHub에 올릴 `.nsis.7z`는 1GiB 조각으로 나누고 EXE·manifest·체크섬·재조립 스크립트를 함께 제공합니다. 사용자는 모든 자산을 같은 폴더에 받은 뒤 `powershell -NoProfile -File .\Assemble-Installer.ps1`로 검증·재조립하고 EXE를 직접 실행합니다. 아래 빌드 명령의 `.nsis.7z`는 분할 전 로컬 산출물입니다.
 
 ## 설치형 앱의 구조
 
@@ -51,7 +53,15 @@ npm run desktop:installer:split
 
 v0.1.1 로컬 패키징은 `electronDist`와 `ELECTRON_BUILDER_7ZIP_PATH`, `ELECTRON_BUILDER_NSIS_DIR`, `ELECTRON_BUILDER_NSIS_RESOURCES_DIR` 경로를 이용했습니다. 원본 체크섬과 대조한 Electron·7zip을 사용하고 다운로드 mirror/proxy를 외부에 연결할 수 없는 loopback으로 제한했습니다. `ELECTRON_DOWNLOAD_CACHE_MODE=1`은 캐시가 없을 때 다운로드할 수 있으므로 오프라인 차단 옵션으로 사용하지 않습니다. 단일 NSIS는 2.39 GB 압축 데이터 내장 단계에서 실패했고, 같은 압축 데이터를 재사용한 공식 NSIS-web 설치 EXE와 별도 payload 생성은 성공했습니다. 실제 산출물과 해시는 [v0.1.1 설치 파일 기록](NEMOTRON-SMOKE.md#v011-설치-파일)에 있습니다.
 
+### 앱 아이콘
+
+`desktop/assets/icon.ico`는 Windows 실행 파일·작업 표시줄·NSIS 및 NSIS-web 설치/제거 프로그램에 공통으로 사용합니다. 작은 작업 표시줄부터 고해상도 표시까지 지원하도록 ICO에는 16·32·48·256px 이상의 여러 크기를 포함합니다. `desktop/assets/icon.png`는 다른 플랫폼의 창 아이콘입니다. 두 파일은 `app.asar`에 명시적으로 포함하며 개발 실행과 설치 실행 모두 `desktop/main.cjs` 옆의 `assets/`에서 읽습니다. Windows AppUserModelID는 설치기와 동일한 `com.livetrack.voicesubsep`입니다.
+
+아이콘을 변경한 뒤 `node --test desktop/build-config.test.cjs`로 빌더 스키마·포함 경로·ICO 크기를 확인하고 `npm run desktop:pack` 또는 설치기 빌드를 다시 실행합니다. 웹 favicon 변경만으로 이미 설치된 EXE나 작업 표시줄 아이콘이 바뀌지는 않습니다. 실행 중인 설치본의 파일을 덮어쓰지 말고 프로젝트를 저장하여 앱을 정상 종료한 뒤 새 빌드를 적용합니다. 사용자 데이터·자동 저장·모델 캐시는 아이콘 변경 대상이 아닙니다. Windows에 이전 바로가기 아이콘이 남는 경우 새 실행 파일로 다시 고정하여 확인합니다.
+
 ## 사용자가 선택하는 업데이트
+
+**이번 v0.2.0 Preview는 feed 미구성 상태이며 아래는 향후 feed를 연결할 때의 계약입니다.** 비공개 GitHub Release에 파일을 게시하는 것만으로 앱이 인증 다운로드하거나 업데이트할 수 없습니다.
 
 자동 확인·자동 다운로드·종료 시 자동 설치는 하지 않습니다. 업데이트 확인 → 다운로드 → 저장 후 다시 시작을 각각 눌러야 합니다. `electron-updater`의 `autoDownload`와 `autoInstallOnAppQuit`은 모두 `false`입니다.
 
@@ -74,7 +84,7 @@ Remove-Item Env:VOICESUBSEP_UPDATE_URL
 3. 빌드 결과의 설치 EXE, `.blockmap`, 분리 설치기의 `.nsis.7z` 데이터 파일, `latest.yml`을 같은 feed 경로에 게시합니다. `latest.yml`의 `packages` 메타데이터와 파일 이름·크기·해시를 유지하고, 업로드 완료 후 `latest.yml`을 마지막에 교체합니다. NSIS의 표준 `--package-file` 경로는 updater가 내려받은 데이터 파일에도 사용할 수 있습니다.
 4. 이전 버전 설치 상태에서 확인·다운로드·명시적 재시작·새 버전 확인·프로젝트와 캐시 보존을 실제 검증합니다.
 
-현재 코드에서 Windows 업데이트 서명 검증을 끄지 않았습니다. **서명 인증서와 실제 원격 feed를 연결한 업데이트 전체 과정은 별도 검증 대상**입니다. 서명 없는 로컬 설치본은 Windows 신뢰도 경고가 발생할 수 있습니다. 로컬 설치 성공을 원격 업데이트 성공으로 간주하지 않습니다.
+빌더의 `win.verifyUpdateCodeSignature`는 `true`이지만 이 값만으로 실제 업데이트의 서명 검증을 입증하지 않습니다. 유효한 서명·publisher 설정과 실제 feed를 연결해 검증 경로가 실행되는지 확인해야 합니다. **이번 Preview에는 서명 인증서와 인증 feed가 없으며 원격 업데이트 전체 과정은 미검증입니다.** 서명 없는 설치본은 Windows 신뢰도 경고가 발생할 수 있습니다. 로컬 설치 성공을 원격 업데이트 성공으로 간주하지 않습니다.
 
 ## UI 브리지
 
@@ -102,9 +112,19 @@ interface DesktopBridge {
 }
 ```
 
-구독 함수는 해제 함수를 반환합니다. Renderer에 파일시스템·프로세스 실행·임의 IPC 기능을 노출하지 않습니다. main IPC는 메인 창의 최상위 프레임과 기대한 origin을 확인합니다. `contextIsolation`, `sandbox`, `webSecurity`는 켜고 `nodeIntegration`은 끕니다. 외부 탐색은 앱 안에서 차단하고 HTTP(S) 링크만 시스템 브라우저로 엽니다. 장치 권한은 현재 기능에 필요하지 않아 거부하며 라이브 캡처를 구현할 때 별도 검토합니다.
+구독 함수는 해제 함수를 반환합니다. Renderer에 파일시스템·프로세스 실행·임의 IPC 기능을 노출하지 않습니다. main IPC는 메인 창의 최상위 프레임과 기대한 origin을 확인합니다. `contextIsolation`, `sandbox`, `webSecurity`는 켜고 `nodeIntegration`은 끕니다. 외부 탐색은 앱 안에서 차단하고 HTTP(S) 링크만 시스템 브라우저로 엽니다.
+
+### 녹음 권한
+
+장치 권한은 기본 거부하며 녹음 기능에 필요한 요청만 별도 확인합니다. 마이크 요청은 앱의 현재 메인 창·최상위 프레임·origin과 오디오 전용 요청을 검사한 뒤 사용자의 네이티브 확인창 응답으로 허용합니다. Windows 시스템 캡처는 해당 프레임의 사용자 동작, 오디오·영상 요청을 확인하고 화면 선택창에서 명시적으로 선택한 경우에만 loopback을 제공합니다. 외부 origin과 iframe 요청, 겹친 권한 요청은 허용하지 않습니다.
+
+시스템 캡처에는 게임·통화·알림 등 전체 출력음이 섞일 수 있음을 안내합니다. 공유 권한에 필요한 화면 트랙은 최종 녹음 파일에 넣지 않습니다. 녹음은 약 1초 단위 IndexedDB 저장과 종료 후 분석이며 별도 WASAPI 워커·스트리밍 ASR 구현을 뜻하지 않습니다. 실제 마이크·시스템 소리·장시간 녹음의 장치 검증은 [릴리즈 검증 표](releases/v0.2.0.md#검증-기록)에서 확인합니다.
 
 ## 검증과 한계
+
+**현재 v0.2.0의 검증은 [릴리즈 기록](releases/v0.2.0.md#검증-기록)에 모읍니다.** 아래는 v0.1.1 당시의 역사적 실행 기록이며 새 설치 파일의 성공 증거로 재사용하지 않습니다.
+
+### v0.1.1 이전 검증 기록
 
 2026-09-24 Python 3.12.13·PyInstaller 6.22.3으로 만든 **API 0.1.1 백엔드 번들**은 준비 검사와 실제 Nemotron + large-v3-turbo CUDA 분석을 모두 통과했습니다. 외부 Python·CUDA 경로를 제외한 시스템 전용 `PATH`, 독립 임시 데이터 폴더, 오프라인 모델 캐시 조건입니다. 준비 검사 40.875초는 모델 추론 없이 런타임·API·정상 종료를 확인했고, 별도의 GPU 스모크 39.484초는 같은 39.466625초 두 합성 음성을 실제 분석한 뒤 종료 코드 0과 포트 종료까지 확인했습니다.
 

@@ -6,8 +6,11 @@ import json
 import math
 import shutil
 import subprocess
+from fractions import Fraction
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+
+DURATION_SCAN_TIMEOUT = 180
 
 MEDIA_EXTENSIONS = {
     ".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v", ".mp3", ".wav",
@@ -31,7 +34,7 @@ def probe_media(path: Path) -> dict[str, Any]:
     try:
         result = subprocess.run(
             [binary, "-v", "error", "-protocol_whitelist", "file,pipe", "-show_entries",
-             "format=duration:stream=index,codec_type,codec_name,channels,duration:stream_tags=title,language",
+             "format=duration:stream=index,codec_type,codec_name,channels,duration,avg_frame_rate:stream_tags=title,language:stream_disposition=attached_pic",
              "-of", "json", str(path)],
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
             creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0,
@@ -41,7 +44,58 @@ def probe_media(path: Path) -> dict[str, Any]:
     if result.returncode != 0:
         raise ValueError("This file could not be read as audio or video by FFprobe.")
     try:
-        info = json.loads(result.stdout)
+        return media_info(json.loads(result.stdout), duration_fallback=lambda: decoded_duration(path))
+    except (json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise ValueError("FFprobe returned invalid media metadata.") from exc
+
+
+def duration_probe_command(path: Path) -> list[str]:
+    """Decode to the null muxer, retaining only small once-a-second progress records.
+
+    Live MediaRecorder WebM files legitimately omit container/stream duration.
+    Do not rewrite the recording or trust a duration supplied by the client.
+    """
+    binary = shutil.which("ffmpeg")
+    if binary is None:
+        raise RuntimeError("FFmpeg is required to inspect recordings without duration metadata.")
+    return [binary, "-hide_banner", "-nostdin", "-v", "error", "-xerror", "-nostats",
+            "-stats_period", "1", "-threads", "1", "-filter_threads", "1", "-filter_complex_threads", "1",
+            "-protocol_whitelist", "file,pipe", "-i", str(path),
+            "-map", "0:a", "-map", "0:v?", "-sn", "-dn", "-threads", "1",
+            "-progress", "pipe:1", "-f", "null", "-"]
+
+
+def duration_from_progress(output: str) -> float:
+    last = None
+    for line in output.splitlines():
+        if line.startswith("out_time_us="):
+            try:
+                value = line.split("=", 1)[1]
+                last = int(value) / 1_000_000 if len(value) <= 20 else None
+            except (ValueError, OverflowError):
+                last = None
+    if "progress=end" not in output.splitlines() or last is None or not math.isfinite(last) or last <= 0:
+        raise ValueError("Media has no readable positive duration after decoding.")
+    return last
+
+
+def decoded_duration(path: Path) -> float:
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0)
+    try:
+        result = subprocess.run(duration_probe_command(path), stdin=subprocess.DEVNULL,
+                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                text=True, encoding="utf-8", errors="replace",
+                                timeout=DURATION_SCAN_TIMEOUT, creationflags=flags, shell=False)
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError("Recording duration inspection timed out after 180 seconds. Use a shorter recording or a file with duration metadata.") from exc
+    if result.returncode != 0:
+        raise ValueError("This recording could not be fully decoded to determine its duration.")
+    return duration_from_progress(result.stdout)
+
+
+def media_info(info: dict[str, Any], *, duration_fallback: Callable[[], float] | None = None) -> dict[str, Any]:
+    """Normalize probe data; also used by the cancellable render probe."""
+    try:
         streams = info.get("streams", [])
         durations = [info.get("format", {}).get("duration")]
         durations.extend(stream.get("duration") for stream in streams)
@@ -53,8 +107,6 @@ def probe_media(path: Path) -> dict[str, Any]:
                 continue
             if math.isfinite(duration) and duration > 0:
                 seconds.append(duration)
-        if not seconds:
-            raise ValueError("Media has no readable positive duration.")
         tracks = []
         for stream in streams:
             if stream.get("codec_type") != "audio":
@@ -75,6 +127,27 @@ def probe_media(path: Path) -> dict[str, Any]:
             raise ValueError("The media contains no audio track.")
         if len(tracks) > 64:
             raise ValueError("At most 64 audio tracks are supported.")
-        return {"duration": max(seconds), "audioTracks": tracks}
+        # Validate tracks before an expensive scan. Normal files keep the fast metadata path.
+        if not seconds and duration_fallback is not None:
+            duration = duration_fallback()
+            if math.isfinite(duration) and duration > 0:
+                seconds.append(duration)
+        if not seconds:
+            raise ValueError("Media has no readable positive duration.")
+        video = next((stream for stream in streams if stream.get("codec_type") == "video"
+                      and not stream.get("disposition", {}).get("attached_pic")), None)
+        rate = None
+        rate_fraction = None
+        if video is not None:
+            try:
+                fraction = Fraction(video.get("avg_frame_rate", "0/1"))
+                candidate = float(fraction)
+                rate = candidate if math.isfinite(candidate) and 0 < candidate <= 1000 else None
+                rate_fraction = str(fraction) if rate else None
+            except (ValueError, ZeroDivisionError, TypeError):
+                pass
+        return {"duration": max(seconds), "audioTracks": tracks, "hasVideo": video is not None,
+                "frameRate": rate, "frameRateFraction": rate_fraction,
+                "videoStream": int(video["index"]) if video is not None else None}
     except (json.JSONDecodeError, KeyError, TypeError) as exc:
         raise ValueError("FFprobe returned invalid media metadata.") from exc

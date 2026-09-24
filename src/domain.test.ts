@@ -1,19 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
   createProject,
+  DEFAULT_CAPTION_STYLE,
   demoProject,
   exportNotesCsv,
   exportNotesMarkdown,
   exportSrt,
   formatTime,
   MAX_CAPTIONS,
+  MAX_CUTS,
   MAX_NOTES,
   MAX_PROJECT_BYTES,
   parseProject,
   parseSrt,
   parseTime,
+  resolveCaptionStyle,
   safeFilename,
   type Caption,
+  type CaptionStyle,
   type Project,
 } from "./domain";
 
@@ -34,6 +38,70 @@ function changedProject(change: (project: Project) => void): string {
 }
 
 describe("portable projects", () => {
+  it("preserves legacy shape and roundtrips original-time version-two cuts", () => {
+    const legacy = demoProject();
+    expect(parseProject(JSON.stringify(legacy))).toEqual(legacy);
+    expect(parseProject(JSON.stringify(legacy))).not.toHaveProperty("cuts");
+    const edited: Project = { ...legacy, schemaVersion: 2, cuts: [
+      { id: "cut-b", start: 10, end: 20 },
+      { id: "cut-a", start: 1, end: 12 },
+    ] };
+    const imported = parseProject(JSON.stringify(edited));
+    expect(imported).toEqual(edited);
+    expect(imported.captions).toEqual(legacy.captions);
+    expect(imported.notes).toEqual(legacy.notes);
+    expect(parseProject(JSON.stringify({ ...edited, cuts: [] })).cuts).toEqual([]);
+  });
+
+  it.each([
+    ["legacy cuts", { schemaVersion: 1, cuts: [] }],
+    ["missing version-two cuts", { schemaVersion: 2 }],
+    ["unsupported version", { schemaVersion: 3 }],
+    ["duplicate cut IDs", { schemaVersion: 2, cuts: [{ id: "a", start: 1, end: 2 }, { id: "a", start: 3, end: 4 }] }],
+    ["unknown cut field", { schemaVersion: 2, cuts: [{ id: "a", start: 1, end: 2, muted: true }] }],
+    ["negative boundary", { schemaVersion: 2, cuts: [{ id: "a", start: -1, end: 2 }] }],
+    ["outside duration", { schemaVersion: 2, cuts: [{ id: "a", start: 1, end: 93 }] }],
+    ["empty cut", { schemaVersion: 2, cuts: [{ id: "a", start: 1, end: 1 }] }],
+    ["reversed cut", { schemaVersion: 2, cuts: [{ id: "a", start: 3, end: 1 }] }],
+    ["nonfinite boundary", { schemaVersion: 2, cuts: [{ id: "a", start: 1, end: Number.POSITIVE_INFINITY }] }],
+    ["too many cuts", { schemaVersion: 2, cuts: Array.from({ length: MAX_CUTS + 1 }, (_, i) => ({ id: `cut-${i}`, start: 1, end: 2 })) }],
+  ])("rejects invalid cut project: %s", (_label, fields) => {
+    expect(() => parseProject(JSON.stringify({ ...demoProject(), ...fields }))).toThrow();
+  });
+
+  it("roundtrips five subtitle languages, preserving stale evidence for later review", () => {
+    const project = demoProject();
+    project.captions[0]!.translation = {
+      sourceText: project.captions[0]!.text,
+      texts: { ko: "안녕하세요", en: "Hello", ja: "こんにちは", zh: "你好", es: "Hola" },
+    };
+    expect(parseProject(JSON.stringify(project))).toEqual(project);
+    project.captions[0]!.text = "Manually revised source";
+    expect(parseProject(JSON.stringify(project)).captions[0]!.translation).toEqual(project.captions[0]!.translation);
+  });
+
+  it.each([
+    ["unsupported language", { sourceText: "Hello", texts: { fr: "Bonjour" } }],
+    ["unknown field", { sourceText: "Hello", texts: { en: "Hello" }, model: "model" }],
+    ["empty translation", { sourceText: "Hello", texts: { ko: "  " } }],
+    ["oversize translation", { sourceText: "Hello", texts: { ko: "a".repeat(8_001) } }],
+    ["invalid translation map", { sourceText: "Hello", texts: [] }],
+    ["missing source evidence", { texts: { en: "Hello" } }],
+  ])("rejects malformed caption translation: %s", (_label, translation) => {
+    const value = demoProject();
+    Object.assign(value.captions[0]!, { translation });
+    expect(() => parseProject(JSON.stringify(value))).toThrow();
+  });
+
+  it("preserves inferred boundary assignments as reviewable when saved and imported", () => {
+    const project = demoProject();
+    project.captions[0]!.reasons = ["speaker_boundary"];
+    project.captions[0]!.reviewed = false;
+    const copy = parseProject(JSON.stringify(project));
+    expect(copy.captions[0]).toEqual(project.captions[0]);
+    expect(copy.captions[0]!.speakerId).not.toBeNull();
+  });
+
   it("starts empty with four distinct editable speakers and no imaginary media", () => {
     const project = createProject();
     expect(project.captions).toEqual([]);
@@ -245,6 +313,118 @@ describe("portable projects", () => {
         }),
       ),
     ).toThrow(/최대 5000/);
+  });
+});
+
+describe("caption style inheritance and portable validation", () => {
+  it("keeps old version-one projects unchanged while resolving display defaults", () => {
+    const original = demoProject();
+    const restored = parseProject(JSON.stringify(original));
+    expect(restored).toEqual(original);
+    for (const speaker of restored.speakers)
+      expect(Object.hasOwn(speaker, "subtitleStyle")).toBe(false);
+    for (const cue of restored.captions)
+      expect(Object.hasOwn(cue, "style")).toBe(false);
+    expect(resolveCaptionStyle(restored.captions[0], restored.speakers[0])).toEqual(DEFAULT_CAPTION_STYLE);
+    expect(resolveCaptionStyle(undefined, undefined)).toEqual(DEFAULT_CAPTION_STYLE);
+  });
+
+  it("inherits speaker changes, applies only caption overrides, and restores inheritance on reset", () => {
+    const project = demoProject();
+    const speaker = project.speakers[0]!;
+    const cue = project.captions[0]!;
+    speaker.subtitleStyle = { fontSize: 24, textColor: "#FFCC00", bold: true, backgroundOpacity: 70 };
+    cue.style = { fontSize: 32, bold: false, backgroundOpacity: 0, showSpeaker: false };
+    expect(resolveCaptionStyle(cue, speaker)).toEqual({
+      ...DEFAULT_CAPTION_STYLE,
+      fontSize: 32,
+      textColor: "#FFCC00",
+      bold: false,
+      backgroundOpacity: 0,
+      showSpeaker: false,
+    });
+    speaker.subtitleStyle.textColor = "#123456";
+    expect(resolveCaptionStyle(cue, speaker).textColor).toBe("#123456");
+    delete cue.style.fontSize;
+    expect(resolveCaptionStyle(cue, speaker).fontSize).toBe(24);
+    delete cue.style;
+    expect(resolveCaptionStyle(cue, speaker)).toEqual({ ...DEFAULT_CAPTION_STYLE, ...speaker.subtitleStyle });
+    delete speaker.subtitleStyle;
+    expect(resolveCaptionStyle(cue, speaker)).toEqual(DEFAULT_CAPTION_STYLE);
+  });
+
+  it("roundtrips all style properties and keeps partial and empty overrides partial", () => {
+    const project = demoProject();
+    const full: CaptionStyle = {
+      fontFamily: "serif", fontSize: 48, textColor: "#AbCdEf", bold: true,
+      outline: true, backgroundColor: "#000000", backgroundOpacity: 100,
+      position: "top", align: "right", showSpeaker: false,
+    };
+    project.speakers[0]!.subtitleStyle = full;
+    project.speakers[1]!.subtitleStyle = {};
+    project.captions[0]!.style = {
+      fontFamily: "mono", fontSize: 12, position: "middle", align: "left", backgroundOpacity: 0,
+    };
+    project.captions[1]!.style = {};
+    const restored = parseProject(JSON.stringify(project));
+    expect(restored).toEqual(project);
+    expect(restored.captions[0]!.style).not.toHaveProperty("textColor");
+    expect(restored.speakers[1]!.subtitleStyle).toEqual({});
+    expect(restored.captions[1]!.style).toEqual({});
+    expect(restored.speakers[0]!.subtitleStyle).not.toBe(full);
+    expect(resolveCaptionStyle(restored.captions[0], restored.speakers[0])).toEqual({
+      ...full, ...project.captions[0]!.style,
+    });
+  });
+
+  it("resolves unassigned caption styles without mutating defaults or stored overrides", () => {
+    const cue = caption("unknown", 1, 2, "미배정", null);
+    cue.style = { outline: true, align: "left" };
+    const before = JSON.stringify(cue);
+    const resolved = resolveCaptionStyle(cue, undefined);
+    expect(resolved).toEqual({ ...DEFAULT_CAPTION_STYLE, outline: true, align: "left" });
+    resolved.fontSize = 40;
+    expect(DEFAULT_CAPTION_STYLE.fontSize).toBe(15);
+    expect(JSON.stringify(cue)).toBe(before);
+  });
+
+  it.each([
+    ["null style", null],
+    ["array style", []],
+    ["string style", "large"],
+    ["unknown property", { transform: "scale(2)" }],
+    ["unknown font", { fontFamily: "Arial" }],
+    ["small font", { fontSize: 11.9 }],
+    ["large font", { fontSize: 48.1 }],
+    ["string font size", { fontSize: "24" }],
+    ["null font size", { fontSize: null }],
+    ["nonfinite font size", { fontSize: Number.NaN }],
+    ["negative opacity", { backgroundOpacity: -0.1 }],
+    ["excess opacity", { backgroundOpacity: 100.1 }],
+    ["string opacity", { backgroundOpacity: "50" }],
+    ["nonfinite opacity", { backgroundOpacity: Number.POSITIVE_INFINITY }],
+    ["named text color", { textColor: "red" }],
+    ["short text color", { textColor: "#fff" }],
+    ["alpha background color", { backgroundColor: "#ffffff80" }],
+    ["unsafe background color", { backgroundColor: "url(x)" }],
+    ["string bold", { bold: "true" }],
+    ["numeric outline", { outline: 1 }],
+    ["null speaker visibility", { showSpeaker: null }],
+    ["unknown position", { position: "baseline" }],
+    ["unknown alignment", { align: "justify" }],
+    ["prototype key", JSON.parse('{"__proto__":{"polluted":true}}')],
+  ])("rejects %s in both speaker and caption styles", (_label, invalidStyle) => {
+    for (const target of ["speaker", "caption"]) {
+      const input = changedProject((project) => {
+        if (target === "speaker")
+          project.speakers[0]!.subtitleStyle = invalidStyle as Partial<CaptionStyle>;
+        else project.captions[0]!.style = invalidStyle as Partial<CaptionStyle>;
+      });
+      expect(() => parseProject(input)).toThrow(
+        target === "speaker" ? /speakers\[0\]\.subtitleStyle/ : /captions\[0\]\.style/,
+      );
+    }
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
   });
 });
 
