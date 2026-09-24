@@ -1,0 +1,366 @@
+{
+  "schemaVersion": 1,
+  "scope": "Source Python execution and actual browser UI verification only; packaged executable verification is excluded.",
+  "model": {
+    "id": "nvidia/Nemotron-3-Diarization",
+    "revision": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+    "transformersSourceCommit": "4b28d51d0d5f17ec20c23a187d0475a8e68810c8"
+  },
+  "fixture": {
+    "sha256": "1a3830cc56d943ea8b1939646f412b203ad12a7b51c8fc5337515e64accad7e7",
+    "duration": 39.466625,
+    "voices": {
+      "A": {
+        "culture": "ko-KR",
+        "name": "Microsoft Heami Desktop"
+      },
+      "B": {
+        "culture": "en-US",
+        "name": "Microsoft Zira Desktop"
+      }
+    }
+  },
+  "sourceSmoke": {
+    "artifact": {
+      "file": "tmp/nemotron-turn-guided-smoke.json",
+      "sha256": "77daa381cbcd89a456e2ee2e6647825ac7c7a48c21002b935b5b66e5fbc558c8"
+    },
+    "passed": true,
+    "runtimeCompleted": true,
+    "mode": "analyze",
+    "device": "cuda",
+    "offline": true,
+    "whisperModel": "large-v3-turbo",
+    "language": "auto",
+    "synthetic": true,
+    "startedAt": "2026-09-24T06:49:40.295216+00:00",
+    "elapsedSeconds": 24.265,
+    "packages": {
+      "torch": "2.11.0+cu128",
+      "transformers": "5.18.0.dev0",
+      "faster-whisper": "1.2.1",
+      "huggingface-hub": "1.32.0"
+    },
+    "activity": {
+      "checks": {
+        "finiteSourceTimeIntervals": true,
+        "exactlyTwoDetectedSpeakers": true,
+        "soloTurnAlternationConsistent": true,
+        "overlapDetectedInsidePlannedMix": true,
+        "nonemptyCaptionText": true,
+        "captionSourceTimesValid": true,
+        "captionSoloTurnAlternationConsistent": true
+      },
+      "detectedSpeakerCount": 2,
+      "speakerMappingByBestSoloTurnCoverage": {
+        "A": "0",
+        "B": "1"
+      },
+      "soloTurns": [
+        {
+          "turnId": "turn-1",
+          "expected": "A",
+          "start": 0.5,
+          "end": 6.114,
+          "dominantDetected": "0",
+          "coverageSeconds": {
+            "0": 4.624,
+            "1": 0
+          },
+          "dominantTurnWindowCoverage": 0.8701543093714716,
+          "consistent": true
+        },
+        {
+          "turnId": "turn-2",
+          "expected": "B",
+          "start": 6.464,
+          "end": 12.0615625,
+          "dominantDetected": "1",
+          "coverageSeconds": {
+            "0": 0,
+            "1": 3.9675625000000005
+          },
+          "dominantTurnWindowCoverage": 0.7489411403829593,
+          "consistent": true
+        },
+        {
+          "turnId": "turn-3",
+          "expected": "A",
+          "start": 12.4115625,
+          "end": 17.9823125,
+          "dominantDetected": "0",
+          "coverageSeconds": {
+            "0": 4.5607500000000005,
+            "1": 0
+          },
+          "dominantTurnWindowCoverage": 0.8652943129535646,
+          "consistent": true
+        },
+        {
+          "turnId": "turn-4",
+          "expected": "B",
+          "start": 18.3323125,
+          "end": 22.5799375,
+          "dominantDetected": "1",
+          "coverageSeconds": {
+            "0": 0,
+            "1": 3.257625000000001
+          },
+          "dominantTurnWindowCoverage": 0.8252113612615177,
+          "consistent": true
+        },
+        {
+          "turnId": "turn-7",
+          "expected": "A",
+          "start": 28.508875,
+          "end": 33.8915,
+          "dominantDetected": "0",
+          "coverageSeconds": {
+            "0": 4.372625000000003,
+            "1": 0
+          },
+          "dominantTurnWindowCoverage": 0.8603084036300139,
+          "consistent": true
+        },
+        {
+          "turnId": "turn-8",
+          "expected": "B",
+          "start": 34.2415,
+          "end": 38.616625,
+          "dominantDetected": "1",
+          "coverageSeconds": {
+            "0": 0,
+            "1": 3.385125000000002
+          },
+          "dominantTurnWindowCoverage": 0.8306800404895561,
+          "consistent": true
+        }
+      ],
+      "overlap": {
+        "plannedWindows": [
+          {
+            "start": 23.7299375,
+            "end": 28.0360625
+          }
+        ],
+        "detectedWindows": [
+          [
+            23.7,
+            25.4
+          ],
+          [
+            26.23,
+            28.05
+          ]
+        ],
+        "intersectionSeconds": 3.4761249999999997,
+        "plannedMixWindowCoverage": 0.807251299021742,
+        "detectedOverlapSeconds": 3.5199999999999996
+      },
+      "metricNote": "Turn-window coverage includes pauses and is not DER/JER, phonetic VAD, or a real-world quality score."
+    },
+    "captionEvidence": {
+      "count": 24,
+      "assignedCount": 12,
+      "overlapReviewCount": 4,
+      "speakerMapping": {
+        "A": "speaker-1",
+        "B": "speaker-2"
+      },
+      "soloTurns": [
+        {
+          "turnId": "turn-1",
+          "expected": "A",
+          "start": 0.5,
+          "end": 6.114,
+          "dominantDetected": "speaker-1",
+          "coverageSeconds": {
+            "speaker-1": 3.4200000000000004,
+            "speaker-2": 0
+          },
+          "dominantTurnWindowCoverage": 0.6435829883327062,
+          "consistent": true
+        },
+        {
+          "turnId": "turn-2",
+          "expected": "B",
+          "start": 6.464,
+          "end": 12.0615625,
+          "dominantDetected": "speaker-2",
+          "coverageSeconds": {
+            "speaker-1": 0,
+            "speaker-2": 3.1799999999999997
+          },
+          "dominantTurnWindowCoverage": 0.6002760703625488,
+          "consistent": true
+        },
+        {
+          "turnId": "turn-3",
+          "expected": "A",
+          "start": 12.4115625,
+          "end": 17.9823125,
+          "dominantDetected": "speaker-1",
+          "coverageSeconds": {
+            "speaker-1": 4.58075,
+            "speaker-2": 0
+          },
+          "dominantTurnWindowCoverage": 0.8690888393492389,
+          "consistent": true
+        },
+        {
+          "turnId": "turn-4",
+          "expected": "B",
+          "start": 18.3323125,
+          "end": 22.5799375,
+          "dominantDetected": "speaker-2",
+          "coverageSeconds": {
+            "speaker-1": 0,
+            "speaker-2": 2.9399999999999977
+          },
+          "dominantTurnWindowCoverage": 0.7447515911465745,
+          "consistent": true
+        },
+        {
+          "turnId": "turn-7",
+          "expected": "A",
+          "start": 28.508875,
+          "end": 33.8915,
+          "dominantDetected": "speaker-1",
+          "coverageSeconds": {
+            "speaker-1": 3.8211250000000057,
+            "speaker-2": 0
+          },
+          "dominantTurnWindowCoverage": 0.7518014805341734,
+          "consistent": true
+        },
+        {
+          "turnId": "turn-8",
+          "expected": "B",
+          "start": 34.2415,
+          "end": 38.616625,
+          "dominantDetected": "speaker-2",
+          "coverageSeconds": {
+            "speaker-1": 0,
+            "speaker-2": 3.0784999999999982
+          },
+          "dominantTurnWindowCoverage": 0.755436949786816,
+          "consistent": true
+        }
+      ]
+    },
+    "limitation": "Synthetic installed TTS voices; planned turn/mix windows are not phonetic annotations or real Korean/overlap quality evidence."
+  },
+  "uiLargeV3": {
+    "artifact": {
+      "file": "tmp/nemotron-ui-large-v3-evidence.json",
+      "sha256": "7a230bc4e38839dbb405c8ecad7ecf089794b516c214d21b07ef9eec6ec747ab"
+    },
+    "passed": true,
+    "source": "Real browser upload, start, completion, and apply via UI",
+    "jobSeconds": 28.096215,
+    "fixtureSha256": "1a3830cc56d943ea8b1939646f412b203ad12a7b51c8fc5337515e64accad7e7",
+    "sourceDuration": 39.466625,
+    "captionCount": 26,
+    "assignedCount": 12,
+    "overlapReviewCount": 4,
+    "speakerCount": 2,
+    "captionSoloTurns": [
+      {
+        "turnId": "turn-1",
+        "expected": "A",
+        "start": 0.5,
+        "end": 6.114,
+        "dominantDetected": "speaker-1",
+        "coverageSeconds": {
+          "speaker-1": 3.2999999999999994,
+          "speaker-2": 0
+        },
+        "dominantTurnWindowCoverage": 0.621001129092962,
+        "consistent": true
+      },
+      {
+        "turnId": "turn-2",
+        "expected": "B",
+        "start": 6.464,
+        "end": 12.0615625,
+        "dominantDetected": "speaker-2",
+        "coverageSeconds": {
+          "speaker-1": 0,
+          "speaker-2": 3.040000000000001
+        },
+        "dominantTurnWindowCoverage": 0.5738488219818079,
+        "consistent": true
+      },
+      {
+        "turnId": "turn-3",
+        "expected": "A",
+        "start": 12.4115625,
+        "end": 17.9823125,
+        "dominantDetected": "speaker-1",
+        "coverageSeconds": {
+          "speaker-1": 3.8084374999999984,
+          "speaker-2": 0
+        },
+        "dominantTurnWindowCoverage": 0.7225608310012804,
+        "consistent": true
+      },
+      {
+        "turnId": "turn-4",
+        "expected": "B",
+        "start": 18.3323125,
+        "end": 22.5799375,
+        "dominantDetected": "speaker-2",
+        "coverageSeconds": {
+          "speaker-1": 0,
+          "speaker-2": 2.7676874999999974
+        },
+        "dominantTurnWindowCoverage": 0.7011019283746546,
+        "consistent": true
+      },
+      {
+        "turnId": "turn-7",
+        "expected": "A",
+        "start": 28.508875,
+        "end": 33.8915,
+        "dominantDetected": "speaker-1",
+        "coverageSeconds": {
+          "speaker-1": 3.401125000000004,
+          "speaker-2": 0
+        },
+        "dominantTurnWindowCoverage": 0.6691670150758715,
+        "consistent": true
+      },
+      {
+        "turnId": "turn-8",
+        "expected": "B",
+        "start": 34.2415,
+        "end": 38.616625,
+        "dominantDetected": "speaker-2",
+        "coverageSeconds": {
+          "speaker-1": 0,
+          "speaker-2": 2.8785000000000025
+        },
+        "dominantTurnWindowCoverage": 0.7063587006533548,
+        "consistent": true
+      }
+    ],
+    "request": {
+      "mode": "standard",
+      "speakerCount": 2,
+      "audioTrack": 0,
+      "whisperModel": "large-v3",
+      "language": "auto",
+      "device": "cuda",
+      "diarization": true
+    },
+    "limitation": "Synthetic installed TTS voices; planned turn/mix windows are not phonetic annotations or real Korean/overlap quality evidence."
+  },
+  "limitations": [
+    "Synthetic installed TTS voices; planned turn/mix windows are not phonetic annotations or real Korean/overlap quality evidence.",
+    "The source smoke checks execution, source times, speaker alternation and assigned-caption coverage; it does not measure every spoken word or complete overlapping-speech recovery.",
+    "Unassigned captions and overlap-review flags remain in the actual results; this summary excludes raw transcripts and absolute local paths.",
+    "Elapsed times are single observations with cached model weights, not performance guarantees.",
+    "The UI source artifact does not record its start timestamp or installed package versions; neither is inferred here.",
+    "Real Korean streamer audio, long recordings and packaged executable behavior are not established by these source/UI results."
+  ]
+}

@@ -1107,6 +1107,22 @@ button.subtle-button {
   gap: 7px;
   font-size: 12px;
 }
+.analysis-options {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #dfe2e9;
+  border-radius: 6px;
+}
+.analysis-options legend {
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.analysis-options input {
+  flex-shrink: 0;
+}
 .dialog p.info-box {
   padding: 12px;
   border-radius: 6px;

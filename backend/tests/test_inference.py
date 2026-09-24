@@ -184,6 +184,46 @@ def test_native_whisper_generator_is_closed_and_unloaded_on_cancel(monkeypatch, 
     assert events == ["close", "unload"]
 
 
+@pytest.mark.parametrize("language,expected_language,multilingual", [("auto", None, True), ("ko", "ko", False)])
+def test_whisper_language_policy_and_clips_preserve_original_word_times(
+    monkeypatch, tmp_path, language, expected_language, multilingual
+):
+    clips = [0.0, 6.25, 6.25, 19.0, 19.0, 30.0]
+    observed = []
+    monkeypatch.setattr(infer, "resolve_whisper_model", lambda name: name)
+    monkeypatch.setattr(infer, "_release_memory", lambda: None)
+
+    class Model:
+        def __init__(self, *_args, **_kwargs):
+            self.model = SimpleNamespace(unload_model=lambda: None)
+
+        def transcribe(self, path, **options):
+            observed.append(options)
+            # faster-whisper returns source-global times even when a word is
+            # decoded from a clip that starts after zero. Never add that offset.
+            return iter([
+                SimpleNamespace(start=11.42, end=12.08, text=" first", words=[
+                    SimpleNamespace(start=11.42, end=12.08, word=" first", probability=0.9)]),
+                SimpleNamespace(start=24.7, end=25.2, text=" second", words=[
+                    SimpleNamespace(start=24.7, end=25.2, word=" second", probability=0.8)]),
+            ]), None
+
+    monkeypatch.setattr(infer, "_whisper_class", lambda: Model)
+    records = infer._transcribe(
+        tmp_path / "unused.wav", model_name="tiny", language=language, device="cpu", duration=30,
+        clip_timestamps=clips, progress=lambda *_: None, cancelled=lambda: False,
+    )
+    assert len(observed) == 1
+    assert observed[0]["language"] == expected_language
+    assert observed[0]["multilingual"] is multilingual
+    assert observed[0]["clip_timestamps"] == [0.0, 6.25, 6.25, 19.0, 19.0, 30.0]
+    assert observed[0]["word_timestamps"] is True and observed[0]["vad_filter"] is False
+    assert observed[0]["condition_on_previous_text"] is False
+    assert [(item["start"], item["end"]) for item in records] == [(11.42, 12.08), (24.7, 25.2)]
+    assert [(word["start"], word["end"]) for item in records for word in item["words"]] == [
+        (11.42, 12.08), (24.7, 25.2)]
+
+
 def test_subprocess_is_reaped_after_cancellation(monkeypatch):
     events = []
     process = SimpleNamespace(returncode=None)
@@ -219,6 +259,43 @@ def test_capabilities_requires_native_nemotron_support(monkeypatch):
     assert infer.capabilities() == {"whisper": True, "nemotron": False}
 
 
+def test_nemotron_readiness_checks_audio_dependency_and_reports_cause(monkeypatch):
+    processor = SimpleNamespace(extract_speaker_dict=lambda: None)
+    native = SimpleNamespace(Nemotron3DiarizationForAudioFrameClassification=object,
+                             Nemotron3DiarizationProcessor=processor,
+                             NemotronAsrStreamingFeatureExtractor=lambda: object())
+
+    def imported(name):
+        if name == "faster_whisper":
+            return SimpleNamespace(WhisperModel=object)
+        if name == "transformers":
+            return native
+        if name == "librosa":
+            raise ImportError("audio runtime missing")
+        return object()
+
+    monkeypatch.setattr(infer.importlib, "import_module", imported)
+    report = infer.capability_report()
+    assert report["engines"] == {"whisper": True, "nemotron": False}
+    assert "audio runtime missing" in report["engineIssues"]["nemotron"]
+    assert report["engineIssues"]["whisper"] is None
+
+
+def test_file_diarization_matches_offline_context_and_cache_sizes():
+    modes = {"low_latency": (9, 4)}
+    selected = []
+    processor = SimpleNamespace(streaming_modes=modes, set_streaming_mode=selected.append)
+    live = SimpleNamespace(fifo_length=264, speaker_cache_update_period=222)
+    config = SimpleNamespace(chunk_length=340, chunk_right_context=40,
+                             fifo_length=40, speaker_cache_update_period=300,
+                             streaming_config=live)
+    infer._configure_file_diarization(processor, SimpleNamespace(config=config))
+    assert processor.streaming_modes["file"] == (340, 40)
+    assert selected == ["file"]
+    assert (live.fifo_length, live.speaker_cache_update_period) == (40, 300)
+    assert "file" not in modes  # Never mutate a shared processor class preset.
+
+
 def test_missing_requested_diarizer_fails_before_transcription(monkeypatch, tmp_path):
     source = tmp_path / "source.wav"
     source.touch()
@@ -246,21 +323,23 @@ def test_sequential_engines_temp_cleanup_and_progress(monkeypatch, tmp_path):
 
     def transcribe(path, **kwargs):
         assert path.is_file()
+        assert order == ["nemotron"]
+        assert kwargs["clip_timestamps"] == [0.0, 15.5, 15.5, 60.0]
         order.append("whisper")
-        return [record(10, 11)]
+        return [record(10, 11), record(20, 21)]
 
     def diarize(path, **kwargs):
-        assert order == ["whisper"]
+        assert order == []
         order.append("nemotron")
-        return [{"Start": 10, "End": 11, "Speaker": 0}]
+        return [{"Start": 10, "End": 11, "Speaker": 0}, {"Start": 20, "End": 21, "Speaker": 1}]
 
     monkeypatch.setattr(infer, "_extract_audio", extract)
     monkeypatch.setattr(infer, "_transcribe", transcribe)
     monkeypatch.setattr(infer, "_diarize", diarize)
-    output = infer.analyze(source, audio_track=3, mode="overlap", speaker_count=1, whisper_model="tiny",
+    output = infer.analyze(source, audio_track=3, mode="overlap", speaker_count=2, whisper_model="tiny",
                            language="ko", device="cpu", diarization=True,
                            progress=lambda stage, amount: stages.append(amount), cancelled=lambda: False)
-    assert output["captions"][0]["start"] == 10
+    assert [(caption["start"], caption["end"]) for caption in output["captions"]] == [(10, 11), (20, 21)]
     assert not paths[0].exists()
     assert stages == sorted(stages) and stages[-1] == 1
     assert any("#3" in warning for warning in output["warnings"])

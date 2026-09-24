@@ -41,18 +41,22 @@ try {
         if (-not (Test-Path -LiteralPath $pythonExecutable)) {
             throw 'Existing .venv is not a Windows Python environment. Rename it before running setup.'
         }
-        $pythonVersion = & $pythonExecutable -c 'import sys; print(str(sys.version_info.major)+chr(46)+str(sys.version_info.minor))'
-        if ($LASTEXITCODE -ne 0 -or $pythonVersion.Trim() -ne '3.12') {
-            throw 'Existing .venv must use Python 3.12. Rename it before running setup; it was not modified.'
+        $pythonVersion = & $pythonExecutable -c 'import platform; print(platform.python_version())'
+        if ($LASTEXITCODE -ne 0 -or [version]$pythonVersion.Trim() -lt [version]'3.12.1' -or [version]$pythonVersion.Trim() -ge [version]'3.13') {
+            throw 'Existing .venv must use Python 3.12.1 or newer within 3.12. Python 3.12.0 has a frozen-module bug. Rename the old environment before setup; it was not modified.'
         }
     } else {
-        Invoke-Checked $uvExecutable @('venv', '--python', '3.12', $venvPath)
+        Invoke-Checked $uvExecutable @('venv', '--python', '3.12.13', $venvPath)
     }
-    Invoke-Checked $uvExecutable @('pip', 'install', '--python', $pythonExecutable, '--editable', './backend[whisper,test]')
+    # Speaker-aware subtitles are the default product, so a normal setup must
+    # include the actual diarization runtime rather than an unusable checkbox.
+    Invoke-Checked $uvExecutable @('pip', 'install', '--python', $pythonExecutable,
+        'torch==2.11.0+cu128', '--index-url', 'https://download.pytorch.org/whl/cu128')
+    Invoke-Checked $uvExecutable @('pip', 'install', '--python', $pythonExecutable, '--editable', './backend[whisper,diarization,test]')
     Invoke-Checked $npmExecutable @('ci')
     Write-Host ''
     Write-Host 'VOICESUBSEP is ready. Start: node scripts/dev.mjs'
-    Write-Host 'Optional Nemotron setup: docs/MODEL-SETUP.md'
+    Write-Host 'Whisper and Nemotron runtimes installed. GPU and model checks: docs/MODEL-SETUP.md'
     Write-Host 'Model weights are downloaded separately on first analysis; setup does not download them.'
 } finally {
     Pop-Location

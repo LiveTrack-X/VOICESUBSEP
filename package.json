@@ -1,6 +1,6 @@
 {
   "name": "voicesubsep",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "main": "desktop/main.cjs",
@@ -16,6 +16,7 @@
     "desktop:dev": "node scripts/desktop-dev.mjs",
     "desktop:pack": "npm run build && node scripts/desktop-build.mjs pack",
     "desktop:installer": "npm run build && node scripts/desktop-build.mjs installer",
+    "desktop:installer:split": "npm run build && node scripts/desktop-build.mjs installer-split",
     "desktop:test": "node --test desktop/*.test.cjs",
     "desktop:smoke": "node scripts/desktop-smoke.mjs"
   },

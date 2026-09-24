@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AudioLines, CheckCircle2, LoaderCircle } from "lucide-react";
 import {
+  analysisBlockReason,
   request,
   uploadMedia,
   type AnalysisResult,
@@ -32,17 +33,20 @@ export function AnalysisDialog({
   const [device, setDevice] = useState("cuda");
   const [language, setLanguage] = useState("ko");
   const [track, setTrack] = useState(0);
-  const [diarization, setDiarization] = useState(false);
+  const [diarization, setDiarization] = useState(true);
+  const blockedReason = analysisBlockReason(health, diarization);
+  const sharedRuntimeIssue = health ? analysisBlockReason(health, false) : null;
   const running = job?.status === "running" || job?.status === "queued";
   useEffect(() => {
     let alive = true;
     void (async () => {
       try {
-        const h = await request<Health>("/api/health");
+        const h = await request<Health>("/api/health", {
+          signal: AbortSignal.timeout(120_000),
+        });
         if (!alive) return;
         setHealth(h);
         setDevice(h.gpu?.available ? "cuda" : "cpu");
-        setDiarization(h.engines.nemotron);
         if (!h.ffmpeg || !h.ffprobe)
           throw new Error(
             "FFmpeg와 FFprobe를 설치한 뒤 서버를 다시 실행하세요.",
@@ -92,7 +96,11 @@ export function AnalysisDialog({
     };
   }, [job?.id, running]);
   async function start() {
-    if (!media) return;
+    if (!media || loading || starting || running) return;
+    if (blockedReason) {
+      setError(blockedReason);
+      return;
+    }
     setStarting(true);
     setError("");
     try {
@@ -127,10 +135,21 @@ export function AnalysisDialog({
         {file.name} · 예상 {project.speakerCount === 4 ? "4명 이상" : `${project.speakerCount}명`} ·{" "}
         {project.mode === "overlap" ? "동시 발화" : "일반 대화"}
       </p>
+      {!job && health && !health.engines.nemotron && (
+        <p className="error-box" role="status">
+          <strong>화자 구분 실행환경 준비 필요</strong>
+          <br />{health.engineIssues?.nemotron?.trim() ||
+            "현재 앱 또는 서버에 Nemotron 실행에 필요한 구성요소가 준비되지 않았습니다."}
+          <br />실행환경을 준비한 뒤 분석 창을 다시 열어 상태를 확인하세요.
+          {diarization && <><br />인물별 자막 분석은 준비가 끝나야 시작할 수 있습니다.</>}
+        </p>
+      )}
       {loading && (
         <p className="inline-status">
-          <LoaderCircle className="spin" size={18} />이 기기의 분석 서버에
-          파일을 준비하고 있습니다…
+          <LoaderCircle className="spin" size={18} />
+          {health
+            ? "이 기기의 분석 서버에 파일을 준비하고 있습니다…"
+            : "음성 인식·화자 구분 실행환경을 확인하고 있습니다. 첫 실행에는 수십 초가 걸릴 수 있습니다…"}
         </p>
       )}
       {!job && !loading && (
@@ -188,20 +207,34 @@ export function AnalysisDialog({
               </select>
             </label>
           </div>
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={diarization}
-              disabled={!health?.engines.nemotron}
-              onChange={(e) => setDiarization(e.target.checked)}
-            />
-            Nemotron으로 인물 구분{" "}
-            {health?.engines.nemotron ? "" : "(추가 설치 필요)"}
-          </label>
+          <fieldset className="analysis-options" disabled={starting}>
+            <legend>분석 범위</legend>
+            <label className="checkbox-label">
+              <input
+                type="radio"
+                name="analysis-scope"
+                checked={diarization}
+                onChange={() => setDiarization(true)}
+              />
+              인물별 자막 생성 · Whisper + Nemotron (기본)
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="radio"
+                name="analysis-scope"
+                checked={!diarization}
+                onChange={() => setDiarization(false)}
+              />
+              전사만 생성 · 인물은 직접 지정
+            </label>
+          </fieldset>
+          {sharedRuntimeIssue && (
+            <p className="error-box" role="status">{sharedRuntimeIssue}</p>
+          )}
           <p className="info-box">
             {diarization
               ? "자동 화자 번호를 부여합니다. 분석 후 목소리를 확인하고 이름을 지정하세요."
-              : "현재는 음성 인식만 수행합니다. 자막의 화자를 편집 화면에서 직접 지정해야 합니다."}
+              : "전사만 생성을 선택했습니다. 자막의 화자를 편집 화면에서 직접 지정해야 합니다."}
             <br />큰 모델은 첫 실행 시 수 GB를 다운로드해 이 기기에 보관합니다. CPU의 큰 모델은 오래
             걸릴 수 있습니다. 겹쳐 말한 모든 대사의 복원을 보장하지 않습니다.
           </p>
@@ -290,11 +323,11 @@ export function AnalysisDialog({
             <button
               className="primary"
               disabled={
-                loading || starting || !media || !health?.engines.whisper
+                loading || starting || !media || !!blockedReason
               }
               onClick={start}
             >
-              {starting ? "시작 중…" : job ? "다시 분석" : "분석 시작"}
+              {starting ? "시작 중…" : job ? "다시 분석" : diarization ? "인물별 자막 분석 시작" : "전사만 시작"}
             </button>
           </>
         )}

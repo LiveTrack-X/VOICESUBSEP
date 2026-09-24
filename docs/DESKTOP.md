@@ -6,9 +6,9 @@
 
 - 제품명 `VOICESUBSEP`, 앱 ID `com.livetrack.voicesubsep`, Windows x64 NSIS 설치 프로그램입니다.
 - Electron이 `resources/backend/voicesubsep-server.exe`를 임의의 `127.0.0.1` 포트로 실행합니다. 이 서버 하나가 웹 편집기와 API를 제공합니다. 개발용 5173·8787 포트를 사용하지 않습니다.
-- 실행 인수는 `--port <port> --data-dir <userData>/data --web-dir <resources>/web`입니다. `/api/health`의 `status: ok`, `app: voicesubsep`을 확인한 뒤 창을 엽니다.
+- 실행 인수는 `--port <port> --data-dir <userData>/data --web-dir <resources>/web`입니다. 가벼운 `/api/ready`의 `status: ok`, `app: voicesubsep`을 확인한 뒤 창을 엽니다. 분석 화면이 `/api/health`로 Whisper·Nemotron·CUDA의 준비 상태를 별도로 확인합니다. 최초 모델 라이브러리 로딩에는 수십 초가 걸릴 수 있습니다.
 - 화면 주소는 `voicesubsep://app/`로 고정하고 Electron의 custom protocol에서 로컬 서버로 요청을 전달합니다. 따라서 임의 포트가 바뀌어도 자동 저장의 localStorage origin이 유지됩니다. 파일 업로드는 스트림으로 전달합니다.
-- Python·FFmpeg·FFprobe는 백엔드 번들에 포함됩니다. 모델 가중치는 설치 파일에 넣지 않으며 첫 분석 때 별도 다운로드합니다.
+- Python·FFmpeg·FFprobe·Whisper·Nemotron 실행 환경과 PyTorch CUDA DLL은 백엔드 번들에 포함됩니다. 모델 가중치는 설치 파일에 넣지 않으며 첫 분석 때 별도 다운로드합니다.
 - `<userData>/data`, Chromium 자동 저장, `<userData>/logs/backend.log`는 설치 디렉터리 밖에 보관합니다. 일반적인 Windows 위치는 `%APPDATA%/VOICESUBSEP`입니다. 로그는 약 4 MiB 단위로 직전 파일 하나를 보존합니다.
 - `HF_HOME`을 덮어쓰지 않고 기존에 완성된 Hugging Face 캐시는 읽어 재사용합니다. Windows에서 새 Whisper 모델은 `%LOCALAPPDATA%/VOICESUBSEP/models/whisper` 아래에 보관합니다. 앱 업데이트는 이 두 캐시를 삭제하지 않습니다. NSIS 제거 옵션도 사용자 데이터를 자동 삭제하지 않도록 설정했습니다.
 
@@ -30,21 +30,26 @@ npm run desktop:dev
 Windows 설치 파일을 만들려면 먼저 백엔드 번들을 준비합니다.
 
 ```powershell
-uv pip install --python .venv\Scripts\python.exe -e './backend[whisper,gpu-windows,desktop-build]'
+# README의 setup.ps1로 CUDA PyTorch와 Nemotron 환경을 준비한 뒤
+uv pip install --python .venv\Scripts\python.exe -e './backend[whisper,diarization,desktop-build]'
+powershell -ExecutionPolicy Bypass -File scripts/build-backend.ps1 -CheckDependenciesOnly
 powershell -ExecutionPolicy Bypass -File scripts/build-backend.ps1
 npm run desktop:pack
-npm run desktop:installer
+npm run desktop:installer:split
 ```
 
 - `desktop:pack`: 웹 빌드 후 `release/win-unpacked/` 실행 폴더를 생성합니다.
 - `desktop:installer`: 웹 빌드 후 `release/VOICESUBSEP-<version>-Setup-x64.exe`를 생성합니다.
-- 두 명령은 `build/backend/voicesubsep-server/voicesubsep-server.exe`가 없으면 실패합니다. 백엔드를 묵시적으로 재빌드하거나 모델을 다운로드하지 않습니다.
+- `desktop:installer:split`: 공식 NSIS-web 형식으로 `VOICESUBSEP-<version>-Offline-Setup-x64.exe`와 `voicesubsep-<version>-x64.nsis.7z`를 생성합니다. **두 파일을 같은 폴더에 두고 EXE를 실행**합니다. Nemotron·CUDA를 포함한 현재 번들은 이 형식을 사용합니다. 같은 폴더의 데이터 파일은 SHA512 확인 후 사용하며, 기본 설치본에 데이터 파일이 없으면 외부 서버에서 대신 받지 못합니다.
+- 모든 명령은 `build/backend/voicesubsep-server/voicesubsep-server.exe`가 없으면 실패합니다. 백엔드를 묵시적으로 재빌드하거나 모델을 다운로드하지 않습니다.
 - Electron·NSIS·코드 서명 도구가 로컬 캐시에 없으면 패키징 도구가 추가 파일을 다운로드할 수 있습니다. 오프라인 빌드에는 해당 버전의 로컬 배포 파일과 도구 경로를 먼저 준비해야 합니다.
 - 빌드 스크립트는 항상 `--publish never`를 사용합니다. GitHub Release 또는 서버 업로드는 수행하지 않습니다.
-- 백엔드 빌드는 NVIDIA 패키지와 FFmpeg의 원본 고지 파일을 포함하고 SHA256로 보존 여부를 확인합니다. [포함 고지 범위](BUNDLED-NOTICES.md)를 참고하세요.
+- 백엔드 빌드는 PyTorch·Transformers·음성 처리 의존성과 FFmpeg의 원본 고지 파일을 포함하고 SHA256로 보존 여부를 확인합니다. PyTorch가 완전한 CUDA DLL 묶음을 제공하면 같은 DLL을 다시 제공하는 NVIDIA 패키지는 중복해서 넣지 않습니다. [포함 고지 범위](BUNDLED-NOTICES.md)를 참고하세요.
+- 백엔드 빌드가 끝나면 `scripts/bundled-runtime-check.py`를 자동 실행합니다. 외부 Python·CUDA 경로 없이 번들만으로 Whisper·Nemotron·FFmpeg·FFprobe를 불러오고 API 버전과 정상 종료까지 확인해야 빌드가 성공합니다. 이 검사는 가중치를 받거나 모델 추론을 실행하지 않으며 GPU가 없어도 실행할 수 있습니다. 실제 GPU 분석 검증은 [별도 기록](NEMOTRON-SMOKE.md)을 따릅니다.
+- Python 3.12.0에는 동결 모듈의 `code.replace()` 버그가 있어 빌드를 거부합니다. 현재 setup의 새 개발 환경은 수정된 Python 3.12.13을 사용하며, 해당 런타임도 설치형에 함께 묶습니다. 시스템 Python을 변경할 필요는 없습니다.
 - `release/`는 생성물이며 Git에 넣지 않습니다. 앱 코드는 ASAR로 묶고 웹 파일·백엔드 번들은 `extraResources`로 포함합니다. `.venv`, 원본 미디어, 개발 데이터 및 환경 설정 파일은 패키지 대상이 아닙니다.
 
-로컬 배포를 지정하는 `electronDist`와 `ELECTRON_BUILDER_7ZIP_PATH`, `ELECTRON_BUILDER_NSIS_DIR`, `ELECTRON_BUILDER_NSIS_RESOURCES_DIR` 경로를 이용한 오프라인 NSIS 빌드를 검증했습니다. 해당 빌드는 원본 체크섬과 대조한 Electron·7zip을 사용하고 다운로드 mirror/proxy를 외부에 연결할 수 없는 loopback으로 제한했습니다. `ELECTRON_DOWNLOAD_CACHE_MODE=1`은 캐시가 없을 때 다운로드할 수 있으므로 오프라인 차단 옵션으로 사용하지 않습니다.
+v0.1.1 로컬 패키징은 `electronDist`와 `ELECTRON_BUILDER_7ZIP_PATH`, `ELECTRON_BUILDER_NSIS_DIR`, `ELECTRON_BUILDER_NSIS_RESOURCES_DIR` 경로를 이용했습니다. 원본 체크섬과 대조한 Electron·7zip을 사용하고 다운로드 mirror/proxy를 외부에 연결할 수 없는 loopback으로 제한했습니다. `ELECTRON_DOWNLOAD_CACHE_MODE=1`은 캐시가 없을 때 다운로드할 수 있으므로 오프라인 차단 옵션으로 사용하지 않습니다. 단일 NSIS는 2.39 GB 압축 데이터 내장 단계에서 실패했고, 같은 압축 데이터를 재사용한 공식 NSIS-web 설치 EXE와 별도 payload 생성은 성공했습니다. 실제 산출물과 해시는 [v0.1.1 설치 파일 기록](NEMOTRON-SMOKE.md#v011-설치-파일)에 있습니다.
 
 ## 사용자가 선택하는 업데이트
 
@@ -56,7 +61,7 @@ npm run desktop:installer
 
 ```powershell
 $env:VOICESUBSEP_UPDATE_URL = 'https://updates.example.com/voicesubsep/windows/'
-npm run desktop:installer
+npm run desktop:installer:split
 Remove-Item Env:VOICESUBSEP_UPDATE_URL
 ```
 
@@ -66,7 +71,7 @@ Remove-Item Env:VOICESUBSEP_UPDATE_URL
 
 1. `package.json`의 버전을 올리고 동일한 앱 ID·feed 주소로 빌드합니다.
 2. 코드 서명 인증서를 설정하고 설치본 및 업데이트 파일의 서명을 검증합니다.
-3. 빌드 결과의 설치 EXE, `.blockmap`, `latest.yml`을 같은 feed 경로에 게시합니다. 업로드 완료 후 `latest.yml`을 마지막에 교체합니다.
+3. 빌드 결과의 설치 EXE, `.blockmap`, 분리 설치기의 `.nsis.7z` 데이터 파일, `latest.yml`을 같은 feed 경로에 게시합니다. `latest.yml`의 `packages` 메타데이터와 파일 이름·크기·해시를 유지하고, 업로드 완료 후 `latest.yml`을 마지막에 교체합니다. NSIS의 표준 `--package-file` 경로는 updater가 내려받은 데이터 파일에도 사용할 수 있습니다.
 4. 이전 버전 설치 상태에서 확인·다운로드·명시적 재시작·새 버전 확인·프로젝트와 캐시 보존을 실제 검증합니다.
 
 현재 코드에서 Windows 업데이트 서명 검증을 끄지 않았습니다. **서명 인증서와 실제 원격 feed를 연결한 업데이트 전체 과정은 별도 검증 대상**입니다. 서명 없는 로컬 설치본은 Windows 신뢰도 경고가 발생할 수 있습니다. 로컬 설치 성공을 원격 업데이트 성공으로 간주하지 않습니다.
@@ -100,6 +105,12 @@ interface DesktopBridge {
 구독 함수는 해제 함수를 반환합니다. Renderer에 파일시스템·프로세스 실행·임의 IPC 기능을 노출하지 않습니다. main IPC는 메인 창의 최상위 프레임과 기대한 origin을 확인합니다. `contextIsolation`, `sandbox`, `webSecurity`는 켜고 `nodeIntegration`은 끕니다. 외부 탐색은 앱 안에서 차단하고 HTTP(S) 링크만 시스템 브라우저로 엽니다. 장치 권한은 현재 기능에 필요하지 않아 거부하며 라이브 캡처를 구현할 때 별도 검토합니다.
 
 ## 검증과 한계
+
+2026-09-24 Python 3.12.13·PyInstaller 6.22.3으로 만든 **API 0.1.1 백엔드 번들**은 준비 검사와 실제 Nemotron + large-v3-turbo CUDA 분석을 모두 통과했습니다. 외부 Python·CUDA 경로를 제외한 시스템 전용 `PATH`, 독립 임시 데이터 폴더, 오프라인 모델 캐시 조건입니다. 준비 검사 40.875초는 모델 추론 없이 런타임·API·정상 종료를 확인했고, 별도의 GPU 스모크 39.484초는 같은 39.466625초 두 합성 음성을 실제 분석한 뒤 종료 코드 0과 포트 종료까지 확인했습니다.
+
+결과는 화자 2명, 자막 24개, 배정 12개(인물별 6개), 미지정 12개, 겹침 검수 4개입니다. 자막·단어 시간·화자·길이는 소스 turbo 출력과 같고 모드 안내 경고 한 줄만 다릅니다. 실행 파일은 57,573,943바이트, SHA256 `04640c3d09c7e667f99896c45d7815d6deeeaec622539eff51bb32ca0f6110dd`로 직접 대조했습니다. 백엔드 폴더는 4,258개 파일·5,009,309,197바이트이며, [portable 번들 증거](evidence/nemotron-bundle-validation.json)에 기록했습니다. [모델 검증의 범위와 한계](NEMOTRON-SMOKE.md)는 별도로 확인합니다.
+
+회귀검사 backend 198개 + web 40개 + Node 32개, 총 270개가 통과했습니다. 이는 위 실제 모델 스모크와 별도의 검사입니다. **v0.1.1 분리 설치 파일 생성은 완료했으며 실제 설치·원격 업데이트는 실행하지 않았습니다.** 로컬 산출물은 `release/nsis-web/VOICESUBSEP-0.1.1-Offline-Setup-x64.exe`와 같은 폴더의 `voicesubsep-0.1.1-x64.nsis.7z`입니다. 두 파일을 함께 보관합니다.
 
 ```powershell
 npm run desktop:test

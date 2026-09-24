@@ -109,7 +109,7 @@ def create_app(
         finally:
             await run_in_threadpool(jobs.stop)
 
-    application = FastAPI(title="VOICESUBSEP", version="0.1.0", lifespan=lifespan)
+    application = FastAPI(title="VOICESUBSEP", version="0.1.1", lifespan=lifespan)
     application.state.storage = storage
     application.state.jobs = jobs
     application.add_middleware(RequestSizeLimit, upload_limit=limit)
@@ -137,6 +137,12 @@ def create_app(
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
 
+    @application.get("/api/ready")
+    def ready():
+        # Process identity/liveness for the desktop launcher. Full dependency
+        # inspection may take tens of seconds on the first cold import.
+        return {"app": "voicesubsep", "status": "ok"}
+
     @application.get("/api/health")
     def health():
         from .gpu_runtime import probe_gpu
@@ -144,15 +150,19 @@ def create_app(
         gpu = probe_gpu()
         detail = None
         try:
-            from .inference import capabilities
+            from .inference import capability_report
 
-            engines = capabilities()
+            report = capability_report()
+            engines = report["engines"]
+            issues = report["engineIssues"]
         except (ImportError, RuntimeError) as exc:
             engines = {"whisper": False, "nemotron": False}
             detail = str(exc)
+            issues = {"whisper": detail, "nemotron": detail}
         result = {"app": "voicesubsep", "status": "ok", "ffmpeg": shutil.which("ffmpeg") is not None,
                   "ffprobe": shutil.which("ffprobe") is not None,
                   "engines": {"whisper": bool(engines.get("whisper")), "nemotron": bool(engines.get("nemotron"))},
+                  "engineIssues": issues,
                   "gpu": gpu,
                   "defaults": {"device": "cuda" if gpu["available"] else "cpu", "whisperModel": "large-v3",
                                "computeType": "float16" if gpu["available"] else "int8"}}

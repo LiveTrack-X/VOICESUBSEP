@@ -1,5 +1,7 @@
 # GPU 및 데스크톱 검증 기록
 
+이 문서는 **v0.1.0의 Whisper 단독 GPU·데스크톱 검증**을 보존한 기록이다. v0.1.1의 Nemotron 포함 분석과 설치형 엔진 검증은 [Nemotron 검증 기록](NEMOTRON-SMOKE.md)을 따른다.
+
 검증일: 2026-09-24. 기존 [CPU tiny 기록](MODEL-SMOKE.md) 이후의 변경이다.
 
 ## 이번 구현

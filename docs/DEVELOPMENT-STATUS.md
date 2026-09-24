@@ -1,5 +1,7 @@
 # v0.1 development handoff — 2026-09-24
 
+> Historical initial handoff: the runtime availability and test counts below describe the early implementation. Current Nemotron source/UI execution evidence and limitations are in [NEMOTRON-SMOKE.md](NEMOTRON-SMOKE.md); retain this document as the earlier record.
+
 This is a working local editor and an initial analysis integration, not a validated Korean streamer transcription product. The repository is private. The new editing, meeting, and live-capture ideas are planned extensions, not completed features.
 
 ## Implemented

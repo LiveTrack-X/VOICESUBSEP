@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "scope": "Installer creation and static archive integrity; installation and signed remote updates were not executed.",
+  "createdAt": "2026-09-24T07:46:34.088Z",
+  "version": "0.1.1",
+  "format": "nsis-web-local-payload",
+  "compressionLevel": 9,
+  "unsigned": true,
+  "updateFeed": null,
+  "networkMirrors": "loopback-only",
+  "buildExitCode": 0,
+  "artifacts": [
+    {
+      "file": "VOICESUBSEP-0.1.1-Offline-Setup-x64.exe",
+      "bytes": 694537,
+      "sha256": "42f57954540d3a9004a14824d90946aece5657df63ad16e4fd4dfef627199be0"
+    },
+    {
+      "file": "voicesubsep-0.1.1-x64.nsis.7z",
+      "bytes": 2387994200,
+      "sha256": "f804740967a0eb5a237026b00ce6be002ca01f87182278ce0c1e87e77737c0c2"
+    }
+  ],
+  "payloadArchiveTest": {
+    "exitCode": 0,
+    "result": "Everything is Ok",
+    "files": 4337,
+    "uncompressedBytes": 5430131928,
+    "warning": "There are data after the end of archive",
+    "warningExplanation": "Official embedded blockmap; trailer length and deflate JSON verified separately."
+  },
+  "archiveIdentity": {
+    "passed": true,
+    "archiveBackendHash": "04640c3d09c7e667f99896c45d7815d6deeeaec622539eff51bb32ca0f6110dd",
+    "archiveBackendFiles": 4258,
+    "archiveBackendBytes": 5009309197,
+    "archiveAsarMatches": true,
+    "archiveAsarHash": "c469b1c3b5a2fafb684071b7c7ccde173482cb5a5634c268eb15a035bce88474",
+    "archiveWebMatches": true,
+    "archiveWebFile": "assets/index-DSkqpRNJ.js",
+    "archiveWebHash": "9aaae8225989a7b7f3af5f9e431b13b517bc775672f51748c668ca8e25a56edb",
+    "embeddedBlockMap": {
+      "version": "2",
+      "compressedBytes": 2474461,
+      "tailBytes": 2474465,
+      "validDeflateJson": true
+    },
+    "installerPEHeader": true,
+    "installerExecuted": false
+  },
+  "desktopIdentity": {
+    "asarVersion": "0.1.1",
+    "desktopUpdateUrl": null,
+    "webVersion": "0.1.1",
+    "installerProductVersion": "0.1.1",
+    "installerFileVersion": "0.1.1",
+    "signatureStatus": "NotSigned"
+  },
+  "regressionTests": {
+    "backend": 198,
+    "web": 40,
+    "node": 32,
+    "total": 270
+  },
+  "limitations": [
+    "Installer was not executed or installed.",
+    "Model weights are separate from the installer and were already cached for GPU validation.",
+    "No signed remote feed or update end-to-end was tested.",
+    "Synthetic model tests do not establish real streamer audio quality or long-recording performance."
+  ]
+}

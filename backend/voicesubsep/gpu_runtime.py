@@ -39,7 +39,13 @@ def _windows_directories() -> list[Path]:
     sites = [Path(sys.prefix) / "Lib" / "site-packages", root / ".venv" / "Lib" / "site-packages"]
     if getattr(sys, "_MEIPASS", None):
         sites.append(Path(sys._MEIPASS))
-    candidates = [site / "nvidia" / library / "bin" for site in sites
+    # Nemotron's CUDA PyTorch distribution already includes the CUDA 12/cuDNN
+    # libraries used by CTranslate2. Prefer that same set to avoid two runtimes
+    # with identical DLL names and several gigabytes of duplicate bundle data.
+    shared = [site / "torch" / "lib" for site in sites]
+    candidates = [directory for directory in shared
+                  if all((directory / name).is_file() for name in _WINDOWS_LIBRARIES)]
+    candidates += [site / "nvidia" / library / "bin" for site in sites
                   for library in ("cublas", "cudnn", "cuda_runtime", "cuda_nvrtc")]
     candidates.append(root / "runtime" / "cuda" / "bin")
     if getattr(sys, "frozen", False):

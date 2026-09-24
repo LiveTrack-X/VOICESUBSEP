@@ -85,7 +85,7 @@ async function waitForBackend(origin) {
   while (Date.now() < deadline) {
     if (backendExit) throw new Error(`백엔드가 시작 중 종료되었습니다: ${backendExit}`);
     try {
-      const response = await fetch(`${origin}/api/health`, { signal: AbortSignal.timeout(1500) });
+      const response = await fetch(`${origin}/api/ready`, { signal: AbortSignal.timeout(1500) });
       const body = response.ok ? await response.json() : null;
       if (body?.status === 'ok' && body?.app === 'voicesubsep') return;
     } catch { /* The bundled interpreter may still be initializing. */ }
@@ -182,7 +182,7 @@ async function start() {
         if (hasExited(backend)) await startBackend();
         else {
           stopping = null;
-          const response = await fetch(`${backendOrigin}/api/health`, { signal: AbortSignal.timeout(3000) });
+          const response = await fetch(`${backendOrigin}/api/ready`, { signal: AbortSignal.timeout(3000) });
           const health = response.ok ? await response.json() : null;
           if (health?.status !== 'ok' || health?.app !== 'voicesubsep') throw new Error('분석 서버에 다시 연결하지 못했습니다. 프로젝트 파일을 저장하고 앱을 다시 시작하세요.');
           expectedExits.delete(backend);

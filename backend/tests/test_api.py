@@ -128,19 +128,23 @@ def test_actual_invalid_media_is_rejected(tmp_path):
 def test_health_reports_runtime_readiness_and_defaults_without_loading_models(tmp_path, monkeypatch, available):
     calls = []
 
-    def capabilities():
+    def capability_report():
         calls.append(True)
-        return {"whisper": True, "nemotron": False}
+        return {"engines": {"whisper": True, "nemotron": False},
+                "engineIssues": {"whisper": None, "nemotron": "PyTorch missing"}}
 
-    monkeypatch.setitem(sys.modules, "voicesubsep.inference", SimpleNamespace(capabilities=capabilities))
+    monkeypatch.setitem(sys.modules, "voicesubsep.inference", SimpleNamespace(capability_report=capability_report))
     gpu = {"available": available, "name": "NVIDIA test GPU", "deviceCount": 1,
            "computeTypes": ["float16"], "reason": None if available else "cuDNN missing"}
     monkeypatch.setitem(sys.modules, "voicesubsep.gpu_runtime", SimpleNamespace(probe_gpu=lambda: gpu))
     with client_for(tmp_path) as client:
         assert calls == []
+        assert client.get("/api/ready").json() == {"app": "voicesubsep", "status": "ok"}
+        assert calls == []  # Desktop liveness never waits for model imports.
         response = client.get("/api/health", headers={"Origin": "http://localhost:5173"})
         assert response.status_code == 200
         assert response.json()["engines"] == {"whisper": True, "nemotron": False}
+        assert response.json()["engineIssues"]["nemotron"] == "PyTorch missing"
         assert response.json()["status"] == "ok"
         assert response.json()["app"] == "voicesubsep"
         assert response.json()["gpu"] == gpu

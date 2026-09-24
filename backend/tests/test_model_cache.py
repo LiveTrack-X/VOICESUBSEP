@@ -1,5 +1,8 @@
 """Exercise Windows download routing with tiny synthetic files; no downloads."""
 
+import hashlib
+import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -198,3 +201,193 @@ def test_inference_passes_resolved_directory_to_whisper(monkeypatch, tmp_path):
     infer._transcribe(tmp_path / "unused.wav", model_name="large-v3", language="ko", device="cpu", duration=1,
                       progress=lambda *_: None, cancelled=lambda: False)
     assert seen == [(str(path), {"device": "cpu", "compute_type": "int8"})]
+
+
+NEMOTRON_FIXTURE = b"Synthetic model weights for cache routing tests only."
+
+
+def nemotron_files() -> dict[str, bytes]:
+    return {
+        "config.json": json.dumps({
+            "model_type": "nemotron3_diarization",
+            "architectures": ["Nemotron3DiarizationForAudioFrameClassification"],
+            "audio_config": {"num_mel_bins": 128}, "head_config": {"num_speakers": 8},
+        }).encode(),
+        "processor_config.json": json.dumps({
+            "processor_class": "Nemotron3DiarizationProcessor", "subsampling_factor": 8,
+            "feature_extractor": {
+                "feature_extractor_type": "NemotronAsrStreamingFeatureExtractor",
+                "feature_size": 128, "sampling_rate": 16000, "hop_length": 160,
+                "n_fft": 512, "win_length": 400,
+            },
+        }).encode(),
+        "model.safetensors": NEMOTRON_FIXTURE,
+    }
+
+
+def complete_nemotron(directory: Path) -> Path:
+    directory.mkdir(parents=True, exist_ok=True)
+    for name, content in nemotron_files().items():
+        (directory / name).write_bytes(content)
+    return directory
+
+
+@pytest.fixture
+def nemotron_cache(monkeypatch, tmp_path):
+    monkeypatch.setattr(cache, "_nemotron_model_root", lambda: tmp_path / "nemotron")
+    monkeypatch.setattr(cache, "NEMOTRON_WEIGHTS_SIZE", len(NEMOTRON_FIXTURE))
+    monkeypatch.setattr(cache, "NEMOTRON_WEIGHTS_SHA256", hashlib.sha256(NEMOTRON_FIXTURE).hexdigest())
+    monkeypatch.delenv("HF_HUB_OFFLINE", raising=False)
+    monkeypatch.delenv("TRANSFORMERS_OFFLINE", raising=False)
+    cache._verified_nemotron_weights.clear()
+    yield tmp_path / "nemotron" / cache.NEMOTRON_REVISION
+    cache._verified_nemotron_weights.clear()
+
+
+def test_nemotron_pins_official_model_identity():
+    assert cache.NEMOTRON_MODEL_ID == "nvidia/Nemotron-3-Diarization"
+    assert cache.NEMOTRON_REVISION == "f667ed73aee57d40cc39428eb768b4fd87a0a29e"
+    assert cache.NEMOTRON_WEIGHTS_SIZE == 396954592
+    assert cache.NEMOTRON_WEIGHTS_SHA256 == "c074d86335b3b794f8fa5edc25594558f128bdb3914d27806a3a5a2e44963cb6"
+
+
+def test_nemotron_cached_weights_are_hashed_once_per_unchanged_file(monkeypatch, nemotron_cache):
+    complete_nemotron(nemotron_cache)
+    monkeypatch.setattr(cache, "_download_nemotron_files", lambda *_, **__: pytest.fail("No Hub access"))
+    original = cache.hashlib.sha256
+    calls = []
+
+    def digest(*args, **kwargs):
+        calls.append(True)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(cache.hashlib, "sha256", digest)
+    assert cache.resolve_nemotron_model() == str(nemotron_cache.resolve())
+    assert cache.resolve_nemotron_model() == str(nemotron_cache.resolve())
+    assert calls == [True]
+    assert not (nemotron_cache / "preprocessor_config.json").exists(), "The real processor embeds its feature extractor"
+
+
+@pytest.mark.parametrize("offline_env,value", [("HF_HUB_OFFLINE", "1"), ("TRANSFORMERS_OFFLINE", "true"),
+                                              ("HF_HUB_OFFLINE", "YES"), ("TRANSFORMERS_OFFLINE", "ON")])
+def test_nemotron_complete_cache_works_offline(monkeypatch, nemotron_cache, offline_env, value):
+    complete_nemotron(nemotron_cache)
+    monkeypatch.setenv(offline_env, value)
+    monkeypatch.setattr(cache, "_download_nemotron_files", lambda *_, **__: pytest.fail("No Hub access"))
+    assert cache.resolve_nemotron_model() == str(nemotron_cache.resolve())
+
+
+@pytest.mark.parametrize("offline_env", ["HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"])
+def test_nemotron_missing_cache_offline_does_not_create_or_download(monkeypatch, nemotron_cache, offline_env):
+    monkeypatch.setenv(offline_env, "1")
+    monkeypatch.setattr(cache, "_download_nemotron_files", lambda *_, **__: pytest.fail("Offline means no Hub access"))
+    with pytest.raises(RuntimeError, match="오프라인.*완성된 Nemotron"):
+        cache.resolve_nemotron_model()
+    assert not nemotron_cache.exists()
+
+
+def test_nemotron_offline_detects_rewritten_same_size_weights_after_verified_reuse(monkeypatch, nemotron_cache):
+    complete_nemotron(nemotron_cache)
+    assert cache.resolve_nemotron_model() == str(nemotron_cache.resolve())
+    weights = nemotron_cache / "model.safetensors"
+    before = weights.stat()
+    weights.write_bytes(b"x" * len(NEMOTRON_FIXTURE))
+    os.utime(weights, ns=(before.st_atime_ns, before.st_mtime_ns + 2_000_000_000))
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    monkeypatch.setattr(cache, "_download_nemotron_files", lambda *_, **__: pytest.fail("No Hub access"))
+    with pytest.raises(RuntimeError, match="model.safetensors"):
+        cache.resolve_nemotron_model()
+
+
+def test_nemotron_download_uses_pinned_local_dir_single_worker_and_required_files(monkeypatch, nemotron_cache):
+    calls = []
+
+    def snapshot(repo_id, **kwargs):
+        calls.append((repo_id, kwargs))
+        complete_nemotron(Path(kwargs["local_dir"]))
+        return kwargs["local_dir"]
+
+    monkeypatch.setitem(cache.sys.modules, "huggingface_hub", SimpleNamespace(snapshot_download=snapshot))
+    assert cache.resolve_nemotron_model() == str(nemotron_cache.resolve())
+    assert calls == [(cache.NEMOTRON_MODEL_ID, {
+        "revision": cache.NEMOTRON_REVISION, "local_dir": str(nemotron_cache),
+        "allow_patterns": list(cache.NEMOTRON_MODEL_FILES), "max_workers": 1, "force_download": False,
+    })]
+    assert all(not path.is_symlink() for path in nemotron_cache.iterdir())
+
+
+@pytest.mark.parametrize("filename,damaged", [
+    ("model.safetensors", b"partial"),
+    ("model.safetensors", b"x" * len(NEMOTRON_FIXTURE)),
+    ("config.json", b"{"), ("config.json", b"[]"), ("config.json", b"{}"),
+    ("processor_config.json", b""), ("processor_config.json", b"\xff"),
+    ("processor_config.json", b'{"processor_class":"Nemotron3DiarizationProcessor"}'),
+])
+def test_nemotron_repairs_only_damaged_final_file(monkeypatch, nemotron_cache, filename, damaged):
+    complete_nemotron(nemotron_cache)
+    (nemotron_cache / filename).write_bytes(damaged)
+    calls = []
+
+    def download(directory, filenames, *, force_download):
+        calls.append((filenames, force_download))
+        for name in filenames:
+            (directory / name).write_bytes(nemotron_files()[name])
+
+    monkeypatch.setattr(cache, "_download_nemotron_files", download)
+    assert cache.resolve_nemotron_model() == str(nemotron_cache.resolve())
+    assert calls == [([filename], True)], "Valid weights must not be downloaded again for a broken small config"
+
+
+@pytest.mark.parametrize("filename,field,value", [("config.json", "num_mel_bins", 80),
+                                                 ("processor_config.json", "sampling_rate", 8000)])
+def test_nemotron_rejects_valid_json_with_wrong_model_geometry(monkeypatch, nemotron_cache, filename, field, value):
+    complete_nemotron(nemotron_cache)
+    data = json.loads((nemotron_cache / filename).read_bytes())
+    data["audio_config" if filename == "config.json" else "feature_extractor"][field] = value
+    (nemotron_cache / filename).write_text(json.dumps(data), encoding="utf-8")
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    with pytest.raises(RuntimeError, match=filename):
+        cache.resolve_nemotron_model()
+
+
+def test_nemotron_failed_download_keeps_upstream_partial_for_resume(monkeypatch, nemotron_cache):
+    complete_nemotron(nemotron_cache)
+    (nemotron_cache / "model.safetensors").unlink()
+    partial = nemotron_cache / ".cache" / "huggingface" / "download" / "weights.incomplete"
+    partial.parent.mkdir(parents=True)
+    partial.write_bytes(b"partial transfer")
+
+    def download(directory, filenames, *, force_download):
+        assert directory == nemotron_cache
+        assert filenames == ["model.safetensors"] and force_download is False
+        assert partial.read_bytes() == b"partial transfer"
+        raise OSError("connection interrupted")
+
+    monkeypatch.setattr(cache, "_download_nemotron_files", download)
+    with pytest.raises(RuntimeError, match="부분 다운로드는 보존"):
+        cache.resolve_nemotron_model()
+    assert partial.read_bytes() == b"partial transfer"
+
+
+def test_nemotron_download_success_without_verified_weights_is_rejected(monkeypatch, nemotron_cache):
+    def download(directory, *_args, **_kwargs):
+        complete_nemotron(directory)
+        (directory / "model.safetensors").write_bytes(b"x" * len(NEMOTRON_FIXTURE))
+
+    monkeypatch.setattr(cache, "_download_nemotron_files", download)
+    with pytest.raises(RuntimeError, match="무결성.*model.safetensors"):
+        cache.resolve_nemotron_model()
+
+
+@pytest.mark.parametrize("platform", ["win32", "linux", "darwin"])
+def test_nemotron_cache_root_matches_platform(monkeypatch, tmp_path, platform):
+    monkeypatch.setattr(cache.sys, "platform", platform)
+    monkeypatch.setattr(cache.Path, "home", lambda: tmp_path / "home")
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "local"))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "xdg"))
+    expected = {
+        "win32": tmp_path / "local" / "VOICESUBSEP",
+        "linux": tmp_path / "xdg" / "voicesubsep",
+        "darwin": tmp_path / "home" / "Library" / "Caches" / "voicesubsep",
+    }[platform]
+    assert cache._nemotron_model_root() == expected / "models" / "nemotron"

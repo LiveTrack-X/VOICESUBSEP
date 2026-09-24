@@ -12,10 +12,25 @@ export type Health = {
   ffmpeg: boolean;
   ffprobe: boolean;
   engines: { whisper: boolean; nemotron: boolean };
+  engineIssues?: { nemotron: string | null };
   gpu?: { available: boolean; name: string | null; deviceCount: number; computeTypes: string[]; reason: string | null };
   defaults?: { device: 'cuda' | 'cpu'; whisperModel: string; computeType: string };
   detail?: string;
 };
+export function analysisBlockReason(
+  health: Health | null,
+  diarization = true,
+): string | null {
+  if (!health) return "분석 서버의 준비 상태를 확인하지 못했습니다.";
+  if (!health.ffmpeg || !health.ffprobe)
+    return "미디어 처리에 필요한 FFmpeg와 FFprobe가 준비되지 않았습니다.";
+  if (!health.engines.whisper)
+    return "음성 인식에 필요한 Whisper 실행환경이 준비되지 않았습니다.";
+  if (diarization && !health.engines.nemotron)
+    return health.engineIssues?.nemotron?.trim() ||
+      "현재 앱 또는 서버에 Nemotron 화자 구분 실행환경이 준비되지 않았습니다. 필수 구성요소의 설치 상태를 확인해야 합니다.";
+  return null;
+}
 export type AnalysisResult = {
   captions: Caption[];
   speakers: Speaker[];

@@ -2,13 +2,13 @@
 
 영상 속 대화를 인물별 자막으로 정리하고, 원본을 보면서 자막과 편집 노트를 함께 수정하는 로컬 편집기입니다. 한국어 예능·게임·토론의 편집 작업을 목표로 개발 중인 **비공개 저장소의 초기 v0.1**입니다.
 
-React 편집 화면과 Python FastAPI 분석 서버로 구성됩니다. 전사는 faster-whisper, 선택적 화자 구분은 NVIDIA Nemotron-3-Diarization을 사용합니다. 분석 서버는 내 컴퓨터의 `127.0.0.1`에서 실행하며 영상·음성을 외부 분석 API로 보내지 않습니다. 모델 파일이 없으면 첫 분석 때 Hugging Face에서 해당 모델을 내려받을 수 있습니다.
+React 편집 화면과 Python FastAPI 분석 서버로 구성됩니다. NVIDIA Nemotron-3-Diarization으로 화자 전환을 찾고 faster-whisper로 전사하는 **인물별 자막 생성이 기본 동작**입니다. 분석 서버는 내 컴퓨터의 `127.0.0.1`에서 실행하며 영상·음성을 외부 분석 API로 보내지 않습니다. 모델 파일이 없으면 첫 분석 때 Hugging Face에서 해당 모델을 내려받을 수 있습니다.
 
 ## 가능한 작업
 
 - 영상·음성 열기, 원본 시간으로 탐색하며 자막의 내용·시간·인물 수정
 - 예상 인원 1명·2명·3명·4명 이상 설정, 일반 대화 / 동시 발화 검수 모드 선택
-- 오디오 트랙 선택 후 로컬 전사, Nemotron 설치 시 화자 활동 분석
+- 오디오 트랙 선택 후 Nemotron 화자 활동 분석과 로컬 전사, 필요할 때 전사 전용 선택
 - NVIDIA GPU 우선 실행, Whisper large-v3 기본 선택과 large-v3-turbo 선택
 - 동시 발화·인물 미지정·예상 인원 불일치 등을 검수 대상으로 확인
 - 시간에 연결된 편집·하이라이트·자막·확인 노트 작성
@@ -23,11 +23,13 @@ React 편집 화면과 Python FastAPI 분석 서버로 구성됩니다. 전사�
 
 예상 인원은 편집·검수 설정입니다. 1·2·3명은 해당 인원과 비교하고, 4명 이상은 최소 4명으로 해석합니다. 4명 이상을 선택했을 때 검출된 5~8명은 각각 보존하며 인원 불일치로 표시하지 않습니다. 8개 화자 채널이 모두 사용되면 추가 화자가 섞였는지 확인하도록 알립니다.
 
-이 PC의 **RTX 3080 Ti 12 GB에서 large-v3와 large-v3-turbo의 CUDA FP16 전사**를 14초 영어 합성 음성으로 확인했습니다. 한국어 예능·게임·토론의 정확도와 긴 영상 처리 시간은 아직 검증하지 않았습니다. [GPU 실행 기록](docs/GPU-DESKTOP-VALIDATION.md)의 환경 점검 성공을 실제 방송 품질의 증거로 확대하지 않습니다.
+이 PC의 **RTX 3080 Ti 12 GB에서 Nemotron을 연결한 실제 GPU 분석**을 39.47초 한·영 두 화자 합성 음성으로 확인했습니다. 브라우저에서는 large-v3 분석 결과를 편집기에 적용했고, 외부 Python·CUDA 경로를 끊은 설치형 엔진에서는 large-v3-turbo 분석과 정상 종료를 확인했습니다. 여섯 차례 단독 발화의 화자 배정과 겹침 검출을 통과했으며 불확실한 자막은 미배정으로 남습니다. [Nemotron 실행 기록](docs/NEMOTRON-SMOKE.md)을 참고하세요. 한국어 예능·게임·토론의 정확도와 긴 영상 처리 시간은 아직 검증하지 않았습니다. 앞선 Whisper 단독 실행은 [v0.1.0 GPU 실행 기록](docs/GPU-DESKTOP-VALIDATION.md)에 보존합니다.
 
 자동 저장은 현재 브라우저에 남습니다. 프로젝트 JSON에는 자막과 노트가 포함되지만 원본 영상은 포함되지 않으므로, 다시 열 때 원본을 연결해야 합니다. 중요한 작업은 JSON 파일로 따로 저장하세요. 브라우저에서 재생할 수 없는 영상 코덱은 분석 가능 여부와 별개입니다.
 
 ## Windows 설치
+
+Nemotron을 포함한 **v0.1.1 설치 파일**은 설치 EXE와 `.nsis.7z` 데이터 파일을 같은 폴더에 두는 형식입니다. Python·CUDA 실행 라이브러리와 FFmpeg를 포함하며 모델 가중치는 별도 캐시를 사용합니다. [설치 파일·검증 기록](docs/NEMOTRON-SMOKE.md#v011-설치-파일)에 해시와 한계를 기록했습니다. 아래는 소스에서 개발 환경을 준비하는 절차입니다.
 
 필수 프로그램을 먼저 설치하고 터미널에서 실행되는지 확인합니다.
 
@@ -35,7 +37,7 @@ React 편집 화면과 Python FastAPI 분석 서버로 구성됩니다. 전사�
 - **uv**: Python 가상환경과 의존성 설치에 사용
 - **FFmpeg와 FFprobe**: 둘 다 `PATH`에 등록되어 있어야 함
 
-Python 3.12가 없으면 uv가 설치 과정에서 내려받을 수 있습니다. 설치 안내는 [Node.js](https://nodejs.org/), [uv](https://docs.astral.sh/uv/getting-started/installation/), [FFmpeg](https://ffmpeg.org/download.html)를 참고하세요.
+새 개발 환경은 Python 3.12.13을 사용하며, 없으면 uv가 설치 과정에서 내려받을 수 있습니다. 기존 3.12 환경은 최소 3.12.1이어야 합니다. 3.12.0에는 설치형 패키징을 깨뜨리는 `code.replace()` 버그가 있어 거부합니다. 설치 안내는 [Node.js](https://nodejs.org/), [uv](https://docs.astral.sh/uv/getting-started/installation/), [FFmpeg](https://ffmpeg.org/download.html)를 참고하세요.
 
 저장소 루트 `VOICESUBSEP`에서 PowerShell로 실행합니다.
 
@@ -46,9 +48,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Check
 # .venv(Python 3.12), Python 패키지, npm 패키지 설치
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
 
-# NVIDIA GPU 사용 시: 공식 NVIDIA Windows 런타임 패키지를 .venv에 추가
-uv pip install --python .venv\Scripts\python.exe -e './backend[whisper,gpu-windows]'
-
 # 편집 화면과 분석 서버를 함께 실행
 node scripts/dev.mjs
 # 같은 실행: npm start
@@ -56,7 +55,7 @@ node scripts/dev.mjs
 
 [http://127.0.0.1:5173](http://127.0.0.1:5173)을 엽니다. 종료는 실행한 터미널에서 `Ctrl+C`입니다. 한쪽 서버가 종료되면 실행기도 다른 서버를 종료합니다. 기존 `.venv`가 Python 3.12 환경이 아니면 설치 스크립트가 중단되며, 기존 환경을 자동 삭제하지 않습니다.
 
-기본 설치는 Whisper 실행 패키지를 포함하며, 위의 `gpu-windows` 추가 설치는 Windows CUDA 런타임을 준비합니다. **모델 가중치와 Nemotron 실행 환경은 별도입니다.** 앱은 `.venv`의 NVIDIA DLL을 서버 프로세스에 등록하며 시스템 전체 `PATH`를 변경하지 않습니다. GPU/CUDA 및 Nemotron 조건은 [모델 실행 환경](docs/MODEL-SETUP.md)을 참고하세요.
+기본 설치는 **Whisper·Nemotron 실행 패키지와 CUDA 12.8 PyTorch**를 함께 준비합니다. 모델 가중치는 별도로 받습니다. 앱은 PyTorch의 완전한 CUDA DLL 묶음을 서버 프로세스에 등록하고, 사용할 수 없으면 설치된 NVIDIA 런타임 패키지를 확인합니다. 시스템 전체 `PATH`를 변경하지 않습니다. GPU/CUDA 및 고정된 Nemotron 버전 조건은 [모델 실행 환경](docs/MODEL-SETUP.md)을 참고하세요.
 
 분석 화면은 **large-v3를 기본 모델**로 선택하고, GPU 상태가 준비됐으면 CUDA를 우선 선택합니다. GPU를 사용할 수 없으면 사유와 함께 CPU 선택을 명시합니다. 실행 도중 GPU 오류가 발생해도 CPU로 조용히 바꾸지 않습니다. `engines`는 클래스 import 여부, `/api/health`의 `gpu`는 장치·런타임 의존성 확인 결과이며 모델 캐시·추론 성공·정확도를 보장하지 않습니다.
 
@@ -95,7 +94,7 @@ node --test scripts/dev.test.mjs
 node scripts/dev.mjs --check
 ```
 
-테스트는 실제 한국어 파일의 모델 추론이나 가중치 다운로드를 수행하지 않습니다. FFmpeg fixture 테스트에는 FFmpeg와 FFprobe가 필요합니다. Unix에서 직접 준비하는 경우 `.venv/bin/python`으로 가상환경을 만들고 `uv pip install --python .venv/bin/python -e './backend[whisper,test]'`, `npm ci`를 실행하면 같은 개발 실행기를 사용할 수 있습니다. 기본 설치 경로와 테스트 범위는 Windows를 기준으로 합니다.
+위 자동 테스트는 실제 모델 추론이나 가중치 다운로드를 수행하지 않습니다. 실제 GPU 검증은 [별도 스모크](docs/NEMOTRON-SMOKE.md)로 실행합니다. FFmpeg fixture 테스트에는 FFmpeg와 FFprobe가 필요합니다. Unix에서 직접 준비하는 경우 플랫폼에 맞는 PyTorch를 준비한 뒤 `.venv/bin/python`으로 가상환경을 만들고 `uv pip install --python .venv/bin/python -e './backend[whisper,diarization,test]'`, `npm ci`를 실행하면 같은 개발 실행기를 사용할 수 있습니다. 기본 설치 경로와 테스트 범위는 Windows를 기준으로 합니다.
 
 분석 작업은 한 번에 하나씩 처리합니다. 같은 데이터 폴더로 백엔드 여러 개를 실행하거나 Uvicorn `--workers`·`--reload`를 사용하지 마세요. 취소는 모델 처리 경계에서 반영되므로 진행 중인 다운로드나 native 연산이 끝날 때까지 시간이 걸릴 수 있습니다. 중단된 작업은 서버 재시작 때 자동 재실행하지 않습니다.
 
@@ -117,6 +116,7 @@ node scripts/dev.mjs --check
 - [모델 실행 환경과 검증 범위](docs/MODEL-SETUP.md)
 - [GPU 모델과 Faster Whisper XXL 비교](docs/GPU-MODELS.md)
 - [실제 큰 모델 GPU 실행·데스크톱 검증 기록](docs/GPU-DESKTOP-VALIDATION.md)
+- [Nemotron 두 화자 GPU 분석 검증](docs/NEMOTRON-SMOKE.md)
 - [선택적 Windows 데스크톱 빌드](docs/DESKTOP.md)
 - [v0.1 구현 계약·API](docs/IMPLEMENTATION-CONTRACT.md)
 - [디자인 시스템](docs/design/DESIGN-SYSTEM.md)

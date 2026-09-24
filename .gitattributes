@@ -1,2 +1,4 @@
 * text=auto eol=lf
 *.png binary
+# Preserve checksum-referenced evidence bytes across Windows and Linux clones.
+docs/evidence/*.json -text whitespace=trailing-space,space-before-tab,cr-at-eol

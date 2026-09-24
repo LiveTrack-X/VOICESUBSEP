@@ -19,7 +19,8 @@ import tempfile
 from typing import Any, Callable
 import wave
 
-from .model_cache import resolve_whisper_model
+from .model_cache import resolve_nemotron_model, resolve_whisper_model
+from .asr_windows import speaker_change_clips
 
 
 class AnalysisCancelled(Exception):
@@ -49,27 +50,38 @@ def _nemotron_classes():
         transformers = importlib.import_module("transformers")
         model = getattr(transformers, "Nemotron3DiarizationForAudioFrameClassification")
         processor = getattr(transformers, "Nemotron3DiarizationProcessor")
+        # The processor delegates to this extractor. Model/processor imports
+        # alone can succeed while its required audio dependencies are absent.
+        extractor = getattr(transformers, "NemotronAsrStreamingFeatureExtractor")
+        importlib.import_module("librosa")
+        extractor()
         if not callable(getattr(processor, "extract_speaker_dict", None)):
             raise ImportError("Native Nemotron postprocessor is unavailable")
         return torch, model, processor
     except Exception as exc:
         raise RuntimeError(
-            "Nemotron 화자 구분 모듈을 불러올 수 없습니다. PyTorch와 Nemotron3Diarization을 "
-            "지원하는 Transformers 버전이 필요합니다. docs/MODEL-SETUP.md를 확인하거나 "
-            "화자 구분을 끄고 전사만 실행하세요."
+            "Nemotron 화자 구분 실행환경을 준비해야 합니다. 지원 PyTorch·Transformers·librosa가 "
+            "필요합니다. docs/MODEL-SETUP.md의 화자 구분 설치 절차를 확인하세요. "
+            f"원인: {type(exc).__name__}: {str(exc)[:300]}"
         ) from exc
 
 
 def capabilities() -> dict[str, bool]:
     """Import availability only: does not download or check cached model weights."""
+    return capability_report()["engines"]
+
+
+def capability_report() -> dict:
+    """Report actionable dependency errors without loading model weights."""
     result = {"whisper": False, "nemotron": False}
+    issues = {"whisper": None, "nemotron": None}
     for name, loader in (("whisper", _whisper_class), ("nemotron", _nemotron_classes)):
         try:
             loader()
             result[name] = True
-        except RuntimeError:
-            pass
-    return result
+        except RuntimeError as exc:
+            issues[name] = str(exc)
+    return {"engines": result, "engineIssues": issues}
 
 
 def _checkpoint(cancelled: Cancelled) -> None:
@@ -152,7 +164,8 @@ def _release_memory() -> None:
 
 
 def _transcribe(path: Path, *, model_name: str, language: str, device: str,
-                duration: float, progress: Progress, cancelled: Cancelled) -> list[dict]:
+                duration: float, progress: Progress, cancelled: Cancelled,
+                clip_timestamps: list[float] | None = None) -> list[dict]:
     _checkpoint(cancelled)
     if device == "cuda":
         from .gpu_runtime import ensure_cuda_runtime
@@ -173,8 +186,10 @@ def _transcribe(path: Path, *, model_name: str, language: str, device: str,
         progress("대사 전사", 0.17)
         segments, _ = model.transcribe(
             str(path), language=None if language == "auto" else language,
+            multilingual=language == "auto",
             word_timestamps=True, vad_filter=False, condition_on_previous_text=False,
             beam_size=5,
+            **({"clip_timestamps": clip_timestamps} if clip_timestamps else {}),
         )
         last_progress = 0.17
         for segment in segments:
@@ -230,6 +245,23 @@ def _stream_chunks(audio, processor):
     yield audio[start:], False, True, len(audio)
 
 
+def _configure_file_diarization(processor, model) -> None:
+    """Use the official offline context with bounded, cancellable forwards.
+
+    Uploads already contain future audio. The one-second live preset can merge
+    similar voices before it has enough context. Keep the processor's alignment
+    and a single cache, but match BOTH offline chunk and FIFO/update sizes.
+    """
+    config = model.config
+    processor.streaming_modes = {
+        **processor.streaming_modes,
+        "file": (config.chunk_length, config.chunk_right_context),
+    }
+    processor.set_streaming_mode("file")
+    config.streaming_config.fifo_length = config.fifo_length
+    config.streaming_config.speaker_cache_update_period = config.speaker_cache_update_period
+
+
 def _diarize(path: Path, *, device: str, progress: Progress, cancelled: Cancelled) -> list[dict]:
     torch, model_class, processor_class = _nemotron_classes()
     if device == "cuda" and not torch.cuda.is_available():
@@ -239,10 +271,12 @@ def _diarize(path: Path, *, device: str, progress: Progress, cancelled: Cancelle
     try:
         _checkpoint(cancelled)
         progress("Nemotron 모델 준비 (첫 실행 시 가중치 다운로드)", 0.67)
-        processor = processor_class.from_pretrained(NEMOTRON_MODEL)
-        model = model_class.from_pretrained(NEMOTRON_MODEL).to(device).eval()
+        model_path = resolve_nemotron_model()
+        _checkpoint(cancelled)
+        processor = processor_class.from_pretrained(model_path, local_files_only=True)
+        model = model_class.from_pretrained(model_path, local_files_only=True).to(device).eval()
         # Float32 avoids assuming BF16 support on arbitrary user-selected GPUs.
-        processor.set_streaming_mode("low_latency")
+        _configure_file_diarization(processor, model)
         sampling_rate = processor.feature_extractor.sampling_rate
         if sampling_rate != 16000:
             raise RuntimeError("Nemotron 모델의 샘플률이 예상한 16 kHz와 다릅니다.")
@@ -270,8 +304,8 @@ def _diarize(path: Path, *, device: str, progress: Progress, cancelled: Cancelle
         raise
     except Exception as exc:
         raise RuntimeError(
-            "Nemotron 화자 분석에 실패했습니다. 지원 Transformers 버전, 장치 메모리와 "
-            "모델 다운로드 연결을 확인하거나 화자 구분을 끄고 다시 실행하세요. " + str(exc)[:500]
+            "Nemotron 화자 분석에 실패했습니다. 지원 실행환경, 장치 메모리와 "
+            "모델 캐시를 확인한 뒤 다시 실행하세요. " + str(exc)[:500]
         ) from exc
     finally:
         model = processor = inputs = outputs = cache = logits = audio = None
@@ -458,10 +492,25 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
         duration, channels = _extract_audio(media_path, audio_track, wav_path, cancelled)
         _checkpoint(cancelled)
         progress("선택한 트랙을 분석용 16 kHz 음성으로 준비", 0.10)
+        def mapped_progress(low, high, source_low, source_high):
+            def report(stage, value):
+                fraction = min(1.0, max(0.0, (value - source_low) / (source_high - source_low)))
+                progress(stage, low + fraction * (high - low))
+            return report
+
+        # Detect turns before ASR, then unload Nemotron. Decode windows cover
+        # the WHOLE audio, including overlap and any speech Nemotron missed.
+        # This prevents one initial language choice from hiding another person
+        # and bounds word alignment at speaker changes without shifting time.
+        diarized = _diarize(wav_path, device=device,
+                            progress=mapped_progress(0.10, 0.40, 0.67, 0.94),
+                            cancelled=cancelled) if diarization else None
+        _checkpoint(cancelled)
+        clips = speaker_change_clips(diarized, duration) if diarized is not None else None
         records = _transcribe(wav_path, model_name=whisper_model, language=language, device=device,
-                              duration=duration, progress=progress, cancelled=cancelled)
-        # The ASR model is unloaded before the diarization model is loaded.
-        diarized = _diarize(wav_path, device=device, progress=progress, cancelled=cancelled) if diarization else None
+                              duration=duration, clip_timestamps=clips,
+                              progress=mapped_progress(0.40 if diarization else 0.10, 0.94, 0.10, 0.64),
+                              cancelled=cancelled)
         _checkpoint(cancelled)
         progress("단어·화자 시간 연결 및 검수 표시", 0.96)
         result = build_result(records, diarized, duration=duration, speaker_count=speaker_count, mode=mode, cancelled=cancelled)

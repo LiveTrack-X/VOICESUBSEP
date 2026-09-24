@@ -1,0 +1,311 @@
+{
+  "schemaVersion": 1,
+  "scope": "Actual frozen backend runtime gate and offline CUDA Nemotron + Whisper inference. Installer creation and installation are not established by this record.",
+  "backendArtifact": {
+    "file": "voicesubsep-server.exe",
+    "bytes": 57573943,
+    "sha256": "04640c3d09c7e667f99896c45d7815d6deeeaec622539eff51bb32ca0f6110dd",
+    "pythonVersion": "3.12.13",
+    "pyinstallerVersion": "6.22.3",
+    "directoryFileCount": 4258,
+    "directoryBytes": 5009309197,
+    "buildLog": {
+      "file": "tmp/nemotron-backend-build.log",
+      "sha256": "76b6f2927c9ce0c47248748394aa2c94a39d15e16bbca5f0ef34051ded54ec6d"
+    }
+  },
+  "fixture": {
+    "sha256": "1a3830cc56d943ea8b1939646f412b203ad12a7b51c8fc5337515e64accad7e7",
+    "duration": 39.466625,
+    "voices": {
+      "A": {
+        "culture": "ko-KR",
+        "name": "Microsoft Heami Desktop"
+      },
+      "B": {
+        "culture": "en-US",
+        "name": "Microsoft Zira Desktop"
+      }
+    }
+  },
+  "runtimeGate": {
+    "artifact": {
+      "file": "tmp/bundled-runtime-check.json",
+      "sha256": "08ba7cbd8af9d5ebc5abafbd3801872727a65b8169ea266cb2299549ded746f9"
+    },
+    "passed": true,
+    "runtimePassed": true,
+    "inferenceRun": false,
+    "offline": true,
+    "gpuRequired": false,
+    "startedAt": "2026-09-24T07:31:35.451787+00:00",
+    "expectedVersion": "0.1.1",
+    "apiVersion": "0.1.1",
+    "ready": {
+      "app": "voicesubsep",
+      "status": "ok"
+    },
+    "health": {
+      "app": "voicesubsep",
+      "status": "ok",
+      "ffmpeg": true,
+      "ffprobe": true,
+      "engines": {
+        "whisper": true,
+        "nemotron": true
+      },
+      "engineIssues": {
+        "whisper": null,
+        "nemotron": null
+      },
+      "gpu": {
+        "available": true,
+        "name": "NVIDIA GeForce RTX 3080 Ti",
+        "deviceCount": 1,
+        "computeTypes": [
+          "bfloat16",
+          "float16",
+          "float32",
+          "int8",
+          "int8_bfloat16",
+          "int8_float16",
+          "int8_float32"
+        ],
+        "reason": null
+      },
+      "defaults": {
+        "device": "cuda",
+        "whisperModel": "large-v3",
+        "computeType": "float16"
+      }
+    },
+    "shutdown": {
+      "requested": true,
+      "clean": true,
+      "forced": false,
+      "exitCode": 0,
+      "portClosed": true
+    },
+    "elapsedSeconds": 40.875,
+    "systemOnlyChildPathVerified": true
+  },
+  "gpuSmoke": {
+    "artifact": {
+      "file": "tmp/bundled-nemotron-turbo-smoke.json",
+      "sha256": "b123f49072aae72eac2655916fe016c4a992669df817411b06821d586a7d00b3"
+    },
+    "passed": true,
+    "analysisPassed": true,
+    "startedAt": "2026-09-24T07:32:42.886214+00:00",
+    "model": "large-v3-turbo",
+    "offline": true,
+    "device": "cuda",
+    "diarization": true,
+    "speakerCount": 2,
+    "language": "auto",
+    "childThreadLimits": {
+      "OMP_NUM_THREADS": 2,
+      "MKL_NUM_THREADS": 2
+    },
+    "sourceAudio": {
+      "duration": 39.466625,
+      "channels": 1,
+      "sampleRate": 16000
+    },
+    "health": {
+      "app": "voicesubsep",
+      "status": "ok",
+      "ffmpeg": true,
+      "ffprobe": true,
+      "engines": {
+        "whisper": true,
+        "nemotron": true
+      },
+      "engineIssues": {
+        "whisper": null,
+        "nemotron": null
+      },
+      "gpu": {
+        "available": true,
+        "name": "NVIDIA GeForce RTX 3080 Ti",
+        "deviceCount": 1,
+        "computeTypes": [
+          "bfloat16",
+          "float16",
+          "float32",
+          "int8",
+          "int8_bfloat16",
+          "int8_float16",
+          "int8_float32"
+        ],
+        "reason": null
+      },
+      "defaults": {
+        "device": "cuda",
+        "whisperModel": "large-v3",
+        "computeType": "float16"
+      }
+    },
+    "shutdown": {
+      "requested": true,
+      "clean": true,
+      "forced": false,
+      "exitCode": 0,
+      "portClosed": true
+    },
+    "elapsedSeconds": 39.484,
+    "systemOnlyChildPathVerified": true,
+    "request": {
+      "mode": "standard",
+      "speakerCount": 2,
+      "audioTrack": 0,
+      "whisperModel": "large-v3-turbo",
+      "language": "auto",
+      "device": "cuda",
+      "diarization": true
+    },
+    "job": {
+      "status": "completed",
+      "stage": "completed",
+      "progress": 1.0
+    },
+    "validation": {
+      "captionCount": 24,
+      "wordCount": 88,
+      "duration": 39.466625,
+      "diarization": true,
+      "expectedSpeakers": 2,
+      "detectedSpeakerCount": 2,
+      "assignedCaptionCountBySpeaker": {
+        "speaker-1": 6,
+        "speaker-2": 6
+      },
+      "assignedCount": 12,
+      "unassignedCount": 12,
+      "overlapReviewCount": 4
+    }
+  },
+  "sourceComparison": {
+    "artifact": {
+      "file": "tmp/nemotron-turn-guided-smoke.json",
+      "sha256": "77daa381cbcd89a456e2ee2e6647825ac7c7a48c21002b935b5b66e5fbc558c8"
+    },
+    "fullResultEqual": false,
+    "captionsEqual": true,
+    "speakersEqual": true,
+    "durationEqual": true,
+    "warningsEqual": false,
+    "warningsEqualAfterRemovingSourceOverlapModeNotice": true,
+    "difference": "Source used overlap mode; bundle used standard mode. Only the source-only overlap-mode explanation differs; all other warnings and captions/speakers/duration match exactly.",
+    "canonicalCaptionSpeakerDurationSha256": "42df0c7d36333fd0d5476b4c6c2e8d38243b7e06f7fa5311d2e5adc0bd5a5747",
+    "canonicalEncoding": "UTF-8 JSON of captions/speakers/duration; ensure_ascii=false, sort_keys=true, separators=(comma,colon), allow_nan=false."
+  },
+  "captionSoloTurnValidation": {
+    "method": "Existing scripts/nemotron-smoke.py inspect_activity applied to non-null speakerId caption intervals; no model inference was run for this comparison.",
+    "checks": {
+      "finiteSourceTimeIntervals": true,
+      "exactlyTwoDetectedSpeakers": true,
+      "soloTurnAlternationConsistent": true
+    },
+    "speakerMappingByBestSoloTurnCoverage": {
+      "A": "speaker-1",
+      "B": "speaker-2"
+    },
+    "soloTurns": [
+      {
+        "turnId": "turn-1",
+        "expected": "A",
+        "start": 0.5,
+        "end": 6.114,
+        "dominantDetected": "speaker-1",
+        "coverageSeconds": {
+          "speaker-1": 3.4200000000000004,
+          "speaker-2": 0
+        },
+        "dominantTurnWindowCoverage": 0.6435829883327062,
+        "consistent": true
+      },
+      {
+        "turnId": "turn-2",
+        "expected": "B",
+        "start": 6.464,
+        "end": 12.0615625,
+        "dominantDetected": "speaker-2",
+        "coverageSeconds": {
+          "speaker-1": 0,
+          "speaker-2": 3.1799999999999997
+        },
+        "dominantTurnWindowCoverage": 0.6002760703625488,
+        "consistent": true
+      },
+      {
+        "turnId": "turn-3",
+        "expected": "A",
+        "start": 12.4115625,
+        "end": 17.9823125,
+        "dominantDetected": "speaker-1",
+        "coverageSeconds": {
+          "speaker-1": 4.58075,
+          "speaker-2": 0
+        },
+        "dominantTurnWindowCoverage": 0.8690888393492389,
+        "consistent": true
+      },
+      {
+        "turnId": "turn-4",
+        "expected": "B",
+        "start": 18.3323125,
+        "end": 22.5799375,
+        "dominantDetected": "speaker-2",
+        "coverageSeconds": {
+          "speaker-1": 0,
+          "speaker-2": 2.9399999999999977
+        },
+        "dominantTurnWindowCoverage": 0.7447515911465745,
+        "consistent": true
+      },
+      {
+        "turnId": "turn-7",
+        "expected": "A",
+        "start": 28.508875,
+        "end": 33.8915,
+        "dominantDetected": "speaker-1",
+        "coverageSeconds": {
+          "speaker-1": 3.8211250000000057,
+          "speaker-2": 0
+        },
+        "dominantTurnWindowCoverage": 0.7518014805341734,
+        "consistent": true
+      },
+      {
+        "turnId": "turn-8",
+        "expected": "B",
+        "start": 34.2415,
+        "end": 38.616625,
+        "dominantDetected": "speaker-2",
+        "coverageSeconds": {
+          "speaker-1": 0,
+          "speaker-2": 3.0784999999999982
+        },
+        "dominantTurnWindowCoverage": 0.755436949786816,
+        "consistent": true
+      }
+    ],
+    "overlapActivityCheck": {
+      "applicable": false,
+      "reason": "Assigned captions intentionally exclude ambiguous overlap; the bundle API response does not expose raw Nemotron activity. This comparison does not re-run the four raw-activity checks."
+    }
+  },
+  "preservedSourceEvidence": {
+    "file": "docs/evidence/nemotron-source-validation.json",
+    "sha256": "fc3beb5dda0a1d3e7313dad999e06b2971c746d6caec3322c720e6ae50c28316"
+  },
+  "limitations": [
+    "Synthetic installed TTS voices; planned turn/mix windows are not phonetic annotations or real Korean/overlap quality evidence.",
+    "The bundle result still has unassigned captions and overlap-review flags; voice separation and complete simultaneous-speech recovery are not implemented.",
+    "The runtime gate does not run inference; actual GPU inference is established only by the separate gpuSmoke.",
+    "Total elapsed smoke time includes startup, imports, upload, inference and shutdown with already-cached model weights; it is not an inference-only benchmark.",
+    "These checks do not establish real streamer accuracy, long recordings, other PCs, installer completion, signed remote updates or release publication.",
+    "Raw transcripts, absolute local paths, session tokens, process IDs, job IDs and media IDs are excluded."
+  ]
+}

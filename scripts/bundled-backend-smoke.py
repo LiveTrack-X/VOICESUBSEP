@@ -1,4 +1,4 @@
-"""Offline Windows bundle smoke: real CUDA ASR, upload, timestamps, shutdown.
+"""Offline Windows bundle smoke: real CUDA ASR, optional diarization, shutdown.
 
 Run only when GPU load is acceptable and the selected model is already cached:
   python scripts/bundled-backend-smoke.py --source tmp/whisper-tiny-smoke.wav
@@ -105,6 +105,8 @@ def isolated_environment(token: str) -> dict[str, str]:
     environment["TRANSFORMERS_OFFLINE"] = "1"
     environment["HF_HUB_DISABLE_TELEMETRY"] = "1"
     environment["DO_NOT_TRACK"] = "1"
+    environment["OMP_NUM_THREADS"] = "2"
+    environment["MKL_NUM_THREADS"] = "2"
     return environment
 
 
@@ -114,7 +116,7 @@ def unused_loopback_port() -> int:
         return reservation.getsockname()[1]
 
 
-def validate_result(job: dict, source_duration: float) -> dict:
+def validate_result(job: dict, source_duration: float, *, diarization: bool = False, speakers: int = 1) -> dict:
     if job.get("status") != "completed" or job.get("progress") != 1:
         raise SmokeError(f"CUDA job did not complete: {job.get('error') or job.get('status')}")
     result = job.get("result") or {}
@@ -125,10 +127,24 @@ def validate_result(job: dict, source_duration: float) -> dict:
         raise SmokeError(f"Source/result duration mismatch: {source_duration:.3f}s vs {duration:.3f}s.")
     captions = result.get("captions")
     if not isinstance(captions, list) or not captions:
-        raise SmokeError("Expected nonempty captions from the supplied spoken English WAV.")
+        raise SmokeError("Expected nonempty captions from the supplied spoken WAV.")
     text = " ".join(str(caption.get("text", "")).strip() for caption in captions).strip()
     if not text:
         raise SmokeError("All captions were empty.")
+    assigned_counts = {}
+    if diarization:
+        detected = result.get("speakers")
+        if not isinstance(detected, list):
+            raise SmokeError("Diarization result must include a speaker list.")
+        for speaker in detected:
+            identity = speaker.get("id") if isinstance(speaker, dict) else None
+            if not isinstance(identity, str) or not identity or identity in assigned_counts:
+                raise SmokeError("Detected speakers must have unique, nonempty string IDs.")
+            assigned_counts[identity] = 0
+        count_matches = len(assigned_counts) >= 4 if speakers == 4 else len(assigned_counts) == speakers
+        if not count_matches:
+            expected = "at least 4" if speakers == 4 else str(speakers)
+            raise SmokeError(f"Expected {expected} detected speakers, got {len(assigned_counts)}.")
     previous_start = -1.0
     word_count = 0
     for caption in captions:
@@ -139,7 +155,13 @@ def validate_result(job: dict, source_duration: float) -> dict:
         if not 0 <= start < end <= duration + 0.05 or start < previous_start:
             raise SmokeError(f"Invalid or unsorted caption interval: {start}..{end}.")
         previous_start = start
-        if caption.get("speakerId") is not None:
+        identity = caption.get("speakerId")
+        if diarization and identity is not None:
+            if not isinstance(identity, str) or identity not in assigned_counts:
+                raise SmokeError("Caption assignment references an unknown speaker.")
+            if isinstance(caption.get("text"), str) and caption["text"].strip():
+                assigned_counts[identity] += 1
+        elif not diarization and identity is not None:
             raise SmokeError("Transcription-only job must not invent a speaker assignment.")
         for word in caption.get("words") or []:
             word_start, word_end = word.get("start"), word.get("end")
@@ -151,8 +173,14 @@ def validate_result(job: dict, source_duration: float) -> dict:
             word_count += 1
     if not word_count:
         raise SmokeError("Expected word timestamps from the real Whisper transcription.")
+    if diarization and any(count == 0 for count in assigned_counts.values()):
+        missing = ", ".join(identity for identity, count in assigned_counts.items() if count == 0)
+        raise SmokeError(f"Detected speakers lack a nonempty assigned caption: {missing}.")
     return {"captionCount": len(captions), "wordCount": word_count, "duration": duration,
-            "text": text, "warnings": result.get("warnings", [])}
+            "text": text, "warnings": result.get("warnings", []), "diarization": diarization,
+            "expectedSpeakers": "4+" if speakers == 4 else speakers,
+            "detectedSpeakerCount": len(assigned_counts) if diarization else None,
+            "assignedCaptionCountBySpeaker": assigned_counts}
 
 
 def stop_owned_process(process: subprocess.Popen, port: int, token: str, identified: bool,
@@ -191,7 +219,9 @@ def run(args) -> dict:
     started = time.monotonic()
     report = {"passed": False, "startedAt": datetime.now(timezone.utc).isoformat(),
               "executable": str(args.executable), "source": str(args.source), "model": args.model,
-              "offline": True, "device": "cuda", "diarization": False}
+              "offline": True, "device": "cuda", "diarization": args.diarization,
+              "speakerCount": args.speakers, "language": args.language,
+              "childThreadLimits": {"OMP_NUM_THREADS": 2, "MKL_NUM_THREADS": 2}}
     log_path = args.output.with_suffix(".server.log")
     report["serverLog"] = str(log_path)
     try:
@@ -229,13 +259,16 @@ def run(args) -> dict:
                     if process.poll() is not None:
                         raise SmokeError(f"Bundled backend exited during startup ({process.returncode}). See server log.")
                     try:
-                        health = request_json(port, "GET", "/api/health", timeout=5)
+                        ready = request_json(port, "GET", "/api/ready", timeout=5)
+                        if ready.get("app") != "voicesubsep" or ready.get("status") != "ok":
+                            raise SmokeError("Unexpected backend application identity.")
                         break
                     except (OSError, http.client.HTTPException, SmokeError) as exc:
                         last_error = str(exc)
                         time.sleep(0.5)
                 else:
                     raise SmokeError(f"Backend readiness timed out: {last_error}")
+                health = request_json(port, "GET", "/api/health", timeout=120)
                 report["health"] = health
                 if health.get("app") != "voicesubsep" or health.get("status") != "ok":
                     raise SmokeError("Unexpected backend application identity.")
@@ -244,17 +277,21 @@ def run(args) -> dict:
                     raise SmokeError("Bundled FFmpeg/FFprobe is unavailable with the system-only PATH.")
                 if not health.get("engines", {}).get("whisper"):
                     raise SmokeError("Bundled Whisper import is unavailable.")
+                if args.diarization and health.get("engines", {}).get("nemotron") is not True:
+                    raise SmokeError(f"Bundled Nemotron is unavailable: {health.get('engineIssues', {}).get('nemotron')}")
                 if not health.get("gpu", {}).get("available") or "float16" not in health["gpu"].get("computeTypes", []):
                     raise SmokeError(f"Bundled CUDA is unavailable: {health.get('gpu', {}).get('reason')}")
                 media = upload_wav(port, args.source)
                 tracks = media.get("audioTracks") or []
                 if not tracks:
                     raise SmokeError("Uploaded WAV has no audio stream.")
-                job = request_json(port, "POST", "/api/jobs", {
-                    "mediaId": media["id"], "mode": "standard", "speakerCount": 1,
+                job_request = {
+                    "mediaId": media["id"], "mode": "standard", "speakerCount": args.speakers,
                     "audioTrack": tracks[0]["index"], "whisperModel": args.model,
-                    "language": "en", "device": "cuda", "diarization": False,
-                })
+                    "language": args.language, "device": "cuda", "diarization": args.diarization,
+                }
+                report["jobRequest"] = job_request
+                job = request_json(port, "POST", "/api/jobs", job_request)
                 report["jobId"] = job["id"]
                 deadline = time.monotonic() + args.timeout
                 last_stage = None
@@ -272,7 +309,7 @@ def run(args) -> dict:
                     request_json(port, "DELETE", f"/api/jobs/{report['jobId']}")
                     raise SmokeError(f"CUDA job timed out after {args.timeout}s.")
                 report["job"] = job
-                report["validation"] = validate_result(job, duration)
+                report["validation"] = validate_result(job, duration, diarization=args.diarization, speakers=args.speakers)
                 report["analysisPassed"] = True
             finally:
                 report["shutdown"] = stop_owned_process(process, port, token, identified, environment)
@@ -288,10 +325,13 @@ def run(args) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", required=True, type=Path, help="Generated spoken English PCM WAV; not silence")
+    parser.add_argument("--source", required=True, type=Path, help="Spoken PCM WAV with the expected speakers; not silence")
     parser.add_argument("--executable", type=Path, default=ROOT / "build/backend/voicesubsep-server/voicesubsep-server.exe")
     parser.add_argument("--web-dir", type=Path, default=ROOT / "dist")
     parser.add_argument("--model", default="large-v3-turbo", choices=["tiny", "base", "small", "medium", "large-v3", "large-v3-turbo", "turbo"])
+    parser.add_argument("--diarization", action="store_true", help="Require real Nemotron analysis and a nonempty caption for every detected speaker")
+    parser.add_argument("--speakers", type=int, choices=(1, 2, 3, 4), default=1, help="Expected speakers for diarization: 1..3 exact, 4 means 4+ (default: 1)")
+    parser.add_argument("--language", default="en", help="Whisper language code or auto (default: en)")
     parser.add_argument("--output", type=Path, default=ROOT / "tmp/bundled-backend-smoke.json")
     parser.add_argument("--timeout", type=int, default=900, help="Maximum analysis seconds (default: 900)")
     args = parser.parse_args()
@@ -299,8 +339,11 @@ def main() -> int:
         setattr(args, field, getattr(args, field).resolve())
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
+    if args.language != "auto" and not (2 <= len(args.language) <= 3 and args.language.isascii()
+                                        and args.language.isalpha() and args.language.islower()):
+        parser.error("--language must be auto or a lowercase 2-3 letter language code")
     if args.source.suffix.lower() != ".wav" or not args.source.is_file():
-        parser.error("--source must be an existing spoken English WAV")
+        parser.error("--source must be an existing spoken WAV")
     if args.output.suffix.lower() != ".json":
         parser.error("--output must use the .json extension")
     report = run(args)

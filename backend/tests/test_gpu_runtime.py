@@ -94,6 +94,23 @@ def test_windows_search_is_bounded_includes_frozen_packages_and_never_changes_pa
     assert os.environ["PATH"] == value
 
 
+def test_complete_torch_runtime_is_preferred_without_changing_path(monkeypatch, tmp_path):
+    site = tmp_path / "Lib/site-packages"
+    shared = site / "torch/lib"
+    shared.mkdir(parents=True)
+    for name in gpu._WINDOWS_LIBRARIES:
+        (shared / name).touch()
+    separate = site / "nvidia/cublas/bin"
+    separate.mkdir(parents=True)
+    monkeypatch.setattr(gpu.sys, "prefix", str(tmp_path))
+    monkeypatch.setattr(gpu, "_project_root", lambda: tmp_path / "unused")
+    monkeypatch.delenv("PATH", raising=False)
+    assert gpu._windows_directories()[0] == shared.resolve()
+    (shared / gpu._WINDOWS_LIBRARIES[0]).unlink()
+    assert shared.resolve() not in gpu._windows_directories()
+    assert separate.resolve() in gpu._windows_directories()
+
+
 def test_windows_directory_handles_stay_alive_and_are_registered_once(monkeypatch, tmp_path):
     retained = []
     monkeypatch.setattr(gpu, "_DIRECTORY_HANDLES", {})
