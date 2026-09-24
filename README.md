@@ -2,7 +2,7 @@
 
 영상·음성의 대화를 인물별 자막으로 정리하고, 원본을 보면서 자막·편집 노트·인터뷰·회의록을 수정하는 로컬 편집기입니다. 한국어 예능·게임·토론·인터뷰 편집을 목표로 개발합니다.
 
-**v0.2.0 Windows Preview 시험 릴리즈를 준비 중입니다.** 비공개 저장소의 사전 릴리즈이며 기능 구현과 설치 파일 생성·설치·게시의 상태를 구분하여 [v0.2.0 릴리즈 기록](docs/releases/v0.2.0.md)에 남깁니다. 처음 사용한다면 [설치부터 출력까지의 사용자 가이드](docs/USER-GUIDE.md), 전체 자료는 [문서 목차](docs/INDEX.md)를 먼저 확인하세요.
+**[v0.2.0 Windows Preview 설치파일](https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.2.0)**을 제공합니다. 비공개 저장소의 시험 릴리즈이며 접근 권한이 필요합니다. 설치 파일·체크섬·검증 범위는 [v0.2.0 릴리즈 기록](docs/releases/v0.2.0.md)에 있습니다. 처음 사용한다면 [설치부터 출력까지의 사용자 가이드](docs/USER-GUIDE.md), 전체 자료는 [문서 목차](docs/INDEX.md)를 먼저 확인하세요.
 
 React 편집 화면과 Python FastAPI 분석 서버로 구성됩니다. NVIDIA Nemotron-3-Diarization으로 화자 전환을 찾고 faster-whisper로 전사하는 **인물별 자막 생성이 기본 동작**입니다. 분석 서버는 내 컴퓨터의 `127.0.0.1`에서 실행하며 영상·음성을 외부 분석 API로 보내지 않습니다. 모델 파일이 없으면 첫 분석 때 Hugging Face에서 해당 모델을 내려받을 수 있습니다.
 

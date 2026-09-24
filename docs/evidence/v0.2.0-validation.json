@@ -57,7 +57,10 @@
     "applicationSourceRun": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/36042159957",
     "conclusion": "success",
     "linuxBackendPassed": 596,
-    "linuxBackendSkipped": 19
+    "linuxBackendSkipped": 19,
+    "releaseToolFixRun": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/36042828857",
+    "releaseToolFixConclusion": "success",
+    "releaseToolFixLinuxBackendSkipped": 21
   },
   "webBuild": {
     "passed": true,
@@ -164,6 +167,7 @@
   "packaging": {
     "applicationVersion": "0.2.0",
     "iconFramesInExecutable": 9,
+    "iconFramesInInstaller": 9,
     "desktopTestFilesInAsar": 0,
     "noticeFilesSha256Verified": 38,
     "backendSha256": "411e6699ff80d25a7fab3fdd2aa38a9bdff2efca9a75ac4e44dee4ad233ba4f4",
@@ -187,5 +191,68 @@
     "long recordings",
     "GPU model inference or transcription quality for this artifact",
     "signed remote update and migration"
-  ]
+  ],
+  "githubAssets": [
+    {
+      "name": "VOICESUBSEP-0.2.0-Offline-Setup-x64.exe",
+      "size": 1045697,
+      "digest": "sha256:968b59fe10ffe01192bf3b430d05bd886f9fe22ea5f62688de640d0e2f53baf2",
+      "id": 586571451,
+      "state": "uploaded"
+    },
+    {
+      "name": "voicesubsep-0.2.0-x64.nsis.7z.part001",
+      "size": 1073741824,
+      "digest": "sha256:9945b6b17c9b1052a964eb92e02a36dc4c9691aa0837a2c724bd8c829faaf7c5",
+      "id": 586571523,
+      "state": "uploaded"
+    },
+    {
+      "name": "voicesubsep-0.2.0-x64.nsis.7z.part002",
+      "size": 1073741824,
+      "digest": "sha256:7afd116dd546e3ae575d8989c156c1824fbe3bca5987ee2a4e8d86b45152b052",
+      "id": 586577758,
+      "state": "uploaded"
+    },
+    {
+      "name": "voicesubsep-0.2.0-x64.nsis.7z.part003",
+      "size": 268550071,
+      "digest": "sha256:d36637b1292f50a1cb380023ec6a8a9f9169773c58ea0ed4b0a22de9d4cc392d",
+      "id": 586584344,
+      "state": "uploaded"
+    },
+    {
+      "name": "installer-manifest.json",
+      "size": 1008,
+      "digest": "sha256:2dd54bedd2bb9a639abd2ae50d705a873e6378ca264c3baa1f85a533ff5229f9",
+      "id": 586586117,
+      "state": "uploaded"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "size": 603,
+      "digest": "sha256:54852300ba0cc06e8ce47b3758bb2771956898f840074c17b283521d46834ba1",
+      "id": 586586128,
+      "state": "uploaded"
+    },
+    {
+      "name": "Assemble-Installer.ps1",
+      "size": 8603,
+      "digest": "sha256:4e5128dc075044d9a4ead79034ad851bcfbfe20a901825d1a234e476e9f8fcdf",
+      "id": 586586149,
+      "state": "uploaded"
+    }
+  ],
+  "downloadVerification": {
+    "smallAssetsDownloadedFromGitHub": [
+      "installer",
+      "manifest",
+      "checksums",
+      "assembler"
+    ],
+    "installerSha256Matched": true,
+    "downloadedAssemblerSucceeded": true,
+    "assemblyData": "local payload parts whose SHA256 matched GitHub asset digests",
+    "fullPayloadRedownloaded": false
+  }
 }
