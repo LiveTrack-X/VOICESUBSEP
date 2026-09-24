@@ -1,6 +1,6 @@
 # PowerShell 5.1+. Local file verification/assembly only; never launches the installer.
 [CmdletBinding()]
-param([string]$Directory = $PSScriptRoot)
+param([string]$Directory)
 
 $ErrorActionPreference = 'Stop'
 $temporary = $null
@@ -54,6 +54,21 @@ function Hash-Hex($Hash) {
 }
 
 try {
+    # In Windows PowerShell 5.1, $PSScriptRoot can be empty while a param default
+    # is evaluated. Resolve it only after the script body starts, independently
+    # of the caller's working directory and whether -File was relative.
+    if (-not $PSBoundParameters.ContainsKey('Directory')) {
+        $Directory = $PSScriptRoot
+        if ([string]::IsNullOrWhiteSpace($Directory)) {
+            $scriptPath = $MyInvocation.MyCommand.Path
+            if (-not [string]::IsNullOrWhiteSpace($scriptPath)) {
+                $Directory = [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($scriptPath))
+            }
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($Directory)) {
+        throw 'The asset directory could not be determined. Supply -Directory with the folder containing the release assets.'
+    }
     $folder = Get-Item -LiteralPath $Directory -Force -ErrorAction Stop
     if (-not $folder.PSIsContainer -or ($folder.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
         throw 'Choose an ordinary local directory containing all release assets.'

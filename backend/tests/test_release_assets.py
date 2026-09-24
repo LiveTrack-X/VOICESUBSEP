@@ -26,13 +26,19 @@ def prepared(tmp_path):
     return output, manifest, original
 
 
-def assemble(output):
+def assemble(output, *, explicit_directory=True, relative_script=False):
     powershell = shutil.which("powershell.exe")
     if not powershell:
         pytest.skip("Actual assembly is exercised with Windows PowerShell 5.1.")
-    return subprocess.run([powershell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-                           "-File", str(output / "Assemble-Installer.ps1"), "-Directory", str(output)],
-                          capture_output=True, text=True, timeout=30)
+    script = output / "Assemble-Installer.ps1"
+    # Launch outside the assets directory, as in the release instructions.
+    working_directory = output.parent
+    if relative_script:
+        script = script.relative_to(working_directory)
+    command = [powershell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script)]
+    if explicit_directory:
+        command.extend(["-Directory", str(output)])
+    return subprocess.run(command, cwd=working_directory, capture_output=True, text=True, timeout=30)
 
 
 def write_manifest(output, manifest):
@@ -79,6 +85,15 @@ def test_powershell_assembles_and_reuses_matching_payload(prepared):
     assert result.returncode == 0, result.stdout + result.stderr
     assert "Verified existing payload" in result.stdout
     assert destination.stat().st_mtime_ns == previous_mtime
+    assert not list(output.glob("*.tmp"))
+
+
+@pytest.mark.parametrize("relative_script", [False, True], ids=["absolute-file", "relative-file"])
+def test_powershell_default_directory_is_the_script_folder(prepared, relative_script):
+    output, manifest, original = prepared
+    result = assemble(output, explicit_directory=False, relative_script=relative_script)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (output / manifest["payload"]["name"]).read_bytes() == original
     assert not list(output.glob("*.tmp"))
 
 

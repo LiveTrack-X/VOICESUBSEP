@@ -1,0 +1,191 @@
+{
+  "version": "0.2.0",
+  "platform": "windows-x64",
+  "channel": "preview",
+  "dateLocal": "2026-09-25",
+  "applicationSourceCommit": "224484e3f0f9864c43fac2482b78230e63366325",
+  "releaseTag": "v0.2.0",
+  "releaseUrl": "https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.2.0",
+  "signing": "unsigned",
+  "updateFeed": null,
+  "repositoryVisibility": "private",
+  "artifacts": {
+    "schemaVersion": 1,
+    "version": "0.2.0",
+    "installer": {
+      "name": "VOICESUBSEP-0.2.0-Offline-Setup-x64.exe",
+      "size": 1045697,
+      "sha256": "968b59fe10ffe01192bf3b430d05bd886f9fe22ea5f62688de640d0e2f53baf2"
+    },
+    "payload": {
+      "name": "voicesubsep-0.2.0-x64.nsis.7z",
+      "size": 2416033719,
+      "sha256": "ba00ff488bb8e5d70cb4b6dd05240ee471938440bd824b77a8fd518189b3e56f",
+      "parts": [
+        {
+          "name": "voicesubsep-0.2.0-x64.nsis.7z.part001",
+          "size": 1073741824,
+          "sha256": "9945b6b17c9b1052a964eb92e02a36dc4c9691aa0837a2c724bd8c829faaf7c5"
+        },
+        {
+          "name": "voicesubsep-0.2.0-x64.nsis.7z.part002",
+          "size": 1073741824,
+          "sha256": "7afd116dd546e3ae575d8989c156c1824fbe3bca5987ee2a4e8d86b45152b052"
+        },
+        {
+          "name": "voicesubsep-0.2.0-x64.nsis.7z.part003",
+          "size": 268550071,
+          "sha256": "d36637b1292f50a1cb380023ec6a8a9f9169773c58ea0ed4b0a22de9d4cc392d"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "frontend": 374,
+    "node": 44,
+    "backendBeforeReleaseTools": {
+      "passed": 588,
+      "skipped": 1
+    },
+    "releaseTools": 28,
+    "minimalBackendBeforeReleaseTools": {
+      "passed": 586,
+      "skipped": 3
+    }
+  },
+  "ci": {
+    "applicationSourceRun": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/36042159957",
+    "conclusion": "success",
+    "linuxBackendPassed": 596,
+    "linuxBackendSkipped": 19
+  },
+  "webBuild": {
+    "passed": true,
+    "javascriptBytesApproximate": 592670,
+    "largeChunkWarning": true
+  },
+  "electronSmoke": {
+    "passed": true,
+    "runs": 2,
+    "mockBackend": true,
+    "scope": [
+      "custom protocol",
+      "unicode multipart upload",
+      "sandbox preload bridge",
+      "restart persistence"
+    ]
+  },
+  "packagedBackend": {
+    "passed": true,
+    "offline": true,
+    "inferenceRun": false,
+    "apiVersion": "0.2.0",
+    "shutdown": {
+      "requested": true,
+      "clean": true,
+      "forced": false,
+      "exitCode": 0,
+      "portClosed": true
+    },
+    "elapsedSeconds": 15.625
+  },
+  "engineReadiness": {
+    "ffmpeg": true,
+    "ffprobe": true,
+    "engines": {
+      "whisper": true,
+      "nemotron": true
+    }
+  },
+  "frozenVstWorker": {
+    "format": "voicesubsep-release-vst-smoke",
+    "schemaVersion": 1,
+    "expectedVersion": "0.2.0",
+    "scope": "frozen-vst-worker-empty-chain",
+    "startedAt": "2026-09-24T18:30:01.717940+00:00",
+    "passed": true,
+    "thirdPartyPluginsOpened": false,
+    "inferenceRun": false,
+    "gpuRequired": false,
+    "offlineRequested": true,
+    "systemOnlyPath": true,
+    "timeoutSeconds": 60,
+    "executableSha256": "411e6699ff80d25a7fab3fdd2aa38a9bdff2efca9a75ac4e44dee4ad233ba4f4",
+    "inputAudio": {
+      "sampleRate": 48000,
+      "channels": 1,
+      "sampleWidth": 2,
+      "frames": 9600,
+      "compression": "NONE",
+      "sha256": "1b5ce5e6ebd6dcd9f055d91e2c52979a1a1b69b47ca29d4ad151ff016b598e5d",
+      "durationSeconds": 0.2
+    },
+    "exitCode": 0,
+    "workerResult": {
+      "ok": true,
+      "bypassed": true,
+      "pluginCount": 0,
+      "inputFrames": 9600,
+      "outputFrames": 9600,
+      "sampleRate": 48000,
+      "channels": 1,
+      "totalReportedLatencySamples": 0,
+      "compensatedLatencySamples": 0
+    },
+    "outputAudio": {
+      "sampleRate": 48000,
+      "channels": 1,
+      "sampleWidth": 2,
+      "frames": 9600,
+      "compression": "NONE",
+      "sha256": "1b5ce5e6ebd6dcd9f055d91e2c52979a1a1b69b47ca29d4ad151ff016b598e5d",
+      "durationSeconds": 0.2
+    },
+    "sourcePreserved": true,
+    "outputByteIdentical": true,
+    "elapsedSeconds": 1.047
+  },
+  "archive": {
+    "passed": true,
+    "files": 4440,
+    "folders": 702,
+    "uncompressedBytes": 5440162807,
+    "physicalArchiveBytes": 2413523100,
+    "embeddedBlockmapBytes": 2510619,
+    "warning": "7-Zip reports trailing data from the standard embedded NSIS update blockmap."
+  },
+  "assembly": {
+    "passed": true,
+    "wholePayloadSha256": "ba00ff488bb8e5d70cb4b6dd05240ee471938440bd824b77a8fd518189b3e56f",
+    "sameAsBuilderPayload": true,
+    "powershellVersion": "5.1",
+    "defaultDirectoryVerified": true
+  },
+  "packaging": {
+    "applicationVersion": "0.2.0",
+    "iconFramesInExecutable": 9,
+    "desktopTestFilesInAsar": 0,
+    "noticeFilesSha256Verified": 38,
+    "backendSha256": "411e6699ff80d25a7fab3fdd2aa38a9bdff2efca9a75ac4e44dee4ad233ba4f4",
+    "externalBuildDownloads": false
+  },
+  "runtimeDependencies": {
+    "voicesubsep": "0.2.0",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.18.0.dev0",
+    "faster-whisper": "1.2.1",
+    "ctranslate2": "4.8.2",
+    "onnxruntime": "1.30.0",
+    "pedalboard": "0.9.25",
+    "librosa": "0.11.0",
+    "numpy": "2.5.3",
+    "pyinstaller": "6.22.3"
+  },
+  "notVerified": [
+    "installer execution and installed main application",
+    "physical microphone/system loopback capture",
+    "long recordings",
+    "GPU model inference or transcription quality for this artifact",
+    "signed remote update and migration"
+  ]
+}
