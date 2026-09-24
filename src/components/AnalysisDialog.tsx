@@ -28,8 +28,8 @@ export function AnalysisDialog({
   const [loading, setLoading] = useState(true);
   const [job, setJob] = useState<Job | null>(null);
   const [starting, setStarting] = useState(false);
-  const [model, setModel] = useState("small");
-  const [device, setDevice] = useState("cpu");
+  const [model, setModel] = useState("large-v3");
+  const [device, setDevice] = useState("cuda");
   const [language, setLanguage] = useState("ko");
   const [track, setTrack] = useState(0);
   const [diarization, setDiarization] = useState(false);
@@ -41,6 +41,7 @@ export function AnalysisDialog({
         const h = await request<Health>("/api/health");
         if (!alive) return;
         setHealth(h);
+        setDevice(h.gpu?.available ? "cuda" : "cpu");
         setDiarization(h.engines.nemotron);
         if (!h.ffmpeg || !h.ffprobe)
           throw new Error(
@@ -123,7 +124,7 @@ export function AnalysisDialog({
       closeDisabled={(!!running && !error) || starting}
     >
       <p className="dialog-intro">
-        {file.name} · 예상 {project.speakerCount}명 ·{" "}
+        {file.name} · 예상 {project.speakerCount === 4 ? "4명 이상" : `${project.speakerCount}명`} ·{" "}
         {project.mode === "overlap" ? "동시 발화" : "일반 대화"}
       </p>
       {loading && (
@@ -134,6 +135,7 @@ export function AnalysisDialog({
       )}
       {!job && !loading && (
         <>
+          <p className="info-box">{health?.gpu?.available ? `${health.gpu.name ?? 'NVIDIA GPU'} · 로컬 GPU를 우선 사용합니다.` : `GPU를 사용할 수 없어 CPU가 선택됐습니다. ${health?.gpu?.reason ?? '서버의 GPU 실행 환경을 확인하세요.'}`}</p>
           <div className="form-grid">
             <label>
               오디오 트랙
@@ -169,11 +171,9 @@ export function AnalysisDialog({
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
               >
-                {["tiny", "base", "small", "medium", "large-v3", "turbo"].map(
-                  (m) => (
-                    <option key={m}>{m}</option>
-                  ),
-                )}
+                <option value="large-v3">Large v3 · 정밀 분석용</option>
+                <option value="large-v3-turbo">Large v3 Turbo · 빠른 분석용</option>
+                <optgroup label="가벼운 모델">{["medium", "small", "base", "tiny"].map(m => <option key={m} value={m}>{m}</option>)}</optgroup>
               </select>
             </label>
             <label>
@@ -183,8 +183,8 @@ export function AnalysisDialog({
                 value={device}
                 onChange={(e) => setDevice(e.target.value)}
               >
-                <option value="cpu">CPU · 기본 호환</option>
-                <option value="cuda">NVIDIA GPU · CUDA 필요</option>
+                <option value="cuda" disabled={!health?.gpu?.available}>NVIDIA GPU · 우선 사용</option>
+                <option value="cpu">CPU · 호환 모드</option>
               </select>
             </label>
           </div>
@@ -202,7 +202,7 @@ export function AnalysisDialog({
             {diarization
               ? "자동 화자 번호를 부여합니다. 분석 후 목소리를 확인하고 이름을 지정하세요."
               : "현재는 음성 인식만 수행합니다. 자막의 화자를 편집 화면에서 직접 지정해야 합니다."}
-            <br />첫 실행 시 선택 모델을 다운로드합니다. CPU의 큰 모델은 오래
+            <br />큰 모델은 첫 실행 시 수 GB를 다운로드해 이 기기에 보관합니다. CPU의 큰 모델은 오래
             걸릴 수 있습니다. 겹쳐 말한 모든 대사의 복원을 보장하지 않습니다.
           </p>
         </>

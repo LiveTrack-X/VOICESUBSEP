@@ -65,7 +65,7 @@ function makeId(prefix: string): string {
 
 export function createProject(speakerCount = 4): Project {
   if (!Number.isInteger(speakerCount) || speakerCount < 1 || speakerCount > 4) {
-    throw new Error("인물 수는 1~4명이어야 합니다.");
+    throw new Error("참가자는 1명, 2명, 3명, 4명 이상 중 선택하세요.");
   }
   return {
     schemaVersion: 1,
@@ -268,7 +268,7 @@ export function parseProject(text: string): Project {
     invalid("schemaVersion", "프로젝트 버전 1만 지원합니다.");
   const speakerCount = number(root.speakerCount, "speakerCount", 4);
   if (!Number.isInteger(speakerCount) || speakerCount < 1)
-    invalid("speakerCount", "인물 수는 1~4명이어야 합니다.");
+    invalid("speakerCount", "참가자는 1명, 2명, 3명, 4명 이상 중 선택하세요.");
   const speakerIds = new Set<string>();
   // Expected count is a user hint, independent of the engine's detected inventory.
   const speakers = array(root.speakers, "speakers", 32).map(

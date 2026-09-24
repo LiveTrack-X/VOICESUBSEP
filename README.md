@@ -7,8 +7,9 @@ React 편집 화면과 Python FastAPI 분석 서버로 구성됩니다. 전사�
 ## 가능한 작업
 
 - 영상·음성 열기, 원본 시간으로 탐색하며 자막의 내용·시간·인물 수정
-- 예상 인원 1~4명 설정, 일반 대화 / 동시 발화 검수 모드 선택
+- 예상 인원 1명·2명·3명·4명 이상 설정, 일반 대화 / 동시 발화 검수 모드 선택
 - 오디오 트랙 선택 후 로컬 전사, Nemotron 설치 시 화자 활동 분석
+- NVIDIA GPU 우선 실행, Whisper large-v3 기본 선택과 large-v3-turbo 선택
 - 동시 발화·인물 미지정·예상 인원 불일치 등을 검수 대상으로 확인
 - 시간에 연결된 편집·하이라이트·자막·확인 노트 작성
 - 프로젝트 JSON 저장·불러오기, 브라우저 자동 저장, 편집 실행 취소·다시 실행
@@ -20,7 +21,9 @@ React 편집 화면과 Python FastAPI 분석 서버로 구성됩니다. 전사�
 
 **v0.1은 겹친 목소리를 분리하거나 가려진 두 번째 대사를 복원하지 않습니다.** 동시 발화 모드는 겹침 구간을 검수하기 위한 기능입니다. 여러 화자에게 동시에 걸치는 단어는 무리하게 한 사람에게 배정하지 않고 미지정으로 남깁니다. 화자 번호를 실제 인물 이름으로 바꾸는 작업은 직접 해야 합니다.
 
-예상 인원 1~4명은 편집·검수 설정입니다. 모델이 실제로 그 인원을 정확히 구별했다는 뜻이 아니며, Nemotron이 더 많은 인물을 감지하면 강제로 합치지 않습니다. 한국어 예능·게임·토론의 정확도, 긴 영상 처리 시간, 12GB GPU에서의 실측 품질은 아직 검증하지 않았습니다. 합성 데이터 테스트 통과는 실제 모델의 정확도 보장이 아닙니다.
+예상 인원은 편집·검수 설정입니다. 1·2·3명은 해당 인원과 비교하고, 4명 이상은 최소 4명으로 해석합니다. 4명 이상을 선택했을 때 검출된 5~8명은 각각 보존하며 인원 불일치로 표시하지 않습니다. 8개 화자 채널이 모두 사용되면 추가 화자가 섞였는지 확인하도록 알립니다.
+
+이 PC의 **RTX 3080 Ti 12 GB에서 large-v3와 large-v3-turbo의 CUDA FP16 전사**를 14초 영어 합성 음성으로 확인했습니다. 한국어 예능·게임·토론의 정확도와 긴 영상 처리 시간은 아직 검증하지 않았습니다. [GPU 실행 기록](docs/GPU-DESKTOP-VALIDATION.md)의 환경 점검 성공을 실제 방송 품질의 증거로 확대하지 않습니다.
 
 자동 저장은 현재 브라우저에 남습니다. 프로젝트 JSON에는 자막과 노트가 포함되지만 원본 영상은 포함되지 않으므로, 다시 열 때 원본을 연결해야 합니다. 중요한 작업은 JSON 파일로 따로 저장하세요. 브라우저에서 재생할 수 없는 영상 코덱은 분석 가능 여부와 별개입니다.
 
@@ -43,6 +46,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Check
 # .venv(Python 3.12), Python 패키지, npm 패키지 설치
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
 
+# NVIDIA GPU 사용 시: 공식 NVIDIA Windows 런타임 패키지를 .venv에 추가
+uv pip install --python .venv\Scripts\python.exe -e './backend[whisper,gpu-windows]'
+
 # 편집 화면과 분석 서버를 함께 실행
 node scripts/dev.mjs
 # 같은 실행: npm start
@@ -50,12 +56,16 @@ node scripts/dev.mjs
 
 [http://127.0.0.1:5173](http://127.0.0.1:5173)을 엽니다. 종료는 실행한 터미널에서 `Ctrl+C`입니다. 한쪽 서버가 종료되면 실행기도 다른 서버를 종료합니다. 기존 `.venv`가 Python 3.12 환경이 아니면 설치 스크립트가 중단되며, 기존 환경을 자동 삭제하지 않습니다.
 
-설치는 Whisper 실행 패키지를 포함하지만 **모델 가중치와 Nemotron 실행 환경은 설치하지 않습니다.** 먼저 화자 구분을 끄고 짧은 파일을 CPU의 `tiny` 또는 `base` 모델로 분석해 실행 환경을 확인할 수 있습니다. GPU/CUDA 및 Nemotron 설치 조건은 [모델 실행 환경](docs/MODEL-SETUP.md)을 참고하세요. 분석 화면의 엔진 표시와 `/api/health`는 클래스 import 가능 여부를 나타내며, 모델 가중치 준비·GPU 호환·정확도를 보장하지 않습니다.
+기본 설치는 Whisper 실행 패키지를 포함하며, 위의 `gpu-windows` 추가 설치는 Windows CUDA 런타임을 준비합니다. **모델 가중치와 Nemotron 실행 환경은 별도입니다.** 앱은 `.venv`의 NVIDIA DLL을 서버 프로세스에 등록하며 시스템 전체 `PATH`를 변경하지 않습니다. GPU/CUDA 및 Nemotron 조건은 [모델 실행 환경](docs/MODEL-SETUP.md)을 참고하세요.
+
+분석 화면은 **large-v3를 기본 모델**로 선택하고, GPU 상태가 준비됐으면 CUDA를 우선 선택합니다. GPU를 사용할 수 없으면 사유와 함께 CPU 선택을 명시합니다. 실행 도중 GPU 오류가 발생해도 CPU로 조용히 바꾸지 않습니다. `engines`는 클래스 import 여부, `/api/health`의 `gpu`는 장치·런타임 의존성 확인 결과이며 모델 캐시·추론 성공·정확도를 보장하지 않습니다.
+
+large-v3-turbo는 빠른 전사 비교용 모델입니다. **Faster Whisper XXL은 별도 초대형 모델이 아닌 실행 패키지**이며, 현재 앱에서 큰 Whisper 모델을 사용하기 위한 필수 구성요소가 아닙니다. [GPU 모델과 XXL의 차이](docs/GPU-MODELS.md)를 참고하세요. 선택적 Windows 설치 파일 빌드 방법은 [데스크톱 빌드](docs/DESKTOP.md)에 정리합니다.
 
 ## 사용 흐름
 
 1. 영상 또는 음성을 열고 예상 인원과 대화 모드를 설정합니다.
-2. 로컬 분석에서 오디오 트랙, 언어, Whisper 모델, CPU/GPU를 선택합니다.
+2. 로컬 분석에서 오디오 트랙과 언어를 확인하고, large-v3 또는 large-v3-turbo와 GPU/CPU를 선택합니다.
 3. 분석 완료 후 결과와 경고를 확인하고 적용합니다.
 4. 인물 이름을 지정하고, 검수 대상 자막을 원본과 비교해 수정합니다.
 5. 필요한 장면에 노트를 남기고 프로젝트 JSON, SRT, 편집 노트를 내보냅니다.
@@ -91,7 +101,7 @@ node scripts/dev.mjs --check
 
 ## 로컬 데이터와 설정
 
-원본 사본·메타데이터·작업 결과는 기본적으로 저장소의 `data/`에 저장되며 Git에서 제외됩니다. 실제 모델의 캐시는 Hugging Face 등 각 실행 라이브러리의 캐시 위치에 저장됩니다. 프로젝트 JSON을 내보내도 `data/`의 원본 사본이 자동 삭제되지는 않습니다.
+원본 사본·메타데이터·작업 결과는 기본적으로 저장소의 `data/`에 저장되며 Git에서 제외됩니다. Windows 신규 Whisper 모델은 `%LOCALAPPDATA%/VOICESUBSEP/models/whisper`에 저장하고 완성된 기존 Hugging Face 캐시도 재사용합니다. 프로젝트 JSON을 내보내도 `data/`의 원본 사본이 자동 삭제되지는 않습니다.
 
 | 환경 변수 | 기본값 | 의미 |
 | --- | --- | --- |
@@ -105,9 +115,12 @@ node scripts/dev.mjs --check
 - [제품 설계](docs/PRODUCT-DESIGN.md)
 - [대안 및 동시 발화 처리 분석](docs/ALTERNATIVES-ANALYSIS.md)
 - [모델 실행 환경과 검증 범위](docs/MODEL-SETUP.md)
+- [GPU 모델과 Faster Whisper XXL 비교](docs/GPU-MODELS.md)
+- [실제 큰 모델 GPU 실행·데스크톱 검증 기록](docs/GPU-DESKTOP-VALIDATION.md)
+- [선택적 Windows 데스크톱 빌드](docs/DESKTOP.md)
 - [v0.1 구현 계약·API](docs/IMPLEMENTATION-CONTRACT.md)
 - [디자인 시스템](docs/design/DESIGN-SYSTEM.md)
-- [구현·검증 상태와 알려진 한계](docs/DEVELOPMENT-STATUS.md)
+- [초기 v0.1 구현·검증 기록과 한계](docs/DEVELOPMENT-STATUS.md)
 - [실제 Whisper tiny 실행 기록](docs/MODEL-SMOKE.md)
 - [컷 편집·오디오·인터뷰·회의록 확장 계획](docs/EXPANSION-ROADMAP.md)
 - [라이브 입력·출력 오디오 캡처 설계](docs/LIVE-CAPTURE-PLAN.md)

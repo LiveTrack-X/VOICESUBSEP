@@ -19,13 +19,15 @@ import tempfile
 from typing import Any, Callable
 import wave
 
+from .model_cache import resolve_whisper_model
+
 
 class AnalysisCancelled(Exception):
     """The worker observed a cancellation request at a safe boundary."""
 
 
 NEMOTRON_MODEL = "nvidia/Nemotron-3-Diarization"
-WHISPER_MODELS = {"tiny", "base", "small", "medium", "large-v3", "turbo"}
+WHISPER_MODELS = {"tiny", "base", "small", "medium", "large-v3", "large-v3-turbo", "turbo"}
 COLORS = ["#2563eb", "#db2777", "#059669", "#d97706", "#7c3aed", "#0891b2", "#dc2626", "#64748b"]
 Progress = Callable[[str, float], None]
 Cancelled = Callable[[], bool]
@@ -151,14 +153,22 @@ def _release_memory() -> None:
 
 def _transcribe(path: Path, *, model_name: str, language: str, device: str,
                 duration: float, progress: Progress, cancelled: Cancelled) -> list[dict]:
-    model_class = _whisper_class()
     _checkpoint(cancelled)
+    if device == "cuda":
+        from .gpu_runtime import ensure_cuda_runtime
+
+        progress("CUDA 실행 환경 확인", 0.10)
+        ensure_cuda_runtime()
+    model_class = _whisper_class()
+    model_name = "large-v3-turbo" if model_name == "turbo" else model_name
     model = None
     segments = None
     records: list[dict] = []
     try:
         progress("Whisper 모델 준비 (첫 실행 시 가중치 다운로드)", 0.12)
-        model = model_class(model_name, device=device, compute_type="int8" if device == "cpu" else "float16")
+        model_path = resolve_whisper_model(model_name)
+        _checkpoint(cancelled)
+        model = model_class(model_path, device=device, compute_type="int8" if device == "cpu" else "float16")
         _checkpoint(cancelled)
         progress("대사 전사", 0.17)
         segments, _ = model.transcribe(
@@ -349,9 +359,13 @@ def build_result(records: list[dict], diarization_segments: list[dict] | None, *
     speakers = [{"id": speaker_ids[identity], "name": f"인물 {i + 1}", "color": COLORS[i % len(COLORS)]}
                 for i, identity in enumerate(identities)]
     warnings = []
-    mismatch = diarization_segments is not None and len(speakers) != speaker_count
+    # The UI's fourth option means "4 or more"; it is not a detection cap.
+    mismatch = diarization_segments is not None and (
+        len(speakers) < 4 if speaker_count == 4 else len(speakers) != speaker_count
+    )
     if mismatch:
-        warnings.append(f"설정 인원 {speaker_count}명과 검출 화자 {len(speakers)}명이 다릅니다. 검출 화자를 강제로 합치지 않았습니다.")
+        expected = "4명 이상" if speaker_count == 4 else f"{speaker_count}명"
+        warnings.append(f"설정 인원 {expected}과 검출 화자 {len(speakers)}명이 다릅니다. 검출 화자를 강제로 합치지 않았습니다.")
     if len(speakers) >= 8:
         warnings.append("Nemotron의 최대 8개 화자 채널이 모두 사용됐습니다. 추가 화자가 섞였는지 확인하세요.")
     if diarization_segments is None:

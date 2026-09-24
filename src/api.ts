@@ -12,6 +12,8 @@ export type Health = {
   ffmpeg: boolean;
   ffprobe: boolean;
   engines: { whisper: boolean; nemotron: boolean };
+  gpu?: { available: boolean; name: string | null; deviceCount: number; computeTypes: string[]; reason: string | null };
+  defaults?: { device: 'cuda' | 'cpu'; whisperModel: string; computeType: string };
   detail?: string;
 };
 export type AnalysisResult = {

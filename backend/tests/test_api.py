@@ -124,7 +124,8 @@ def test_actual_invalid_media_is_rejected(tmp_path):
         assert list((tmp_path / "data" / "media").iterdir()) == []
 
 
-def test_health_exposes_only_import_capability(tmp_path, monkeypatch):
+@pytest.mark.parametrize("available", [True, False])
+def test_health_reports_runtime_readiness_and_defaults_without_loading_models(tmp_path, monkeypatch, available):
     calls = []
 
     def capabilities():
@@ -132,13 +133,50 @@ def test_health_exposes_only_import_capability(tmp_path, monkeypatch):
         return {"whisper": True, "nemotron": False}
 
     monkeypatch.setitem(sys.modules, "voicesubsep.inference", SimpleNamespace(capabilities=capabilities))
+    gpu = {"available": available, "name": "NVIDIA test GPU", "deviceCount": 1,
+           "computeTypes": ["float16"], "reason": None if available else "cuDNN missing"}
+    monkeypatch.setitem(sys.modules, "voicesubsep.gpu_runtime", SimpleNamespace(probe_gpu=lambda: gpu))
     with client_for(tmp_path) as client:
         assert calls == []
         response = client.get("/api/health", headers={"Origin": "http://localhost:5173"})
         assert response.status_code == 200
         assert response.json()["engines"] == {"whisper": True, "nemotron": False}
         assert response.json()["status"] == "ok"
+        assert response.json()["app"] == "voicesubsep"
+        assert response.json()["gpu"] == gpu
+        assert response.json()["defaults"] == {"device": "cuda" if available else "cpu", "whisperModel": "large-v3",
+                                               "computeType": "float16" if available else "int8"}
         assert calls == [True]
+
+
+@pytest.mark.parametrize("model", [None, "large-v3-turbo", "turbo"])
+def test_job_defaults_and_turbo_alias(tmp_path, model):
+    seen = {}
+
+    def analyze(path, **kwargs):
+        seen.update(kwargs)
+        return result_for()
+
+    with client_for(tmp_path, probe=fake_probe, analyzer=analyze) as client:
+        media = upload(client)
+        payload = {"mediaId": media["id"], "speakerCount": 4, "audioTrack": 1}
+        if model is not None:
+            payload["whisperModel"] = model
+        created = client.post("/api/jobs", json=payload)
+        assert created.status_code == 202
+        assert wait_job(client, created.json()["id"])["status"] == "completed"
+        assert seen["device"] == "cuda"
+        assert seen["whisper_model"] == ("large-v3" if model is None else "large-v3-turbo")
+
+
+def test_desktop_origin_can_replace_dev_origins(tmp_path):
+    origin = "http://127.0.0.1:54321"
+    with client_for(tmp_path, allowed_origins={origin}) as client:
+        response = client.get("/api/jobs/" + "a" * 32, headers={"Origin": origin})
+        assert response.status_code == 404
+        assert response.headers["access-control-allow-origin"] == origin
+        assert client.get("/api/health", headers={"Origin": "http://127.0.0.1:5173"}).status_code == 403
+        assert client.get("/api/health", headers={"Origin": "null"}).status_code == 403
 
 
 @pytest.mark.parametrize("changes", [

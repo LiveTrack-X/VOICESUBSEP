@@ -67,7 +67,7 @@ export function Sidebar({
           {[1, 2, 3, 4].map((n) => (
             <button
               key={n}
-              aria-label={`참가자 ${n}명`}
+              aria-label={n === 4 ? "참가자 4명 이상" : `참가자 ${n}명`}
               aria-pressed={project.speakerCount === n}
               onClick={() =>
                 update((p) => {
@@ -83,7 +83,7 @@ export function Sidebar({
                 })
               }
             >
-              {n}
+              {n === 4 ? "4명 이상" : n}
             </button>
           ))}
         </div>

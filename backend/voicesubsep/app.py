@@ -15,7 +15,7 @@ from typing import Annotated, Any, Callable, Literal
 from fastapi import FastAPI, File, HTTPException, Path as ApiPath, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.formparsers import MultiPartException
@@ -75,16 +75,22 @@ class JobRequest(BaseModel):
     mode: Literal["standard", "overlap"] = "standard"
     speakerCount: int = Field(ge=1, le=4)
     audioTrack: int = Field(ge=0, le=4096)
-    whisperModel: Literal["tiny", "base", "small", "medium", "large-v3", "turbo"] = "small"
+    whisperModel: Literal["tiny", "base", "small", "medium", "large-v3", "large-v3-turbo", "turbo"] = "large-v3"
     language: str = Field(default="ko", pattern=r"^(?:auto|[a-z]{2,3})$")
-    device: Literal["cpu", "cuda"] = "cpu"
+    device: Literal["cpu", "cuda"] = "cuda"
     diarization: bool = True
+
+    @field_validator("whisperModel")
+    @classmethod
+    def canonical_model(cls, value: str) -> str:
+        return "large-v3-turbo" if value == "turbo" else value
 
 
 def create_app(
     *, data_dir: Path | None = None, analyzer: Analyzer | None = None,
     probe: Callable[[Path], dict[str, Any]] | None = None,
     max_upload_bytes: int | None = None,
+    allowed_origins: set[str] | None = None,
 ) -> FastAPI:
     root = data_dir or Path(os.environ.get("VOICESUBSEP_DATA_DIR", str(Path(__file__).resolve().parents[2] / "data")))
     limit = max_upload_bytes if max_upload_bytes is not None else int(os.environ.get("VOICESUBSEP_MAX_UPLOAD_BYTES", str(8 * 1024**3)))
@@ -93,6 +99,7 @@ def create_app(
     storage = Storage(root)
     jobs = JobManager(storage, analyzer)
     inspect_media = probe or probe_media
+    origins = set(allowed_origins) if allowed_origins is not None else DEFAULT_ORIGINS
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -107,16 +114,16 @@ def create_app(
     application.state.jobs = jobs
     application.add_middleware(RequestSizeLimit, upload_limit=limit)
     application.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]"])
-    application.add_middleware(CORSMiddleware, allow_origins=sorted(DEFAULT_ORIGINS),
+    application.add_middleware(CORSMiddleware, allow_origins=sorted(origins),
                                allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type", "Range"],
                                expose_headers=["Accept-Ranges", "Content-Range", "Content-Length"])
 
     @application.middleware("http")
     async def local_requests(request: Request, call_next):
         origin = request.headers.get("origin")
-        if origin is not None and origin not in DEFAULT_ORIGINS:
+        if origin is not None and origin not in origins:
             return JSONResponse({"detail": "Only the local VOICESUBSEP editor may access this API."}, status_code=403)
-        if request.headers.get("sec-fetch-site") == "cross-site" and origin not in DEFAULT_ORIGINS:
+        if request.headers.get("sec-fetch-site") == "cross-site" and origin not in origins:
             return JSONResponse({"detail": "Cross-site requests are not allowed."}, status_code=403)
         if request.method == "POST" and request.url.path == "/api/media":
             size = request.headers.get("content-length")
@@ -132,6 +139,9 @@ def create_app(
 
     @application.get("/api/health")
     def health():
+        from .gpu_runtime import probe_gpu
+
+        gpu = probe_gpu()
         detail = None
         try:
             from .inference import capabilities
@@ -140,9 +150,12 @@ def create_app(
         except (ImportError, RuntimeError) as exc:
             engines = {"whisper": False, "nemotron": False}
             detail = str(exc)
-        result = {"status": "ok", "ffmpeg": shutil.which("ffmpeg") is not None,
+        result = {"app": "voicesubsep", "status": "ok", "ffmpeg": shutil.which("ffmpeg") is not None,
                   "ffprobe": shutil.which("ffprobe") is not None,
-                  "engines": {"whisper": bool(engines.get("whisper")), "nemotron": bool(engines.get("nemotron"))}}
+                  "engines": {"whisper": bool(engines.get("whisper")), "nemotron": bool(engines.get("nemotron"))},
+                  "gpu": gpu,
+                  "defaults": {"device": "cuda" if gpu["available"] else "cpu", "whisperModel": "large-v3",
+                               "computeType": "float16" if gpu["available"] else "int8"}}
         if detail:
             result["detail"] = detail
         return result

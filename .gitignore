@@ -18,3 +18,6 @@ test-results/
 playwright-report/
 *.egg-info/
 *.tsbuildinfo
+build/
+release/
+runtime/

@@ -60,11 +60,43 @@ def test_expected_count_never_caps_or_merges_detected_people():
     assert "6명" in output["warnings"][0]
 
 
-def test_transcription_only_does_not_invent_even_a_single_speaker():
-    output = result([record(10, 11)], None, count=1, mode="overlap")
+@pytest.mark.parametrize("detected", [4, 5, 6, 7, 8])
+def test_four_or_more_preserves_all_detected_people_without_count_flag(detected):
+    intervals = [{"Start": i * 2, "End": i * 2 + 1, "Speaker": i} for i in range(detected)]
+    output = result([record(i * 2, i * 2 + 1) for i in range(detected)], intervals, count=4)
+    assert len(output["speakers"]) == detected
+    assert len({caption["speakerId"] for caption in output["captions"]}) == detected
+    assert all("speaker_count" not in caption["reasons"] for caption in output["captions"])
+    assert not any("설정 인원" in warning for warning in output["warnings"])
+    assert any("최대 8개" in warning for warning in output["warnings"]) == (detected == 8)
+
+
+@pytest.mark.parametrize("detected", [0, 1, 3])
+def test_four_or_more_flags_too_few_detected_people(detected):
+    intervals = [{"Start": i * 2, "End": i * 2 + 1, "Speaker": i} for i in range(detected)]
+    output = result([record(0, 1)], intervals, count=4)
+    assert len(output["speakers"]) == detected
+    assert "speaker_count" in output["captions"][0]["reasons"]
+    assert any(f"4명 이상과 검출 화자 {detected}명" in warning for warning in output["warnings"])
+
+
+@pytest.mark.parametrize("expected", [1, 2, 3])
+def test_one_to_three_remain_exact_expected_counts(expected):
+    intervals = [{"Start": i * 2, "End": i * 2 + 1, "Speaker": i} for i in range(expected)]
+    output = result([record(0, 1)], intervals, count=expected)
+    assert "speaker_count" not in output["captions"][0]["reasons"]
+    intervals.append({"Start": expected * 2, "End": expected * 2 + 1, "Speaker": expected})
+    output = result([record(0, 1)], intervals, count=expected)
+    assert "speaker_count" in output["captions"][0]["reasons"]
+
+
+@pytest.mark.parametrize("expected", [1, 4])
+def test_transcription_only_does_not_invent_even_a_single_speaker(expected):
+    output = result([record(10, 11)], None, count=expected, mode="overlap")
     assert output["speakers"] == []
     assert output["captions"][0]["speakerId"] is None
     assert "overlap" not in output["captions"][0]["reasons"]
+    assert "speaker_count" not in output["captions"][0]["reasons"]
     assert any("자동 검출하지" in warning for warning in output["warnings"])
 
 
@@ -121,6 +153,7 @@ def test_cancellation_during_attribution_is_observed():
 
 
 def test_native_whisper_generator_is_closed_and_unloaded_on_cancel(monkeypatch, tmp_path):
+    monkeypatch.setattr(infer, "resolve_whisper_model", lambda name: name)
     events = []
     is_cancelled = False
 

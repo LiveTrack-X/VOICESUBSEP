@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { version } from "../package.json";
 import {
   AudioLines,
   FilePlus2,
@@ -9,6 +10,7 @@ import {
   Undo2,
   Redo2,
   CheckCircle2,
+  RefreshCw,
   X,
 } from "lucide-react";
 import {
@@ -32,6 +34,7 @@ import { NotesPanel } from "./components/NotesPanel";
 import { Timeline } from "./components/Timeline";
 import { Dialog } from "./components/Dialog";
 import { AnalysisDialog } from "./components/AnalysisDialog";
+import { UpdateDialog } from "./components/UpdateDialog";
 
 export default function App() {
   const { project, update, replace, undo, redo, canUndo, canRedo, saveState } =
@@ -41,7 +44,7 @@ export default function App() {
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<"export" | "analysis" | null>(null);
+  const [dialog, setDialog] = useState<"export" | "analysis" | "update" | null>(null);
   const [notice, setNotice] = useState("");
   const [confirm, setConfirm] = useState<{
     message: string;
@@ -194,7 +197,7 @@ export default function App() {
         >
           <AudioLines size={26} />
           <span>VOICESUBSEP</span>
-          <span className="version">0.1</span>
+          <span className="version">{version}</span>
         </a>
         <div className="project-title">
           <input
@@ -210,6 +213,11 @@ export default function App() {
           <span>인물별 자막 워크스페이스</span>
         </div>
         <div className="header-actions">
+          {window.voicesubsepDesktop && (
+            <button aria-label="앱 업데이트" title="앱 업데이트" className="icon-button" onClick={() => setDialog("update")}>
+              <RefreshCw size={17} />
+            </button>
+          )}
           <button
             className="icon-button"
             aria-label="실행 취소"
@@ -327,7 +335,7 @@ export default function App() {
           {project.notes.length}개 노트
         </span>
         <span>
-          로컬 작업<span className="status-dot">·</span>v0.1.0
+          로컬 작업<span className="status-dot">·</span>v{version}
         </span>
       </footer>
       <input
@@ -512,6 +520,7 @@ export default function App() {
           </div>
         </Dialog>
       )}
+      {dialog === "update" && <UpdateDialog onClose={() => setDialog(null)} />}
     </div>
   );
 }

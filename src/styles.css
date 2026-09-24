@@ -293,7 +293,10 @@ button.subtle-button {
   background: #fbfcfe;
   height: 35px;
   font-size: 12px;
+  padding-inline: 6px;
 }
+.speaker-count button:last-child { flex: 1.8; white-space: nowrap; }
+.update-progress { width: 100%; accent-color: var(--purple); }
 .speaker-count button[aria-pressed="true"] {
   color: var(--purple);
   background: #f2edff;
