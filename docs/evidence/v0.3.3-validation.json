@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "appVersion": "0.3.3",
-  "status": "source-verified-release-preparation",
+  "status": "artifacts-verified-publication-pending",
   "tests": {
     "webPassed": 787,
     "nodePassed": 73,
@@ -9,7 +9,7 @@
     "backendPassed": 1023,
     "backendSkipped": 1,
     "backendWarnings": 1,
-    "onlineInstallerPassed": null
+    "onlineInstallerPassed": 15
   },
   "localRegression": {
     "backendExitCode": 0,
@@ -378,6 +378,82 @@
         "src/workspaceLayout.test.tsx"
       ],
       "installationValidation": "not performed; root owns release and installation"
+    },
+    "documentSearchAndPlayback": {
+      "checkedAt": "2026-09-25T13:04:45.7816434Z",
+      "baseUrl": "http://127.0.0.1:4174",
+      "fixture": {
+        "project": "Shortcut Follow QA",
+        "source": "tmp/shortcut-follow-qa/synthetic-180s.wav",
+        "duration": 180,
+        "synthetic": true,
+        "captions": 120
+      },
+      "checks": {
+        "speakerSearch": {
+          "query": "QA B",
+          "matches": 60,
+          "total": 120
+        },
+        "appConsoleErrors": 0,
+        "interviewPlay": {
+          "seekSeconds": 3,
+          "paused": false,
+          "keptDialog": true
+        },
+        "transcriptPlay": {
+          "seekSeconds": 30,
+          "paused": false,
+          "keptDialog": true
+        },
+        "contentSearch": {
+          "query": "caption 119",
+          "matches": 1,
+          "total": 120
+        },
+        "pauseWithinDialog": true,
+        "resetScrollTop": 0,
+        "filteredTimeSearch": {
+          "speaker": "QA B",
+          "selectedCaption": 101,
+          "input": "02:30"
+        },
+        "filteredTxtExport": {
+          "bothSpeakersPresent": true,
+          "actualExportedCaptions": 120,
+          "visible": 1,
+          "firstAndLastPresent": true
+        },
+        "missingSourcePlaybackDisabled": true,
+        "narrowViewport": {
+          "width": 518,
+          "height": 778,
+          "virtualRows": 18,
+          "documentWidth": 518,
+          "transcriptScrollWidth": 401,
+          "dialogWidth": 494.3999938964844,
+          "transcriptClientWidth": 401
+        },
+        "timeSearch": {
+          "playbackTimeAfter": 45.281293,
+          "selectedCaption": 100,
+          "scrollTop": 4054.39990234375,
+          "playbackTimeBefore": 45.281293,
+          "input": "02:30",
+          "paused": true
+        }
+      },
+      "tests": {
+        "focusedFiles": 6,
+        "focusedTests": 51,
+        "diffCheck": "pass",
+        "typecheck": "pass"
+      },
+      "limits": [
+        "Synthetic playback verifies UI routing, not ASR quality.",
+        "No actual paid API/model inference or user media used.",
+        "Browser download event hook timed out, but actual generated TXT was found and independently verified."
+      ]
     }
   },
   "frozenRuntime": {
@@ -538,7 +614,285 @@
       "qualityBenchmark": false
     }
   },
-  "package": null,
+  "package": {
+    "version": "0.3.3",
+    "phase": "complete",
+    "verifiedAt": "2026-09-25T13:10:05.478Z",
+    "archiveCrcPending": false,
+    "passed": true,
+    "runtimeEvidence": {
+      "path": "tmp/v0.3.3-frozen-rnnoise-smoke.json",
+      "sha256": "55bbee30a85c3e19f2d4fe7f1762065fe4136808ac70ea44fc7fcba0fd59216a",
+      "executableSha256": "ca657ec854d12982439cc3e06818ae985a7aa805e44e20abb5aa300a088a3eb7",
+      "apiVersion": "0.3.3",
+      "startedAt": "2026-09-25T12:59:07.399608+00:00"
+    },
+    "sourceCommit": "e85c052d34118b3dcf6c1b8fb3c126a0582a51df",
+    "metadata": {
+      "version": "0.3.3",
+      "main": "desktop/main.cjs",
+      "desktopUpdateProvider": "github-split",
+      "desktopUpdateUrl": "https://api.github.com/repos/LiveTrack-X/VOICESUBSEP/releases"
+    },
+    "asarSha256": "f34a08baa483a70b329955a399fd76386a2ba9b0e77a1144c0a293334263a04c",
+    "archiveEntries": 4679,
+    "ownPaths": [
+      "desktop",
+      "desktop/assets",
+      "desktop/assets/icon.ico",
+      "desktop/assets/icon.png",
+      "desktop/backend-lifecycle.cjs",
+      "desktop/capture-permissions.cjs",
+      "desktop/document-pdf.cjs",
+      "desktop/helpers.cjs",
+      "desktop/main.cjs",
+      "desktop/preload.cjs",
+      "desktop/proxy.cjs",
+      "desktop/release-updater.cjs",
+      "desktop/startup-log.cjs",
+      "desktop/update-public-key.pem",
+      "desktop/updater.cjs",
+      "package.json"
+    ],
+    "comparisons": [
+      {
+        "path": "desktop/assets/icon.ico",
+        "identical": true,
+        "sha256": "61cb2e537574b2c00e56ee485be76ea863bd27f15b5bfe287bf27f56ba45249e"
+      },
+      {
+        "path": "desktop/assets/icon.png",
+        "identical": true,
+        "sha256": "503eafc66c6315a7ba0bf66e0c58bc8a37e47494c1b9fddcb5baede77cb34309"
+      },
+      {
+        "path": "desktop/backend-lifecycle.cjs",
+        "identical": true,
+        "sha256": "eb68d3d620e536b321645df2bc0f0f24428c7f87d2b4547716410c9265f21cfa"
+      },
+      {
+        "path": "desktop/capture-permissions.cjs",
+        "identical": true,
+        "sha256": "bbcba940121d7e77af81a540c3ba1dc93b4da1be0a6eb708c902a4f2207f6147"
+      },
+      {
+        "path": "desktop/document-pdf.cjs",
+        "identical": true,
+        "sha256": "450684b2970b95a6a4dc3725aa5518b4da802ded1be1d724c618cd12a4eeaf55"
+      },
+      {
+        "path": "desktop/helpers.cjs",
+        "identical": true,
+        "sha256": "f60aaa6b32140dbaf65453180302a8fbe13e8284241727222a2788676fd4b552"
+      },
+      {
+        "path": "desktop/main.cjs",
+        "identical": true,
+        "sha256": "e95806b16aaea9f2f398ab5d92ba0c072b424209390e8f9880789671338328ae"
+      },
+      {
+        "path": "desktop/preload.cjs",
+        "identical": true,
+        "sha256": "ce3a41a31050854e30382f9e87d1cf75bed0f17ecaa88614dadb74cc40ddf409"
+      },
+      {
+        "path": "desktop/proxy.cjs",
+        "identical": true,
+        "sha256": "b2b192e7f811138a8e3c1da796918c227bdf9ebebfe8b7f8d03cf94951cc685c"
+      },
+      {
+        "path": "desktop/release-updater.cjs",
+        "identical": true,
+        "sha256": "3d44ee19aeeb8c277af15a87c8891d5d48e50d1b299c68bf30d33bd5ae5d2551"
+      },
+      {
+        "path": "desktop/startup-log.cjs",
+        "identical": true,
+        "sha256": "e74ab769c63fd5bd49d2834f9d2d8f4cc978e3a47967c86bf1e4300fb4e90cff"
+      },
+      {
+        "path": "desktop/update-public-key.pem",
+        "identical": true,
+        "sha256": "5533b4f74cf193c9e98ae8a13de3482a656fed603fd209684c0d751b25ba56f3"
+      },
+      {
+        "path": "desktop/updater.cjs",
+        "identical": true,
+        "sha256": "8a58ec2311605b57abd9c73e3493b8d5733592531077132c2ddcd9fb978eccb4"
+      }
+    ],
+    "developmentPaths": [],
+    "privatePemBlock": false,
+    "updateKey": {
+      "type": "ed25519",
+      "publicPem": true,
+      "matchesSource": true,
+      "sha256": "5533b4f74cf193c9e98ae8a13de3482a656fed603fd209684c0d751b25ba56f3"
+    },
+    "webFiles": [
+      {
+        "path": "app-icon.png",
+        "identical": true,
+        "sha256": "6aa6961a24246cdfeae1f68ff1bcbe70e009c4f5a9d57bb430713812be4ea467"
+      },
+      {
+        "path": "assets/index-ABLrCmCM.js",
+        "identical": true,
+        "sha256": "cde28458bfa9f64aad4c010fca782596fecf13a5579bfda86f7735421161bc65"
+      },
+      {
+        "path": "assets/index-CijA9wFr.css",
+        "identical": true,
+        "sha256": "f5f2517fcb0f691392deb1ada9f191daa18986a645c9d679f777bfe991b21092"
+      },
+      {
+        "path": "assets/live-pcm-worklet-BsliAC3S.js",
+        "identical": true,
+        "sha256": "08462ccea4d998902f59ba977af4fca9df237d0430fa9994bb0def75566eb192"
+      },
+      {
+        "path": "favicon.ico",
+        "identical": true,
+        "sha256": "61cb2e537574b2c00e56ee485be76ea863bd27f15b5bfe287bf27f56ba45249e"
+      },
+      {
+        "path": "favicon.png",
+        "identical": true,
+        "sha256": "117fd95181b2d7730c284fb0de68374553a18426f465d164a92c48e18b119ca0"
+      },
+      {
+        "path": "index.html",
+        "identical": true,
+        "sha256": "90272983fb20929fbd9f2ef02dcf54edf6e6fbf56935f3637aa8420e893110dc"
+      }
+    ],
+    "unexpectedWeb": [],
+    "backendInventoryMatches": true,
+    "backendFileCount": 4392,
+    "resourceFileCount": 4402,
+    "backendExeSha256": "ca657ec854d12982439cc3e06818ae985a7aa805e44e20abb5aa300a088a3eb7",
+    "backendExeMatchesVerified": true,
+    "backendExeMatchesBuild": true,
+    "runtimeChecks": [
+      {
+        "path": "voicesubsep-server.exe",
+        "present": true,
+        "identical": true
+      },
+      {
+        "path": "_internal/python312.dll",
+        "present": true,
+        "identical": true
+      },
+      {
+        "path": "_internal/tools/ffmpeg.exe",
+        "present": true,
+        "identical": true
+      },
+      {
+        "path": "_internal/tools/ffprobe.exe",
+        "present": true,
+        "identical": true
+      }
+    ],
+    "rnnoise": {
+      "inventoryMatches": true,
+      "files": [
+        {
+          "path": "_internal/voicesubsep/assets/rnnoise/COPYING",
+          "bytes": 1581,
+          "sha256": "e2f59ff41d9d03adc3dcf3deff170f8c8cf4a6eb4a9b174762a7656d23200ffa",
+          "matchesSource": true,
+          "matchesBuild": true,
+          "matchesRuntimeEvidence": true,
+          "matchesPinned": true
+        },
+        {
+          "path": "_internal/voicesubsep/assets/rnnoise/README.md",
+          "bytes": 2933,
+          "sha256": "5df348e6dde1ed2bd08b33b5f761d5413f4a340732f9a05e7234ab722d73025b",
+          "matchesSource": true,
+          "matchesBuild": true,
+          "matchesRuntimeEvidence": true,
+          "matchesPinned": true
+        },
+        {
+          "path": "_internal/voicesubsep/assets/rnnoise/std.rnnn",
+          "bytes": 302903,
+          "sha256": "6b8943dc4a9b6b24425873992a44f29c0577503276456af46a8854774faeb294",
+          "matchesSource": true,
+          "matchesBuild": true,
+          "matchesRuntimeEvidence": true,
+          "matchesPinned": true
+        }
+      ]
+    },
+    "resourcePrivateNames": [],
+    "sessionPaths": [],
+    "modelWeightPaths": [],
+    "unexpectedRnnoiseModels": [],
+    "bundledOnnx": [
+      {
+        "path": "backend/_internal/faster_whisper/assets/silero_vad_v6.onnx",
+        "size": 1245151
+      },
+      {
+        "path": "backend/_internal/onnxruntime/datasets/logreg_iris.onnx",
+        "size": 670
+      },
+      {
+        "path": "backend/_internal/onnxruntime/datasets/mul_1.onnx",
+        "size": 130
+      },
+      {
+        "path": "backend/_internal/onnxruntime/datasets/sigmoid.onnx",
+        "size": 103
+      }
+    ],
+    "unpackedPassed": true,
+    "artifacts": [
+      {
+        "name": "VOICESUBSEP-0.3.3-Offline-Setup-x64.exe",
+        "bytes": 1045704,
+        "sha256": "442f1f136ba174639833853d71a5d83becea32d628347c7ce51da9c8c688dee0"
+      },
+      {
+        "name": "voicesubsep-0.3.3-x64.nsis.7z",
+        "bytes": 2419217244,
+        "sha256": "ca1bd98db0e0dfea435c27d0c158bfa02ab68fb6d029d7b636dce962e76ca747"
+      }
+    ],
+    "archiveCrc": {
+      "exitCode": 0,
+      "signal": null,
+      "everythingIsOk": true,
+      "files": 4474,
+      "folders": 711,
+      "uncompressedBytes": 5446324058,
+      "archiveBytes": 2416703043,
+      "trailingBytes": 2514201,
+      "log": "tmp/v0.3.3-archive-crc.log",
+      "warning": "There are data after the end of archive",
+      "warningExplanation": "NSIS payload appends a compressed updater blockmap and four-byte length; account for every trailing byte below.",
+      "embeddedBlockMap": {
+        "compressedBytes": 2514197,
+        "lengthTrailerBytes": 4,
+        "version": "2",
+        "fileEntries": 1,
+        "chunksVerified": 115506,
+        "checksumAlgorithm": "BLAKE2b-144",
+        "allChunkChecksumsPassed": true,
+        "trailingBytesFullyAccountedFor": true
+      }
+    },
+    "boundaries": [
+      "Read-only source and package inspection; no installer or packaged backend executed by this audit.",
+      "Final runtime evidence is bound to the exact packaged backend executable SHA-256.",
+      "No user profile, credentials, personal media or private signing key read.",
+      "Whisper/Nemotron weights excluded; bundled RNNoise model/license/provenance and ONNX assets listed separately.",
+      "Integrity and inventory checks do not establish transcription quality, native GUI behavior or installation success."
+    ]
+  },
   "publication": null,
   "localInstallation": null,
   "boundaries": [
@@ -581,5 +935,69 @@
     "phraseBlacklist": false,
     "previousUserResultsChanged": false,
     "maximumCachedAudioSeconds": 94
+  },
+  "sourceCommit": "e85c052d34118b3dcf6c1b8fb3c126a0582a51df",
+  "sourceCi": {
+    "runId": 36138751311,
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/36138751311",
+    "commit": "e85c052d34118b3dcf6c1b8fb3c126a0582a51df",
+    "conclusion": "success",
+    "jobs": [
+      "web",
+      "backend",
+      "online-installer"
+    ]
+  },
+  "releaseArtifacts": [
+    {
+      "name": "Assemble-Installer.ps1",
+      "sha256": "4e5128dc075044d9a4ead79034ad851bcfbfe20a901825d1a234e476e9f8fcdf",
+      "bytes": 8603
+    },
+    {
+      "name": "installer-manifest.json",
+      "sha256": "7c91ed82024aa995f0cbb3b048faa7e7f67e63efcd3bb6b5ad01cf6cb7a18af0",
+      "bytes": 1008
+    },
+    {
+      "name": "installer-manifest.sig",
+      "sha256": "795775a8099c350c5d364adac894c2216f7205dfd9a25d93b4e8299a41429300",
+      "bytes": 64
+    },
+    {
+      "name": "Online-Setup-SHA256.txt",
+      "sha256": "f8bfe165864ed538228303cf33be41d9b0432200c4035a664a2f527c2fd39ceb",
+      "bytes": 105
+    },
+    {
+      "name": "VOICESUBSEP-0.3.3-Offline-Setup-x64.exe",
+      "sha256": "442f1f136ba174639833853d71a5d83becea32d628347c7ce51da9c8c688dee0",
+      "bytes": 1045704
+    },
+    {
+      "name": "VOICESUBSEP-0.3.3-Online-Setup-x64.exe",
+      "sha256": "1864894c5a24061534199ca81462b2ae9b2b119834fda4e25f73d00687f88e46",
+      "bytes": 166912
+    },
+    {
+      "name": "voicesubsep-0.3.3-x64.nsis.7z.part001",
+      "sha256": "6803ae3abe6b4e7823f6bf7d4f99fd441255773eac30a219c752a640425ed545",
+      "bytes": 1073741824
+    },
+    {
+      "name": "voicesubsep-0.3.3-x64.nsis.7z.part002",
+      "sha256": "0203bd2e21f6a6d96706c8ecff0663801f84ba87e097d1e58319c1716d6814fd",
+      "bytes": 1073741824
+    },
+    {
+      "name": "voicesubsep-0.3.3-x64.nsis.7z.part003",
+      "sha256": "45c4c018fad07591902c00a03cb875f5f0be75264ecf752cbf9db222bd98a2f0",
+      "bytes": 271733596
+    }
+  ],
+  "onlineInstaller": {
+    "testsPassed": 15,
+    "hiddenUiSmokePassed": true,
+    "windowsCodeSigned": false
   }
 }
