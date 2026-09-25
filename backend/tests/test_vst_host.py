@@ -143,6 +143,45 @@ def test_cancel_terminates_and_reaps_owned_worker(fake_worker, tmp_path):
     assert processes and processes[0].poll() is not None
 
 
+def test_editor_close_marker_returns_result_without_three_minute_stall(monkeypatch, plugin):
+    captured = {}
+    def worker(request, **kwargs):
+        captured.update(kwargs)
+        assert request["operation"] == "editor" and request["effect"]["state"] == "YWJj"
+        return {"state": "YWJj"}
+    monkeypatch.setattr(host, "_run_worker", worker)
+    close = lambda: False
+    assert host.edit_plugin({"path": plugin, "state": "YWJj"}, close_requested=close) == {"state": "YWJj"}
+    assert captured["timeout"] == captured["stall_timeout"] == 1800
+    assert captured["close_requested"] is close
+
+
+def test_editor_owned_worker_gracefully_closes_and_removes_private_state(fake_worker, tmp_path):
+    code = """import json,sys,time
+from pathlib import Path
+request=json.loads(Path(sys.argv[1]).read_text())
+while not Path(request['startPath']).exists(): time.sleep(.01)
+while not Path(request['closePath']).exists(): time.sleep(.01)
+Path(sys.argv[2]).write_text(json.dumps({'ok':True,'result':{'state':'YWJj'}}))
+"""
+    processes = fake_worker(code)
+    result = host._run_worker({"operation": "editor"}, timeout=3, cancelled=lambda: False,
+                              close_requested=lambda: True, directory=tmp_path)
+    assert result == {"state": "YWJj"} and processes[0].returncode == 0
+    assert not list(tmp_path.glob("vst-worker-*"))
+
+
+def test_editor_cancel_reaps_worker_even_when_native_editor_ignores_close(fake_worker, tmp_path):
+    import time
+    processes = fake_worker("import time; time.sleep(60)")
+    start = time.monotonic()
+    with pytest.raises(host.VSTCancelled):
+        host._run_worker({"operation": "editor"}, timeout=3, cancelled=lambda: time.monotonic() - start > .3,
+                         close_requested=lambda: False, directory=tmp_path)
+    assert processes[0].poll() is not None
+    assert not list(tmp_path.glob("vst-worker-*"))
+
+
 def test_native_stdout_does_not_corrupt_file_protocol(fake_worker):
     fake_worker("import json,sys; print('NATIVE NOISE'); print('error noise',file=sys.stderr); "
                 "open(sys.argv[2],'w').write(json.dumps({'ok':True,'result':{'value':3}}))")

@@ -3,30 +3,61 @@ const { sameOrigin } = require('./helpers.cjs');
 /** Only a visible native approval can grant microphone/system recording. No devices are opened here. */
 function installCapturePermissions({ session, getWindow, getUiUrl, dialog, desktopCapturer, platform = process.platform }) {
   let prompting = false;
+  const microphoneApprovals = new WeakMap();
+  const documents = new WeakMap();
+  const documentFor = (contents) => {
+    let state = documents.get(contents);
+    if (!state) {
+      state = { generation: 0 };
+      documents.set(contents, state);
+      contents.on('did-start-navigation', (event, _url, _inPlace, isMainFrame) => {
+        if (event.isMainFrame === true || isMainFrame === true) {
+          state.generation++;
+          microphoneApprovals.delete(contents);
+        }
+      });
+      contents.once('destroyed', () => microphoneApprovals.delete(contents));
+    }
+    return state;
+  };
   const windowFor = (contents, details = {}) => {
     const win = getWindow();
     if (!win || win.isDestroyed() || !contents || contents !== win.webContents || contents.isDestroyed() ||
       details.isMainFrame !== true || !sameOrigin(contents.getURL(), getUiUrl()) || !sameOrigin(details.requestingUrl ?? details.securityOrigin ?? '', getUiUrl())) return null;
     return win;
   };
-  // Returning false ensures Chromium reaches our per-request consent handler.
-  session.setPermissionCheckHandler(() => false);
+  // Chromium independently checks audio permission when enumerating devices.
+  // Always denying that check redacts labels even while an approved microphone
+  // is open. Retain audio-only approval for this document, never across reloads.
+  // Generic media checks still reach the explicit per-request consent handler.
+  session.setPermissionCheckHandler((contents, permission, origin, details = {}) => {
+    if (permission !== 'media' || details.mediaType !== 'audio' ||
+        !sameOrigin(origin, getUiUrl()) || !windowFor(contents, details)) return false;
+    return microphoneApprovals.has(contents) && microphoneApprovals.get(contents) === documents.get(contents)?.generation;
+  });
   session.setPermissionRequestHandler((contents, permission, callback, details) => {
     const win = windowFor(contents, details);
     if (!win) { callback(false); return; }
     // The display handler below independently verifies the frame, gesture and explicit selection.
     if (permission === 'display-capture') { callback(platform === 'win32'); return; }
     if (permission !== 'media' || !Array.isArray(details.mediaTypes) || details.mediaTypes.length !== 1 || details.mediaTypes[0] !== 'audio' || prompting) { callback(false); return; }
+    const document = documentFor(contents);
+    const generation = document.generation;
+    const frame = contents.mainFrame;
     prompting = true;
     let finished = false;
     const finish = (allowed) => {
       if (finished) return;
       finished = true; prompting = false;
-      try { callback(allowed); } catch { /* Request frame was destroyed. */ }
+      const approved = allowed && !!windowFor(contents, details) &&
+        document.generation === generation && contents.mainFrame === frame;
+      if (approved) microphoneApprovals.set(contents, generation);
+      else microphoneApprovals.delete(contents);
+      try { callback(approved); } catch { /* Request frame was destroyed. */ }
     };
     void Promise.resolve().then(() => dialog.showMessageBox(win, { type: 'question', title: 'VOICESUBSEP · 마이크 녹음',
-      message: '선택한 마이크 소리를 녹음하도록 허용할까요?',
-      detail: '라이브 녹음 화면의 시작 요청입니다. 녹음 중지 버튼이나 창 종료로 마이크 사용을 끝낼 수 있습니다.',
+      message: '마이크 사용을 허용할까요?',
+      detail: '장치 확인은 입력 이름을 확인한 뒤 마이크를 해제합니다. 녹음 시작을 누른 경우에는 소리를 저장하며, 녹음 중지 버튼이나 창 종료로 끝낼 수 있습니다. 이 화면에서 허용한 입력 목록은 앱을 새로 열기 전까지 확인할 수 있습니다.',
       buttons: ['취소', '마이크 허용'], defaultId: 0, cancelId: 0, noLink: true,
     })).then(({ response }) => finish(response === 1 && !!windowFor(contents, details))).catch(() => finish(false));
   });

@@ -56,3 +56,31 @@ def test_exception_in_effect_processing_releases_lock(lock_environment):
             raise ValueError("fixture")
     with vst_process_lock():
         assert vst_lock_path().exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows byte-range lock hand-off")
+def test_transient_windows_lock_release_retries_but_active_lock_stays_bounded(lock_environment, monkeypatch):
+    import msvcrt
+    from voicesubsep import vst_process_lock as lock_module
+    actual = msvcrt.locking
+    calls, waits = [], []
+    def releasing(descriptor, operation, size):
+        if operation == msvcrt.LK_NBLCK:
+            calls.append(operation)
+            if len(calls) < 3:
+                raise OSError("Synthetic delayed kernel lock release")
+        return actual(descriptor, operation, size)
+    monkeypatch.setattr(msvcrt, "locking", releasing)
+    monkeypatch.setattr(lock_module.time, "sleep", waits.append)
+    with vst_process_lock():
+        pass
+    assert len(calls) == 3 and waits == [.02, .02]
+    calls.clear(); waits.clear()
+    def still_active(*_):
+        calls.append(1)
+        raise OSError("Synthetic live owner")
+    monkeypatch.setattr(msvcrt, "locking", still_active)
+    with pytest.raises(RuntimeError, match="Another VST operation"):
+        with vst_process_lock():
+            pytest.fail("A live lock must never be bypassed")
+    assert len(calls) == 4 and waits == [.02, .02, .02]

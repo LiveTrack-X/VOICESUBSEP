@@ -1,0 +1,18 @@
+export const cutUiMessages: Record<string, readonly [string,string,string,string]> = {
+  "제외 {count}개": ["{count} exclusions", "{count}区間を除外", "已排除 {count} 个区间", "{count} exclusiones"],
+  "편집본": ["Edited", "編集版", "编辑版", "Editado"],
+  "제외할 구간 지정": ["Choose a range to exclude", "除外区間の指定", "指定排除区间", "Elegir intervalo para excluir"],
+  "1. 제외할 구간 지정": ["1. Choose a range", "1. 除外区間の指定", "1. 指定排除区间", "1. Elegir intervalo"],
+  "컷 시작 시간": ["Cut start time", "カット開始時刻", "剪辑开始时间", "Inicio del corte"],
+  "컷 끝 시간": ["Cut end time", "カット終了時刻", "剪辑结束时间", "Fin del corte"],
+  "선택 길이 {duration}": ["Selected duration {duration}", "選択した長さ {duration}", "选定时长 {duration}", "Duración seleccionada {duration}"],
+  "시작과 끝을 지정하세요 · 시:분:초 또는 초 입력": ["Set start and end · enter hh:mm:ss or seconds", "開始と終了を指定・時:分:秒または秒で入力", "指定起止时间 · 输入时:分:秒或秒数", "Define inicio y fin · hh:mm:ss o segundos"],
+  "선택 자막으로 범위 지정": ["Use selected caption range", "選択字幕を範囲に設定", "使用选定字幕区间", "Usar intervalo del subtítulo seleccionado"],
+  "선택 구간 재생": ["Play selected range", "選択区間を再生", "播放选定区间", "Reproducir intervalo"],
+  "구간 재생 정지": ["Stop range playback", "区間再生を停止", "停止区间播放", "Detener reproducción"],
+  "이 구간 제외": ["Exclude this range", "この区間を除外", "排除此区间", "Excluir este intervalo"],
+  "제외 구간 목록": ["Excluded ranges", "除外区間の一覧", "排除区间列表", "Intervalos excluidos"],
+  "2. 제외 구간 확인": ["2. Review exclusions", "2. 除外区間の確認", "2. 确认排除区间", "2. Revisar exclusiones"],
+  "아직 제외한 구간이 없습니다.": ["No ranges excluded yet.", "除外した区間はまだありません。", "尚未排除任何区间。", "Aún no hay intervalos excluidos."],
+  "제외 구간 건너뛰며 재생": ["Skip excluded ranges during playback", "除外区間を飛ばして再生", "播放时跳过排除区间", "Saltar intervalos excluidos al reproducir"],
+};

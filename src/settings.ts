@@ -1,6 +1,7 @@
 import type { Locale } from "./i18n";
 import { ASR_LANGUAGES, ASR_LANGUAGE_STORAGE_KEY } from "./languages";
 import { defaultVstSettings, importVstSettings, VST_SETTINGS_FORMAT, VST_STORAGE_KEY, type VstSettings } from "./vst";
+import { checkedShortcuts, parseShortcuts, notifyShortcutsChanged, SHORTCUT_STORAGE_KEY, type ShortcutBindings } from "./shortcuts";
 
 export const ANALYSIS_STORAGE_KEY = "voicesubsep-analysis-settings-v1";
 export const MAX_SETTINGS_BYTES = 2 * 1024 * 1024;
@@ -24,6 +25,7 @@ export type AppSettings = {
   locale: Locale;
   analysis: AnalysisPreferences;
   vst: VstSettings;
+  shortcuts?: ShortcutBindings;
 };
 export type SettingsStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 export type SettingsSaveResult = { ok: boolean; error?: string };
@@ -101,12 +103,13 @@ export function importAppSettings(raw: string): AppSettings {
   if (typeof raw !== "string" || raw.length > MAX_SETTINGS_BYTES || new TextEncoder().encode(raw).length > MAX_SETTINGS_BYTES) return invalid();
   let value: unknown;
   try { value = JSON.parse(raw.replace(/^\uFEFF/u, "")); } catch { return invalid(); }
-  if (!record(value) || !exactKeys(value, ["format", "version", "locale", "analysis", "vst"]) || value.format !== "voicesubsep-settings" || value.version !== 1 ||
+  if (!record(value) || !exactKeys(value, ["format", "version", "locale", "analysis", "vst", ...(Object.hasOwn(value, "shortcuts") ? ["shortcuts"] : [])]) || value.format !== "voicesubsep-settings" || value.version !== 1 ||
     !(localeValues as readonly unknown[]).includes(value.locale)) return invalid();
   const analysis = checkedAnalysisPreferences(value.analysis);
   if (!record(value.vst)) return invalid();
   const vst = importVstSettings(JSON.stringify({ format: VST_SETTINGS_FORMAT, version: 1, settings: value.vst }));
-  return { format: "voicesubsep-settings", version: 1, locale: value.locale as Locale, analysis, vst };
+  return { format: "voicesubsep-settings", version: 1, locale: value.locale as Locale, analysis, vst,
+    ...(Object.hasOwn(value, "shortcuts") ? { shortcuts: checkedShortcuts(value.shortcuts) } : {}) };
 }
 
 export function serializeAppSettings(settings: AppSettings): string {
@@ -138,7 +141,9 @@ export function loadAppSettings(locale: Locale, storage?: SettingsStorage): AppS
     const { version: _version, ...settings } = stored;
     vst = importVstSettings(JSON.stringify({ format: VST_SETTINGS_FORMAT, version: 1, settings }));
   }
-  return importAppSettings(JSON.stringify({ format: "voicesubsep-settings", version: 1, locale, analysis, vst }));
+  const shortcutRaw = target.getItem(SHORTCUT_STORAGE_KEY);
+  return importAppSettings(JSON.stringify({ format: "voicesubsep-settings", version: 1, locale, analysis, vst,
+    ...(shortcutRaw !== null ? { shortcuts: parseShortcuts(shortcutRaw) } : {}) }));
 }
 
 /** Validate and serialize every entry first, then restore prior bytes on a failed write. */
@@ -153,6 +158,7 @@ export function saveAppSettings(settings: AppSettings, storage?: SettingsStorage
       [ANALYSIS_STORAGE_KEY, analysisJson(checked.analysis)],
       [VST_STORAGE_KEY, JSON.stringify({ version: 1, ...checked.vst })],
       [ASR_LANGUAGE_STORAGE_KEY, checked.analysis.language],
+      ...(checked.shortcuts ? [[SHORTCUT_STORAGE_KEY, JSON.stringify({ version: 1, bindings: checked.shortcuts })] as [string, string]] : []),
     ];
     target = storage ?? localStorage;
     previous = entries.map(([key]) => [key, target.getItem(key)]);
@@ -160,6 +166,7 @@ export function saveAppSettings(settings: AppSettings, storage?: SettingsStorage
   let written = 0;
   try {
     for (const [key, value] of entries) { target.setItem(key, value); written += 1; }
+    if (!storage) notifyShortcutsChanged();
     return { ok: true };
   } catch {
     let restored = true;

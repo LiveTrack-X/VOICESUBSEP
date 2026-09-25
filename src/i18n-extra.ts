@@ -23,8 +23,12 @@ import { cacheMessages } from "./i18n-cache";
 import { backgroundMessages } from "./i18n-background";
 import { queueMessages } from "./i18n-queue";
 import { yttMessages } from "./i18n-ytt";
+import { shortcutMessages } from "./i18n-shortcuts";
+import { cutUiMessages } from "./i18n-cuts-ui";
 
 export const extraMessages: Record<string, readonly [string, string, string, string]> = {
+  ...shortcutMessages,
+  ...cutUiMessages,
   ...yttMessages,
   ...editReviewMessages,
   ...mediaIdentityMessages,

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { emptyMicrophones, MicrophoneDiscovery, microphoneAccessError, reconcileMicrophones, selectedMicrophoneMissing, type MicrophoneSnapshot } from "./microphoneDevices";
+import { emptyMicrophones, MicrophoneDiscovery, microphoneAccessError, microphoneListState, reconcileMicrophones, selectedMicrophoneMissing, type MicrophoneSnapshot } from "./microphoneDevices";
 import { dictionaries } from "./i18n";
 
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
@@ -16,6 +16,13 @@ function fixture() {
 const deferred = <T,>() => { let resolve!: (value:T)=>void; const promise=new Promise<T>(done=>{resolve=done;}); return {promise,resolve}; };
 
 describe("permission-aware microphone discovery without real devices", () => {
+  it("distinguishes unasked/permission-hidden devices from genuinely empty and default-only input lists", () => {
+    expect(microphoneListState(emptyMicrophones())).toBe("unchecked");
+    expect(microphoneListState(reconcileMicrophones(emptyMicrophones(), [row("", "")]))).toBe("restricted");
+    expect(microphoneListState(reconcileMicrophones(emptyMicrophones(), [], true))).toBe("empty");
+    expect(microphoneListState(reconcileMicrophones(emptyMicrophones(), [row("default", "Default input")], true))).toBe("available");
+    expect(microphoneListState(reconcileMicrophones(emptyMicrophones(), full, true))).toBe("available");
+  });
   it("lists passively without requesting capture, filters outputs/cameras and removes OS aliases", async () => {
     const f = fixture(); await f.discovery.refresh();
     expect(f.media.getUserMedia).not.toHaveBeenCalled(); expect(f.track.stop).not.toHaveBeenCalled();

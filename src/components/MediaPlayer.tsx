@@ -29,7 +29,9 @@ import "./media-fullscreen.css";
 
 export type MediaPlayerHandle = {
   preview: (time: number) => void;
+  previewRange: (start: number, end: number) => void;
   seek: (time: number) => void;
+  toggle: () => void;
 };
 
 export function MediaPlayer({
@@ -74,6 +76,24 @@ export function MediaPlayer({
     catch { return parsePreviewLayout(null); }
   });
   const previewId = useId();
+  const rangeEnd = useRef<number | null>(null);
+  useEffect(() => { rangeEnd.current = null; }, [source]);
+  useEffect(() => {
+    if (!playing) return;
+    let frame: number;
+    const tick = () => {
+      const media = videoRef.current;
+      const end = rangeEnd.current;
+      if (media && end !== null && media.currentTime >= end) {
+        rangeEnd.current = null;
+        media.pause(); media.currentTime = end; setTime(end);
+        return;
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [playing, source]);
   const kind = !source ? "empty" : audioOnly ? "audio" : "video";
   const height = previewHeight(layout, kind);
   useEffect(() => {
@@ -127,6 +147,7 @@ export function MediaPlayer({
     }
   }
   function seek(t: number) {
+    rangeEnd.current = null;
     const media = videoRef.current;
     if (!media || !source) {
       setTime(Math.max(0, t));
@@ -146,6 +167,15 @@ export function MediaPlayer({
   }
   useImperativeHandle(controlRef, () => ({
     seek,
+    toggle: () => { void toggle(); },
+    previewRange(start, end) {
+      const media = videoRef.current;
+      if (!media || !source || !Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
+      setLoop(false); setError("");
+      seek(start);
+      rangeEnd.current = end;
+      void play(media);
+    },
     preview(t) {
       setLoop(false);
       setError("");
@@ -161,8 +191,9 @@ export function MediaPlayer({
     },
   }));
   async function toggle() {
+    rangeEnd.current = null;
     if (!videoRef.current || !source) return;
-    if (playing) videoRef.current.pause();
+    if (!videoRef.current.paused) videoRef.current.pause();
     else {
       setError("");
       if(keepSpans && (videoRef.current.currentTime >= (keepSpans.at(-1)?.sourceEnd??0))) seek(keepSpans[0]?.sourceStart??0);

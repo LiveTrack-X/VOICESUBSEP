@@ -8,6 +8,18 @@ Whisper transcribes **what was said**; Nemotron identifies **who spoke when**. R
 
 VOICESUBSEP은 로컬 음성 인식과 화자 구분으로 자막을 만들고, 원본을 보며 자막·인물·메모를 고치는 편집기입니다. Whisper는 **무슨 말을 했는지**, Nemotron은 **누가 언제 말했는지**를 분석합니다. 화자 구분은 섞인 목소리를 별도 음원으로 분리하거나 들리지 않는 대사를 복원하는 기능이 아닙니다.
 
+## 0.3.3 source preview / 0.3.3 개발본 추가 기능
+
+The following changes are implemented in the current **0.3.3 source**, with release/package checks in progress. They are **not yet published or installed**; the 0.3.2 downloads above remain current. Follow the [0.3.3 draft](releases/v0.3.3.md) for the final status.
+
+아래는 현재 **0.3.3 소스**에 구현한 추가 기능입니다. 릴리즈·패키지 검증 중이며 **아직 공개·설치되지 않았습니다**. 현재 다운로드는 위 0.3.2이고 최종 상태는 [0.3.3 초안](releases/v0.3.3.md)을 따릅니다.
+
+- **Shortcuts:** press **F1** or open the shortcut hub to search commands, assign/unassign keys and restore defaults. Defaults include Space for play/pause, Left/Right for five-second jumps, Ctrl+Z / Ctrl+Shift+Z for undo/redo, and Alt+Up/Down for caption navigation. Conflicting/reserved keys are rejected and preferences stay on this device. Editing shortcuts do not interrupt text input, Korean IME composition, dialogs or a focused button's normal Space action. Modified project-save shortcuts still save focused drafts. / **단축키:** **F1** 또는 단축키 허브에서 검색·개인 지정·해제·기본값 복원을 합니다. 기본 Space 재생/일시 정지, 좌우 5초 이동, Ctrl+Z/Ctrl+Shift+Z 실행 취소/다시 실행, Alt+상하 자막 이동을 제공합니다. 중복·예약 키는 거절하고 기기에 저장합니다. 입력·한글 조합·대화상자·버튼 고유 Space 동작을 방해하지 않으며 Ctrl/Command 조합 프로젝트 저장은 입력 중 초안에도 적용됩니다.
+- **Playback follow:** the caption-list toggle starts enabled and remembers your choice. It scrolls the currently playing caption into view without changing selected cues, filters or playback. Typing/composition, held pointer gestures and a four-second pause after manual navigation protect editing. / **재생 따라가기:** 기본 켜짐이며 선택을 기억합니다. 현재 자막이 화면을 벗어나면 스크롤하고 자막 선택·필터·재생 시점은 바꾸지 않습니다. 입력·한글 조합·포인터 조작 중, 직접 이동 후 4초 동안은 자동 이동을 멈춥니다.
+- **Cuts:** first specify an IN/OUT range with timecodes, seconds, the current playhead or a selected caption; preview it, then explicitly exclude it. The second section lists excluded ranges, lengths and individual/all restore actions. Merely setting a range does not delete it. / **컷:** 첫 단계에서 시:분:초·초 입력, 현재 위치 또는 선택 자막으로 IN/OUT을 정하고 구간 재생 후 직접 제외합니다. 두 번째 목록에서 제외 범위·길이·개별/전체 복원을 확인합니다. 범위 지정만으로 삭제하지 않습니다.
+- **Microphone connection:** choose **Check microphone permission and refresh devices**, approve the app's microphone prompt, then choose the real device name. The short probe releases its tracks immediately. The fixed Electron permission check now permits audio-device names after approval and revokes that grant on navigation/reload; it does not enable the camera or silently switch a missing fixed input. Device-list/error feedback appears beside the selector. This path was tested with fake Chromium devices, not your physical microphone. / **마이크 연결:** **마이크 권한 확인·장치 새로고침**으로 명시 허용한 뒤 실제 장치 이름을 선택하세요. 확인용 스트림은 즉시 해제합니다. Electron에서 승인 후에도 이름이 가려지던 검사를 고쳤고 이동·새로고침 때 승인을 무효화합니다. 카메라 허용이나 사라진 고정 장치의 기본값 전환은 하지 않습니다. 목록 상태·오류는 선택기 근처에 표시하며 실제 사용자 마이크 대신 가짜 Chromium 장치로 검증했습니다.
+- **Analysis clarity:** the speech-language selector is visually distinct from interface language, and the visible reset action restores local large-v3 + Nemotron. Existing saved choices remain until you explicitly reset them. The window title is simply **VOICESUBSEP**. Optional RNNoise and native VST editors are described in section 9. / **분석 표시:** 화면 언어와 음성 인식 언어를 눈에 띄게 구분하고, 기본 조합 복원 버튼으로 로컬 large-v3+Nemotron을 선택합니다. 저장한 선택은 직접 복원하기 전까지 유지합니다. 창 제목은 **VOICESUBSEP**만 표시합니다. 선택 RNNoise와 VST 전용 창은 9절을 참고하세요.
+
 ## 1. 설치와 첫 실행
 
 *Install and first launch*
@@ -245,15 +257,19 @@ Both recording modes journal approximately one-second chunks locally. After stop
 
 두 방식 모두 약 1초 조각을 로컬 저장소에 보관합니다. 종료 후 소스별 파일·혼합본·메타데이터를 저장하고, 녹음 전용 결과도 새 프로젝트에서 분석할 수 있습니다. 녹음 보관 한도는 **모든 소스 합계 2GiB/세션**과 브라우저 여유 공간입니다. 저장 완료 조각은 복구할 수 있지만 마지막 조각·모든 중단 파일의 재생은 보장하지 않습니다. 라이브 PCM·상태는 백엔드에도 남지만 재시작 뒤 중단된 추론을 자동 재개하지 않습니다. 중요한 파일은 별도로 내려받으세요.
 
-## 9. VST3 사전처리
+## 9. RNNoise·VST3 사전처리
 
-*VST3 preprocessing*
+*RNNoise and VST3 preprocessing*
 
-Use up to four separately installed/activated Windows x64 VST3 effects. CLEAR/RX licenses and plugins are not included. Add effects, adjust order/bypass/parameters and compare a short original/processed preview. Default processing applies to ASR only; applying it to Nemotron is optional. Reported latency is compensated per run. **0.3.2 also compares real input/output windows for residual delay**, adding compensation only when strong, unambiguous matches agree. Uncertain, negative or time-varying delay adds no guessed shift. This checks the current material, not every setting or a plugin's universal latency. Over-denoising can remove speech. Source files and final rendered audio are unchanged. Native plugin GUIs, vendor preset files and real-time VST processing are unsupported. See [VST details](VST-CHAIN.md).
+Use up to four separately installed/activated Windows x64 VST3 effects. CLEAR/RX licenses and plugins are not included. Add effects, adjust order/bypass/parameters and compare a short original/processed preview. Default processing applies to ASR only; applying it to Nemotron is optional. Reported latency is compensated per run. **0.3.2 also compares real input/output windows for residual delay**, adding compensation only when strong, unambiguous matches agree. Uncertain, negative or time-varying delay adds no guessed shift. This checks the current material, not every setting or a plugin's universal latency. Over-denoising can remove speech. Source files and final rendered audio are unchanged. Native plugin GUIs are absent in 0.3.2; current 0.3.3 source adds open/close/apply and saved state up to 256 KiB per slot. Universal GUI scaling remains unsupported; use vendor zoom menus when available. Vendor preset-file import and real-time VST processing remain unsupported. See [VST details](VST-CHAIN.md).
 
 설치·활성화한 Windows x64 VST3 효과를 최대 4개 연결할 수 있습니다. CLEAR·RX 플러그인과 라이선스는 앱에 포함되지 않습니다. `음성 분석`의 VST 영역에서 추가하고 순서·우회·매개변수를 조절한 뒤 짧은 원본/처리음 비교를 먼저 만드세요.
 
-기본은 음성 인식에만 적용하며 Nemotron에도 적용할지 선택할 수 있습니다. 보고 지연을 처리마다 보정합니다. **0.3.2는 실제 입출력의 여러 구간을 비교해 남은 지연도 측정**하며, 충분히 높은 상관과 모호하지 않은 일치 결과가 모일 때만 추가 보정합니다. 불확실·음수·가변 지연은 추측해 이동하지 않습니다. 이번 처리 음원의 증거이지 플러그인의 모든 설정에 적용되는 지연 보증은 아니며, 잡음 제거로 사라진 말소리를 복원하지도 않습니다. 원본과 최종 렌더 오디오는 이 전처리로 바뀌지 않습니다. 전용 플러그인 창·제조사 프리셋·실시간 VST 처리는 지원하지 않습니다. [VST 사용법](VST-CHAIN.md)을 참고하세요.
+기본은 음성 인식에만 적용하며 Nemotron에도 적용할지 선택할 수 있습니다. 보고 지연을 처리마다 보정합니다. **0.3.2는 실제 입출력의 여러 구간을 비교해 남은 지연도 측정**하며, 충분히 높은 상관과 모호하지 않은 일치 결과가 모일 때만 추가 보정합니다. 불확실·음수·가변 지연은 추측해 이동하지 않습니다. 이번 처리 음원의 증거이지 플러그인의 모든 설정에 적용되는 지연 보증은 아니며, 잡음 제거로 사라진 말소리를 복원하지도 않습니다. 원본과 최종 렌더 오디오는 이 전처리로 바뀌지 않습니다. 0.3.2에는 전용 창이 없지만 0.3.3 소스에서는 창 열기·닫고 적용·슬롯당 256KiB 내부 상태 저장을 추가했습니다. 범용 GUI 배율은 없으며 제공되는 제조사 메뉴를 사용합니다. 제조사 프리셋 파일 가져오기·실시간 VST 처리는 여전히 범위 밖입니다. [VST 사용법](VST-CHAIN.md)을 참고하세요.
+
+**0.3.3 source RNNoise:** enable the built-in CPU filter independently of VST, starting at 70% processed mix. The pinned 303 KB Xiph model is included; runtime downloading is unnecessary. RNNoise precedes VST, compensates its fixed 10 ms delay, and preserves the original sample count. ASR-only is the default; ASR + diarization is optional. Compare a short A/B preview because quieter speech may be lost. This does not modify final rendered media or live audio and does not guarantee improved transcription.
+
+**0.3.3 소스 RNNoise:** VST 없이 내장 CPU 필터를 켤 수 있고 처리음 비율 70%로 시작합니다. 고정 303KB Xiph 모델을 포함하므로 실행 중 다운로드는 없습니다. RNNoise→VST 순서로 고정 10ms 지연을 보정하고 원본 샘플 수를 유지합니다. 기본은 음성 인식만이며 화자 구분에도 적용할 수 있습니다. 작은 목소리가 손상될 수 있으므로 짧은 A/B로 비교하세요. 최종 렌더·라이브 음원은 바꾸지 않으며 인식률 향상을 보장하지 않습니다.
 
 ## 10. 저장 복구·오류·디스크 관리
 

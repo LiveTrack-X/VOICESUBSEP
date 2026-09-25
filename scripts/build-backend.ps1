@@ -245,7 +245,7 @@ for path in models.iterdir():
     $arguments = @('-m', 'PyInstaller', '--noconfirm', '--onedir',
         '--name', 'voicesubsep-server', '--contents-directory', '_internal', '--distpath', 'build/backend',
         '--workpath', 'build/pyinstaller', '--specpath', 'build', '--paths', 'backend', '--additional-hooks-dir', $hookDirectory,
-        '--collect-all', 'faster_whisper', '--collect-data', 'ctranslate2', '--collect-binaries', 'ctranslate2',
+        '--collect-data', 'voicesubsep', '--collect-all', 'faster_whisper', '--collect-data', 'ctranslate2', '--collect-binaries', 'ctranslate2',
         '--exclude-module', 'ctranslate2.converters', '--exclude-module', 'ctranslate2.specs',
         '--collect-all', 'onnxruntime', '--collect-all', 'av', '--collect-all', 'tokenizers',
         '--exclude-module', 'voicesubsep.qwen_asr', '--exclude-module', 'voicesubsep.qwen_model_cache',
@@ -278,6 +278,14 @@ for path in models.iterdir():
         if ($LASTEXITCODE -ne 0) { throw "Backend bundling failed ($LASTEXITCODE)." }
     }
     $bundleInternal = Join-Path $projectRoot 'build/backend/voicesubsep-server/_internal'
+    foreach ($rnnoiseFile in @('std.rnnn', 'COPYING', 'README.md')) {
+        $rnnoiseSource = Join-Path $projectRoot ('backend/voicesubsep/assets/rnnoise/' + $rnnoiseFile)
+        $rnnoiseBundled = Join-Path $bundleInternal ('voicesubsep/assets/rnnoise/' + $rnnoiseFile)
+        if (-not (Test-Path -LiteralPath $rnnoiseBundled -PathType Leaf)) { throw "Bundled RNNoise asset is missing: $rnnoiseBundled" }
+        if ((Get-FileHash -LiteralPath $rnnoiseSource -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $rnnoiseBundled -Algorithm SHA256).Hash) {
+            throw "Bundled RNNoise asset differs from its source: $rnnoiseBundled"
+        }
+    }
     if ($useTorchCuda) {
         foreach ($library in $requiredCuda) {
             $bundledLibrary = Join-Path $bundleInternal ('torch/lib/' + $library)

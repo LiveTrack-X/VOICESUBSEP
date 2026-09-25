@@ -116,7 +116,10 @@ def test_media_ignores_retired_size_setting_but_control_bodies_remain_bounded(tm
         response = client.post("/api/media", content=iter([body[:100], body[100:]]), headers={"Content-Type": "multipart/form-data; boundary=test"})
         assert response.status_code == 201, response.text
         assert response.json()["bytes"] == 70000
-        assert client.post("/api/jobs", content=b"x" * 70000, headers={"Content-Type": "application/json"}).status_code == 413
+        # Analysis may carry up to four bounded native VST state snapshots.
+        # Other ordinary control requests retain the smaller 64 KiB ceiling.
+        assert client.post("/api/jobs", content=b"x" * (2 * 1024**2 + 1), headers={"Content-Type": "application/json"}).status_code == 413
+        assert client.post("/api/vst/inspect", content=b"x" * 70000, headers={"Content-Type": "application/json"}).status_code == 413
         assert client.post("/api/renders", content=b"x" * (8 * 1024**2 + 65537), headers={"Content-Type": "application/json"}).status_code == 413
 
 

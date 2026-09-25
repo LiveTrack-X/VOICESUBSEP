@@ -157,7 +157,6 @@ export function Sidebar({
         title={!hasMedia ? t("먼저 영상 또는 음성 파일을 연결하세요") : undefined}
       >
         <AudioLines size={19} />{t(hasMedia ? "음성 분석" : "원본 연결 후 분석")}</button>
-      <p className="setting-hint">{t("기본: Whisper 음성 인식 + Nemotron 화자 구분 · 로컬 실행")}</p>
       {!hasMedia && project.mediaName && (
         <p className="setting-hint">
           <Upload size={13} />{t('저장된 자막은 유지됩니다. 재생할 원본을 다시 연결하세요.')}</p>

@@ -1,6 +1,6 @@
 import { useI18n } from "../i18n";
-import { useEffect, useRef, useState } from "react";
-import { AudioLines, CheckCircle2, LoaderCircle } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { AudioLines, CheckCircle2, Languages, LoaderCircle } from "lucide-react";
 import {
   analysisBlockReason,
   ApiError,
@@ -26,6 +26,7 @@ import type { BackgroundJobPointer } from "../backgroundJob";
 import { AnalysisQueueControls } from "./AnalysisQueueControls";
 import { jobStageLabel } from "../jobStage";
 import { assertProjectMedia } from "../mediaIdentity";
+import "./analysis-language.css";
 
 export function AnalysisDialog({
   file,
@@ -43,6 +44,7 @@ export function AnalysisDialog({
   onJob?: (pointer: BackgroundJobPointer, job: Job) => void;
 }) {
   const { t, locale } = useI18n();
+  const speechLanguageId = useId();
   const mediaReady = useRef(onMediaReady);mediaReady.current=onMediaReady;
   const [health, setHealth] = useState<Health | null>(null);
   const [media, setMedia] = useState<MediaInfo | null>(null);
@@ -105,6 +107,7 @@ export function AnalysisDialog({
   const localDiarization = diarization && !isolatedTracks && diarizationProvider === "nemotron";
   const defaultEngines = asr.provider === "local" && localAsrEngine === "whisper" && localDiarization;
   const supportedLanguages = asr.provider === "gemini" ? ["ko", "en", "ja", "zh", "es"] : asr.provider === "local" && localAsrEngine === "qwen" ? ["zh", "en", "yue", "fr", "de", "it", "ja", "ko", "pt", "ru", "es"] : null;
+  const automaticLanguage = asr.provider === "xai" || language === "auto";
   const unsupportedLanguage = asr.provider !== "xai" && language !== "auto" && supportedLanguages !== null && !supportedLanguages.includes(language);
   const diarizationBlock = cloudDiarization ? diarizationCredential.busy ? "API 키 상태 확인을 마칠 때까지 기다리세요." : !diarizationCredential.configured ? "Deepgram API 키를 고급 설정에서 등록하세요." : !diarizationConsent ? "고급 설정에서 Deepgram 음성 전송과 API 과금에 동의하세요." : null : null;
   const cloudBlockReason = cloudAsrBlockReason(asr, credential.configured, cloudConsent, credential.busy);
@@ -279,7 +282,33 @@ export function AnalysisDialog({
             <p>{defaultEngines ? t("Whisper가 음성을 글로 바꾸고, Nemotron이 말한 사람을 구분합니다. 이 기기에서 실행하며 API 키가 필요 없습니다.") : `${asr.provider === "local" ? localAsrEngine === "whisper" ? "Whisper" : "Qwen3-ASR" : providerName(asr.provider)} · ${isolatedTracks ? t("분리된 화자 트랙") : diarization ? diarizationProvider === "nemotron" ? "Nemotron" : "Deepgram" : t("전사만 생성 · 인물은 직접 지정")}`}</p>
             {!defaultEngines && <button disabled={starting || vstState.busy} onClick={restoreDefaultEngines}>{t("기본 조합으로 되돌리기")}</button>}
           </div>
-          <div className="form-grid">
+          <div className="analysis-language" data-language-mode={automaticLanguage ? "auto" : "fixed"}>
+            <div className="analysis-language-heading">
+              <label htmlFor={speechLanguageId}><Languages size={18} aria-hidden="true" />{t("음성 언어")}</label>
+              <span className="analysis-language-mode">{automaticLanguage ? t("AUTO · 자동 감지") : t("직접 지정 · 선택한 언어로 인식")}</span>
+            </div>
+            <select
+              id={speechLanguageId}
+              aria-describedby={`${speechLanguageId}-help`}
+              value={asr.provider === "xai" ? "auto" : language}
+              disabled={asr.provider === "xai" || starting}
+              onChange={(e) => updateEnginePreferences({ language: e.target.value })}
+            >
+              <option value="auto">{t("AUTO · 자동 감지")}</option>
+              {ASR_LANGUAGES.filter(code => !supportedLanguages || supportedLanguages.includes(code) || code === language).map((code) => <option key={code} value={code}>{languageName(code, locale)} ({code})</option>)}
+            </select>
+            <p id={`${speechLanguageId}-help`}>
+              {asr.provider === "xai"
+                ? t("현재 xAI 연결은 언어를 자동 인식합니다. 저장된 로컬 언어 설정은 유지합니다.")
+                : automaticLanguage
+                  ? asr.provider === "local" && localAsrEngine === "whisper"
+                    ? t("처음 감지한 언어로 계속 인식합니다. 한 언어 위주라면 직접 선택하세요.")
+                    : t("음성에서 언어를 자동 감지합니다. 한 언어 위주라면 직접 선택하세요.")
+                  : t("이번 분석은 {language}로 인식합니다. 원음의 언어와 맞는지 확인하세요.", { language: languageName(language, locale) })}
+              <span className="analysis-language-separation">{t("앱 화면 언어와는 별개입니다.")}</span>
+            </p>
+          </div>
+          <div className="form-grid analysis-audio-track">
             <label>{t('오디오 트랙')}<select
                 aria-label={t("오디오 트랙")}
                 disabled={starting || vstState.busy}
@@ -291,17 +320,6 @@ export function AnalysisDialog({
                     {audioTrack.label} · {t("{count}채널", { count: audioTrack.channels })}</option>
                 ))}
               </select>
-            </label>
-            <label>{t('음성 언어')}<select
-                aria-label={t("음성 언어")}
-                value={asr.provider === "xai" ? "auto" : language}
-                disabled={asr.provider === "xai" || starting}
-                onChange={(e) => updateEnginePreferences({ language: e.target.value })}
-              >
-                <option value="auto">{t('자동 감지')}</option>
-                {ASR_LANGUAGES.filter(code => !supportedLanguages || supportedLanguages.includes(code) || code === language).map((code) => <option key={code} value={code}>{languageName(code, locale)} ({code})</option>)}
-              </select>
-              <small>{asr.provider === "xai" ? t("현재 xAI 연결은 언어를 자동 인식합니다. 저장된 로컬 언어 설정은 유지합니다.") : t("자동 감지하거나 주로 사용하는 음성 언어를 직접 선택하세요. 앱 화면 언어에는 영향을 주지 않습니다.")}</small>
             </label>
           </div>
           <details className="analysis-advanced" open={advancedOpen} onToggle={event => setAdvancedOpen(event.currentTarget.open)}>
@@ -423,10 +441,10 @@ export function AnalysisDialog({
           {error}
         </p>
       )}
-      <div className="dialog-actions">
+      <div className={`dialog-actions${running ? " analysis-running-actions" : ""}`}>
         {running ? (<>
-          <button onClick={onClose}>{t("창 닫고 계속 작업")}</button>
           <button
+            className="analysis-cancel"
             onClick={async () => {
               try {
                 setJob(
@@ -439,7 +457,8 @@ export function AnalysisDialog({
                 setError((e as Error).message);
               }
             }}
-          >{t('분석 취소')}</button></>
+          >{t('분석 취소')}</button>
+          <button className="primary" onClick={onClose}>{t("창 닫고 계속 작업")}</button></>
         ) : job?.result ? (
           <>
             <p>{t('적용하면 기존 자막이 교체됩니다. 노트는 유지됩니다.')}</p>

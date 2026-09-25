@@ -3,7 +3,7 @@ import { Dialog } from "./Dialog";
 import { LiveCapture, type CaptureMode } from "../liveCapture";
 import { recordingStore, saveBlob, type Recording, type RecordingSource } from "../recordingStore";
 import { useI18n } from "../i18n";
-import { emptyMicrophones, MicrophoneDiscovery, selectedMicrophoneMissing } from "../microphoneDevices";
+import { emptyMicrophones, MicrophoneDiscovery, microphoneListState, selectedMicrophoneMissing } from "../microphoneDevices";
 import { analysisBlockReason, request, type AnalysisResult, type Health } from "../api";
 import { effectiveAnalysisDevice, loadAnalysisPreferences } from "../settings";
 import { ASR_LANGUAGES, languageName } from "../languages";
@@ -36,12 +36,16 @@ export function LiveCaptureDialog({ onClose, onUse, onLiveResult, speakerCount =
   const {mode,deviceId:device,deviceLabel:selectedLabel}=capturePreferences;
   const [microphones,setMicrophones] = useState(emptyMicrophones), [sessions,setSessions] = useState<Recording[]>([]);
   const [deviceBusy,setDeviceBusy] = useState(false);
+  const [deviceError,setDeviceError] = useState("");
+  const [permissionChecked,setPermissionChecked] = useState(false);
   const [busy,setBusy] = useState(false), [active,setActive] = useState(false), [elapsed,setElapsed] = useState(0);
   const [error,setError] = useState("");
   const [visibleSessions,setVisibleSessions] = useState(25);
   const capture = useRef<LiveCapture | null>(null), alive = useRef(true);
   const discovery = useRef<MicrophoneDiscovery | null>(null);
   const missingDevice = mode !== "system" && selectedMicrophoneMissing(microphones, device);
+  const deviceListState = microphoneListState(microphones);
+  const noMicrophone = mode !== "system" && deviceListState === "empty";
   function chooseCapturePreferences(next:CapturePreferences) {
     setCapturePreferences(next);
     setCaptureStorageStatus(saveCapturePreferences(next).ok?"saved":"unavailable");
@@ -65,7 +69,7 @@ export function LiveCaptureDialog({ onClose, onUse, onLiveResult, speakerCount =
     void refresh().catch(reportError);
     void refreshLiveHistory();
     const instance=new MicrophoneDiscovery(navigator.mediaDevices, rows=>{if(alive.current)setMicrophones(rows);}); discovery.current=instance;
-    const list=()=>instance.refresh().catch(reportError);
+    const list=()=>instance.refresh().catch(error=>{if(alive.current)setDeviceError(errorText(error));});
     void list(); navigator.mediaDevices?.addEventListener("devicechange",list);
     return ()=>{alive.current=false;instance.dispose();navigator.mediaDevices?.removeEventListener("devicechange",list);void capture.current?.stop("창이 닫혀 녹음을 종료했습니다.").catch(()=>{});void live.current?.abort().catch(()=>{});};
   },[]);
@@ -91,9 +95,9 @@ export function LiveCaptureDialog({ onClose, onUse, onLiveResult, speakerCount =
   },[active,missingDevice,busy]);
   async function refreshDevices() {
     if(active||busy||deviceBusy)return;
-    setDeviceBusy(true);setError("");
-    try {await discovery.current?.refresh(true);}
-    catch(error){reportError(error);}
+    setDeviceBusy(true);setDeviceError("");setPermissionChecked(false);
+    try {await discovery.current?.refresh(true);if(alive.current)setPermissionChecked(true);}
+    catch(error){if(alive.current)setDeviceError(errorText(error));}
     finally {if(alive.current)setDeviceBusy(false);}
   }
   async function stop(reason="", abortLive=false) {
@@ -126,7 +130,7 @@ export function LiveCaptureDialog({ onClose, onUse, onLiveResult, speakerCount =
     finally {if(alive.current)setBusy(false);}
   }
   async function start() {
-    if(active||busy||deviceBusy||missingDevice)return;
+    if(active||busy||deviceBusy||missingDevice||noMicrophone)return;
     if(purpose==="live"&&!ready)return;
     setError("");setBusy(true);setElapsed(0);
     const session=new LiveCapture(message=>{
@@ -210,14 +214,17 @@ export function LiveCaptureDialog({ onClose, onUse, onLiveResult, speakerCount =
       <button type="button" disabled={active||busy||deviceBusy||!navigator.mediaDevices?.getUserMedia} onClick={()=>void refreshDevices()}>{t("마이크 권한 확인·장치 새로고침")}</button>
       <p>{t("장치 이름 확인을 위해 잠깐 마이크 권한을 요청합니다. 이 확인 과정에서는 녹음 파일을 만들지 않으며 확인 후 마이크를 해제합니다.")}</p>
       {deviceBusy&&<p role="status">{t("마이크 권한과 장치 목록을 확인하고 있습니다…")}</p>}
-      {microphones.restricted&&<p role="status">{t("마이크 권한이 없으면 장치 이름과 목록이 제한될 수 있습니다. 권한을 확인한 뒤 다시 불러오세요.")}</p>}
+      {deviceError&&<p className="error-box" role="alert">{deviceError}</p>}
+      {!deviceBusy&&deviceListState==="available"&&<p className="inline-status" role="status">{microphones.devices.length?t("사용 가능한 마이크 {count}개 · 목록에서 사용할 장치를 선택하세요.",{count:microphones.devices.length}):t("마이크 권한 확인 완료 · 기본 입력을 사용할 수 있습니다.")}</p>}
+      {!deviceBusy&&noMicrophone&&<p className="error-box" role="alert">{t("사용 가능한 마이크가 없습니다. Windows 입력 장치 연결과 사용 설정을 확인한 뒤 장치를 새로고침하세요.")}</p>}
+      {!deviceBusy&&microphones.restricted&&<p role="status">{t(permissionChecked?"마이크는 열렸지만 장치 목록이 여전히 제한되어 있습니다. 앱 업데이트와 마이크 접근 권한을 확인한 뒤 다시 시도하세요.":"마이크 권한이 없으면 장치 이름과 목록이 제한될 수 있습니다. 권한을 확인한 뒤 다시 불러오세요.")}</p>}
       {missingDevice&&<p role="alert">{t("선택한 마이크가 목록에 없습니다. 연결을 확인하거나 다른 장치를 직접 선택하세요. 기본 장치로 자동 전환하지 않습니다.")}</p>}
       <p>{t("목록에서 고른 마이크는 해당 장치로 고정합니다. 녹음 중에는 장치 선택과 권한 확인을 바꿀 수 없습니다.")}</p>
     </>}
     {mode!=="microphone"&&<p>{t("시스템 소리는 공유 기능으로 캡처합니다. 출력 장치별 선택은 지원하지 않으며, 개별 WASAPI 출력 캡처는 별도 기능입니다.")}</p>}
     <p>{t("자동 재생 모니터링은 꺼져 있습니다. 양쪽 소스의 합친 소리는 각각 절반 크기로 섞습니다. 세션당 저장 한도는 2 GiB입니다.")}</p>
     {active&&<div className="live-input-level"><label>{t("입력 레벨")}<meter min={0} max={1} value={level.rms} aria-label={t("입력 레벨")}/></label><span>{level.peak>=.98?t("입력이 너무 큽니다"):level.peak<.001?t("입력 소리가 매우 작습니다"):t("입력 감지")}</span></div>}
-    <div className="dialog-actions"><span role="status">{active?`${t("녹음 중")} ${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,"0")}`:t("대기")}</span>{active?<button className="primary" disabled={busy} onClick={()=>void stop()}>{t("녹음 종료·저장")}</button>:<button className="primary" disabled={busy||deviceBusy||missingDevice||finalizing||purpose==="live"&&!ready||!navigator.mediaDevices||typeof MediaRecorder==="undefined"} onClick={()=>void start()}>{purpose==="live"?t("라이브 녹음 시작"):t("녹음 시작")}</button>}</div>
+    <div className="dialog-actions"><span role="status">{active?`${t("녹음 중")} ${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,"0")}`:t("대기")}</span>{active?<button className="primary" disabled={busy} onClick={()=>void stop()}>{t("녹음 종료·저장")}</button>:<button className="primary" disabled={busy||deviceBusy||missingDevice||noMicrophone||finalizing||purpose==="live"&&!ready||!navigator.mediaDevices||typeof MediaRecorder==="undefined"} onClick={()=>void start()}>{purpose==="live"?t("라이브 녹음 시작"):t("녹음 시작")}</button>}</div>
     {purpose==="live"&&liveState&&<section className="live-recognition-state">
       <p role="status">{t(liveState.stage)} · {t("수신 {received}초 · 처리 {processed}초 · 지연 {lag}초",{received:liveState.receivedSeconds.toFixed(1),processed:liveState.processedSeconds.toFixed(1),lag:liveState.lagSeconds.toFixed(1)})}</p>
       {queueSeconds>=1&&<p>{t("전송 대기 {seconds}초",{seconds:queueSeconds.toFixed(1)})}</p>}

@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "appVersion": "0.3.3",
+  "status": "source-verified-release-preparation",
+  "tests": {
+    "webPassed": 733,
+    "nodePassed": 73,
+    "typecheckAndWebBuild": true,
+    "backendPassed": null,
+    "backendSkipped": null,
+    "onlineInstallerPassed": null
+  },
+  "browserQa": {
+    "environment": "Isolated localhost UI, synthetic media; user projects and active jobs untouched",
+    "shortcutsFollowAndCuts": {
+      "spaceStartsPlayback": true,
+      "spacePausesPlayback": true,
+      "textareaSpaceInsertsTextWithoutPlayback": true,
+      "rapidDoubleSpaceAfterNativePausedFix": true,
+      "remapPlayToPWorks": true,
+      "remapSurvivesReload": true,
+      "duplicateCtrlSBlockedWithCommandName": true,
+      "restoreDefaultSpaceWorks": true,
+      "playingFollowsVirtualRow": {
+        "atSeconds": 30.39872,
+        "scrollTop": 884,
+        "activeCaption": "caption-020",
+        "bulkSelectionCount": 1
+      },
+      "editingSuspendsFollow": {
+        "startSeconds": 58.160308,
+        "endSeconds": 78.035679,
+        "unchangedScrollTop": 1638.4000244140625,
+        "focusedCaption": "caption-031"
+      },
+      "manualWheelPauseAndResume": {
+        "after1Second": {
+          "scrollTop": 3684.800048828125,
+          "renderedActiveRows": 0
+        },
+        "after6Seconds": {
+          "scrollTop": 2179.199951171875,
+          "renderedActiveRows": 1
+        },
+        "bulkSelectionCount": 1
+      },
+      "followTogglePreservesFilter": {
+        "speakerFilter": "speaker-2",
+        "disabledScrollTop": 0,
+        "reenabledScrollTop": 1177.5999755859375
+      },
+      "cutSecondsInputNormalizesTimecode": true,
+      "cutAuditionStopsAtEnd": {
+        "start": 10.04244,
+        "end": 12,
+        "pausedAtEnd": true
+      },
+      "cutExcludeAndRestore": {
+        "sourceSeconds": 180,
+        "editedSeconds": 178,
+        "restoredSeconds": 180
+      },
+      "narrow518NoHorizontalOverflow": true,
+      "narrow480HubVisibleAfterCssFix": {
+        "documentWidth": 480,
+        "scrollWidth": 480,
+        "dialogWidth": 456,
+        "dialogHeight": 622.1500244140625
+      },
+      "wideExpandedCutFits": {
+        "viewportWidth": 2048,
+        "viewportHeight": 1018,
+        "listBottom": 757.4000244140625,
+        "outerBottom": 808.6000061035156,
+        "outerClientHeight": 642,
+        "outerScrollHeight": 642,
+        "cutClientHeight": 348,
+        "cutScrollHeight": 872,
+        "activeCaption": "caption-067",
+        "activeRowTop": 697.7000122070312,
+        "activeRowBottom": 756.5000114440918,
+        "atSeconds": 102.036343
+      },
+      "narrowFocusFollowFits": {
+        "viewportWidth": 480,
+        "viewportHeight": 778,
+        "scrollWidth": 480,
+        "listTop": 496.8000183105469,
+        "listBottom": 698.6000213623047,
+        "outerBottom": 707.4000244140625,
+        "activeCaption": "caption-078",
+        "activeRowTop": 627.2000122070312,
+        "activeRowBottom": 686.0000114440918,
+        "atSeconds": 117.778822,
+        "shortcutHubVisible": true
+      }
+    },
+    "languageHighlightLightAndDarkVisuallyChecked": true,
+    "nativeEditorCloseApply": {
+      "status": "completed",
+      "stateBytes": 1067,
+      "parameterCount": 17,
+      "closeRequested": true,
+      "browserCloseApplyPassed": true,
+      "placementIsolated": true
+    },
+    "nativeEditorStateRestoreAndCancel": {
+      "firstStatus": "running",
+      "status": "completed",
+      "closeSeconds": 1.22,
+      "error": null,
+      "plugin": "Clear",
+      "stateBytes": 1067,
+      "parameters": 17,
+      "restoredAndCancelled": "cancelled",
+      "cancelHasResult": false
+    },
+    "rnnoiseOnlyPreview": {
+      "seconds": 1,
+      "sourceAndProcessedReadyState": [
+        4,
+        4
+      ],
+      "mediaErrors": [
+        null,
+        null
+      ]
+    },
+    "rnnoiseThenClearPreview": {
+      "seconds": 1,
+      "sourceAndProcessedReadyState": [
+        4,
+        4
+      ],
+      "reportedVstDelaySamples": 2238,
+      "reportedVstDelayMilliseconds": 46.625,
+      "reportedDelayCompensated": true,
+      "residualDelay": "uncertain for synthetic periodic fixture; no speculative extra shift"
+    },
+    "microphoneElectron": {
+      "passed": true,
+      "fakeDevices": true,
+      "physicalCapture": false,
+      "explicitPrompts": 2,
+      "reloadRevoked": true,
+      "beforeRestricted": true,
+      "duringNames": [
+        "Fake Default Audio Input",
+        "Fake Audio Input 1",
+        "Fake Audio Input 2"
+      ],
+      "afterNames": [
+        "Fake Default Audio Input",
+        "Fake Audio Input 1",
+        "Fake Audio Input 2"
+      ],
+      "matched": true,
+      "cameraDenied": true,
+      "stopped": true
+    }
+  },
+  "frozenRuntime": null,
+  "frozenRnnoise": null,
+  "package": null,
+  "publication": null,
+  "localInstallation": null,
+  "boundaries": [
+    "No real microphone or system audio was recorded; microphone behavior was tested with Electron fake devices.",
+    "RNNoise DSP sample alignment is not proof of real-speech recognition quality or overlap recovery.",
+    "Universal native VST GUI zoom is unavailable; vendor-provided scaling menus remain necessary.",
+    "Native title bar placement has geometry and close-liveness tests plus an observed CLEAR window; not all monitor/plugin combinations were tested.",
+    "Translation and automatic AI/Ollama summaries remain removed.",
+    "Qwen stays a source-only opt-in; the release excludes its unresolved runtime license metadata.",
+    "Windows executables remain unsigned; the Ed25519 update manifest authenticates asset hashes separately."
+  ]
+}

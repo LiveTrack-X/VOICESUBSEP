@@ -37,7 +37,8 @@ from .waveform import Waveforms
 from .render_jobs import Renderer, RenderJobManager
 from .rendering import validate_request as validate_render_request
 from .storage import ID_PATTERN, Storage, new_id
-from .vst_api import PreprocessingRequest, PreviewManager, router as vst_router, validate_available_chain
+from .vst_api import PreprocessingRequest, PreviewManager, router as vst_router, validate_available_preprocessing
+from .vst_editor import EditorManager
 
 DEFAULT_ORIGINS = {
     f"http://{host}:{port}"
@@ -60,7 +61,10 @@ class RequestSizeLimit:
         # file parts to disk and retains its separate field/count protections.
         if scope.get("path") == "/api/media":
             return await self.app(scope, receive, send)
-        limit = 8 * 1024**2 + 64 * 1024 if scope.get("path") == "/api/renders" else 64 * 1024
+        path = scope.get("path")
+        limit = (8 * 1024**2 + 64 * 1024 if path == "/api/renders"
+                 else 2 * 1024**2 if path in {"/api/jobs", "/api/vst/previews", "/api/vst/editors"}
+                 else 64 * 1024)
         received = 0
         exceeded = False
 
@@ -225,12 +229,13 @@ def create_app(
     # VOICESUBSEP_MAX_UPLOAD_BYTES is retired and intentionally ignored. Actual
     # filesystem capacity and media validity still constrain source uploads.
     storage = Storage(root)
-    diagnostics = Diagnostics(storage, "0.3.2")
+    diagnostics = Diagnostics(storage, "0.3.3")
     provider_credentials = ProviderCredentials()
     jobs = JobManager(storage, analyzer, diagnostics=diagnostics, provider_credentials=provider_credentials)
     live = LiveManager(storage, live_engine_factory)
     renders = RenderJobManager(storage, renderer, diagnostics=diagnostics)
     vst_previews = PreviewManager(storage, diagnostics=diagnostics)
+    vst_editors = EditorManager(diagnostics=diagnostics)
     mixer = AudioMixJobManager(storage, diagnostics=diagnostics)
     waveforms = Waveforms(storage)
     cache = MediaCache(storage, lambda: jobs.referenced_media_ids() | renders.referenced_media_ids() | vst_previews.referenced_media_ids() | waveforms.referenced_media_ids() | mixer.referenced_media_ids())
@@ -246,11 +251,15 @@ def create_app(
                 vst_previews.start()
                 mixer.start()
                 try:
-                    live.start()
+                    vst_editors.start()
                     try:
-                        yield
+                        live.start()
+                        try:
+                            yield
+                        finally:
+                            await run_in_threadpool(live.stop)
                     finally:
-                        await run_in_threadpool(live.stop)
+                        await run_in_threadpool(vst_editors.stop)
                 finally:
                     await run_in_threadpool(mixer.stop)
             finally:
@@ -262,12 +271,13 @@ def create_app(
             provider_credentials.clear()
             await run_in_threadpool(jobs.stop)
 
-    application = FastAPI(title="VOICESUBSEP", version="0.3.2", lifespan=lifespan)
+    application = FastAPI(title="VOICESUBSEP", version="0.3.3", lifespan=lifespan)
     application.state.storage = storage
     application.state.jobs = jobs
     application.state.live = live
     application.state.renders = renders
     application.state.vst_previews = vst_previews
+    application.state.vst_editors = vst_editors
     application.state.audio_mixes = mixer
     application.state.diagnostics = diagnostics
     application.state.media_cache = cache
@@ -510,7 +520,7 @@ def create_app(
         payload = request.model_dump(exclude_none=True)
         if request.preprocessing is not None:
             try:
-                validate_available_chain(payload["preprocessing"]["chain"])
+                validate_available_preprocessing(payload["preprocessing"])
             except (ValueError, OSError, RuntimeError) as exc:
                 raise HTTPException(422, str(exc)[:2000]) from exc
         try:

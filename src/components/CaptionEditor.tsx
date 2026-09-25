@@ -22,9 +22,12 @@ import { addCaption, editCaption, splitCaption, mergeCaptions, bulkEditCaptions,
   replacementCount, nextCaptionToReview, MAX_CAPTION_TEXT,
   type BulkCaptionAction } from "../editorOperations";
 import { useCaptionVirtualList } from "../useCaptionVirtualList";
+import { useCaptionFollow } from "../useCaptionFollow";
+import { loadCaptionFollow, saveCaptionFollow } from "../captionFollow";
 import { selectableSpeakers } from "../speakerOperations";
 import "./caption-editor-density.css";
 import "./caption-virtual-list.css";
+import "./caption-follow.css";
 
 const DENSITY_STORAGE_KEY = "voicesubsep-caption-density-v1";
 type CaptionDensity = "compact" | "comfortable";
@@ -58,6 +61,7 @@ export function CaptionEditor({
   onSample,
   onError,
   time,
+  playing = false,
 }: {
   project: Project;
   update: (fn: (p: Project) => Project) => void;
@@ -69,6 +73,7 @@ export function CaptionEditor({
   onSample: () => void;
   onError: (s: string) => void;
   time: number;
+  playing?: boolean;
 }) {
   const { t } = useI18n();
   const { theme } = useTheme();
@@ -77,6 +82,7 @@ export function CaptionEditor({
   const [speakerFilter, setSpeakerFilter] = useState("all");
   const [styleCaptionId, setStyleCaptionId] = useState<string | null>(null);
   const [density, setDensity] = useState<CaptionDensity>(loadCaptionDensity);
+  const [followPlayback, setFollowPlayback] = useState(loadCaptionFollow);
   const [focusedCaptionId, setFocusedCaptionId] = useState<string|null>(null);
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [rowReveal, setRowReveal] = useState(reveal);
@@ -99,6 +105,7 @@ export function CaptionEditor({
   const visibleIds = useMemo(()=>visible.map(caption=>caption.id),[visible]);
   const virtual = useCaptionVirtualList(visibleIds,project.id,density,focusedCaptionId,setFocusedCaptionId);
   const {listRef,rows}=virtual;
+  useCaptionFollow({ enabled: followPlayback, playing, time, captions: visible, layout: virtual.layout, listRef, reveal: rowReveal, revealIndex: virtual.revealIndex });
   const checkedIds = useMemo(() => new Set(visible.filter((caption) => checked.has(caption.id)).map((caption) => caption.id)), [visible, checked]);
   const replaceIds = replaceScope === "selected" ? checkedIds : new Set(visible.map((caption) => caption.id));
   const replaceCount = replacementCount(visible, replaceIds, find);
@@ -304,6 +311,11 @@ export function CaptionEditor({
         <button onClick={() => navigate("review")} disabled={!visible.length}>{t("다음 검수 필요")}</button>
         <button onClick={() => navigate("unassigned")} disabled={!visible.length}>{t("다음 미배정")}</button>
         <span>{t("필터 결과 {count}개", { count: visible.length })}</span>
+        <button className="caption-follow-toggle" aria-pressed={followPlayback} title={t("현재 재생 중인 자막이 화면 밖으로 나가면 따라갑니다. 입력 중이나 직접 스크롤한 뒤 4초 동안은 이동하지 않습니다.")} onClick={() => {
+          const next = !followPlayback;
+          setFollowPlayback(next);
+          if (!saveCaptionFollow(next)) onError(t("재생 따라가기 설정을 저장하지 못했습니다. 현재 창에서만 적용합니다."));
+        }}>{t("재생 따라가기")}</button>
       </div>
       <details className="caption-bulk-tools">
         <summary>{t("여러 자막 편집 · 찾기/바꾸기")}{checkedIds.size > 0 && ` · ${t("선택 {count}개", { count: checkedIds.size })}`}</summary>

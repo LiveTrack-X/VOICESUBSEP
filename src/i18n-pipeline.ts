@@ -1,4 +1,10 @@
 export const pipelineMessages: Record<string, readonly [string,string,string,string]> = {
+  "AUTO · 자동 감지": ["AUTO · Detect automatically","AUTO · 自動検出","AUTO · 自动检测","AUTO · Detectar automáticamente"],
+  "직접 지정 · 선택한 언어로 인식": ["Manual · Use the selected language","手動指定 · 選択した言語で認識","手动指定 · 使用所选语言识别","Manual · Usar el idioma elegido"],
+  "처음 감지한 언어로 계속 인식합니다. 한 언어 위주라면 직접 선택하세요.": ["Recognition continues in the first detected language. Choose it manually if most speech is in one language.","最初に検出した言語で認識を続けます。主に1つの言語を話す場合は直接選択してください。","识别将继续使用最初检测到的语言。如果主要使用一种语言，请手动选择。","El reconocimiento continúa en el primer idioma detectado. Elígelo manualmente si la mayoría del audio está en un solo idioma."],
+  "음성에서 언어를 자동 감지합니다. 한 언어 위주라면 직접 선택하세요.": ["The language is detected from the audio. Choose it manually if most speech is in one language.","音声から言語を自動検出します。主に1つの言語を話す場合は直接選択してください。","自动检测音频中的语言。如果主要使用一种语言，请手动选择。","El idioma se detecta a partir del audio. Elígelo manualmente si la mayoría del audio está en un solo idioma."],
+  "이번 분석은 {language}로 인식합니다. 원음의 언어와 맞는지 확인하세요.": ["This analysis will recognize speech in {language}. Check that it matches the audio.","今回は{language}で音声を認識します。元の音声の言語と一致しているか確認してください。","本次分析将按{language}识别。请确认与原始音频的语言一致。","Este análisis reconocerá el habla en {language}. Comprueba que coincida con el audio."],
+  "앱 화면 언어와는 별개입니다.": ["This is separate from the app's display language.","アプリの表示言語とは別の設定です。","此设置与应用界面语言无关。","Es independiente del idioma de la interfaz."],
   "인식 중인 초안": ["Recognition draft","認識中の下書き","识别中的草稿","Borrador de reconocimiento"],
   "마지막 인식 초안": ["Last recognition draft","最後の認識下書き","最近的识别草稿","Último borrador de reconocimiento"],
   "요청 후 경과 {time}": ["Since request {time}","リクエストから {time}","请求后经过 {time}","Desde la solicitud {time}"],

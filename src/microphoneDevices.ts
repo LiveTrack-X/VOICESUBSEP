@@ -36,6 +36,12 @@ export function selectedMicrophoneMissing(snapshot: MicrophoneSnapshot, deviceId
   return !!deviceId && snapshot.checked && !snapshot.restricted && !snapshot.devices.some(device => device.deviceId === deviceId);
 }
 
+export function microphoneListState(snapshot: MicrophoneSnapshot): "unchecked" | "restricted" | "empty" | "available" {
+  if (!snapshot.checked) return "unchecked";
+  if (snapshot.restricted) return "restricted";
+  return snapshot.devices.length || snapshot.defaultLabel ? "available" : "empty";
+}
+
 /** Owns a short permission probe, including streams granted after the UI closes. */
 export class MicrophoneDiscovery {
   private disposed = false;

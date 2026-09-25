@@ -20,10 +20,11 @@ import time
 from typing import Callable
 
 from .vst_process_lock import vst_process_lock
+from .vst_state import decode_plugin_state
 
 MAX_EFFECTS = 4
 MAX_PARAMETERS = 256
-MAX_JSON_BYTES = 512 * 1024
+MAX_JSON_BYTES = 2 * 1024 * 1024
 Cancelled = Callable[[], bool]
 Progress = Callable[[str, float], None]
 _WORKER_LOCK = threading.Lock()
@@ -67,7 +68,7 @@ def validate_chain(chain: list[dict]) -> list[dict]:
         raise ValueError("A VST chain may contain at most four effects.")
     result = []
     for effect in chain:
-        if not isinstance(effect, dict) or set(effect) - {"path", "pluginName", "enabled", "parameters"}:
+        if not isinstance(effect, dict) or set(effect) - {"path", "pluginName", "enabled", "parameters", "state"}:
             raise ValueError("Invalid VST effect settings.")
         enabled = effect.get("enabled", True)
         if not isinstance(enabled, bool):
@@ -97,6 +98,9 @@ def validate_chain(chain: list[dict]) -> list[dict]:
                 raise ValueError("VST parameter numbers must be finite.")
         result.append({"path": path, "pluginName": _plugin_name(effect.get("pluginName")),
                        "enabled": enabled, "parameters": dict(parameters)})
+        if "state" in effect:
+            decode_plugin_state(effect["state"])
+            result[-1]["state"] = effect["state"]
     return result
 
 
@@ -128,7 +132,7 @@ def _read_json(path: Path) -> dict:
 
 def _run_worker(request: dict, *, timeout: float, cancelled: Cancelled,
                 progress: Progress | None = None, directory: Path | None = None,
-                stall_timeout: float = 180) -> dict:
+                stall_timeout: float = 180, close_requested: Cancelled | None = None) -> dict:
     _checkpoint(cancelled)
     if not _WORKER_LOCK.acquire(blocking=False):
         raise VSTError("Another VST operation is running. Wait for it to finish or cancel it first.")
@@ -136,7 +140,7 @@ def _run_worker(request: dict, *, timeout: float, cancelled: Cancelled,
         try:
             with vst_process_lock():
                 return _run_worker_locked(request, timeout=timeout, cancelled=cancelled, progress=progress,
-                                          directory=directory, stall_timeout=stall_timeout)
+                                          directory=directory, stall_timeout=stall_timeout, close_requested=close_requested)
         except RuntimeError as exc:
             if isinstance(exc, VSTError):
                 raise
@@ -147,7 +151,7 @@ def _run_worker(request: dict, *, timeout: float, cancelled: Cancelled,
 
 def _run_worker_locked(request: dict, *, timeout: float, cancelled: Cancelled,
                        progress: Progress | None = None, directory: Path | None = None,
-                       stall_timeout: float = 180) -> dict:
+                       stall_timeout: float = 180, close_requested: Cancelled | None = None) -> dict:
     _checkpoint(cancelled)
     if not runtime_available():
         raise VSTError("VST preprocessing requires the optional Pedalboard runtime on Windows x64.")
@@ -156,6 +160,11 @@ def _run_worker_locked(request: dict, *, timeout: float, cancelled: Cancelled,
         request_path, response_path = folder / "request.json", folder / "response.json"
         progress_path = folder / "progress.json"
         request = {**request, "progressPath": str(progress_path)}
+        close_path = folder / "close-editor"
+        start_path = folder / "start-editor"
+        if close_requested is not None:
+            request["closePath"] = str(close_path)
+            request["startPath"] = str(start_path)
         encoded = json.dumps(request, ensure_ascii=False, allow_nan=False).encode("utf-8")
         if len(encoded) > MAX_JSON_BYTES:
             raise ValueError("VST worker request exceeded its size limit.")
@@ -169,12 +178,20 @@ def _run_worker_locked(request: dict, *, timeout: float, cancelled: Cancelled,
         # both; the bounded atomic response is the sole result/error channel.
         process = subprocess.Popen(_worker_command(request_path, response_path), stdin=subprocess.DEVNULL,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=False,
-                                   env=environment, creationflags=flags)
+                                   env=environment, creationflags=flags,
+                                   start_new_session=close_requested is not None and os.name != "nt")
         started = heartbeat = time.monotonic()
         last_progress = -1.0
+        tree = None
         try:
+            if close_requested is not None:
+                from .process_tree import ProcessTree
+                tree = ProcessTree(process)
+                start_path.touch()  # Native code may load only after containment.
             while process.poll() is None:
                 _checkpoint(cancelled)
+                if close_requested is not None and close_requested() and not close_path.exists():
+                    close_path.touch()
                 now = time.monotonic()
                 if now - started > timeout or now - heartbeat > stall_timeout:
                     raise VSTError("VST worker timed out. Disable this effect or use a compatible offline VST3.")
@@ -204,21 +221,34 @@ def _run_worker_locked(request: dict, *, timeout: float, cancelled: Cancelled,
                 raise VSTError("VST worker returned an invalid result.")
             return result
         finally:
-            if process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=5)
-            else:
-                process.wait()
+            try:
+                if tree is not None:
+                    tree.close()
+            finally:
+                if process.poll() is None:
+                    process.terminate()
+                    try:
+                        process.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait(timeout=5)
+                else:
+                    process.wait()
 
 
 def inspect_plugin(path: str, plugin_name: str | None = None, *, timeout: float = 45,
                    cancelled: Cancelled = lambda: False) -> dict:
     return _run_worker({"operation": "inspect", "path": validate_plugin_path(path),
                         "pluginName": _plugin_name(plugin_name)}, timeout=timeout, cancelled=cancelled)
+
+
+def edit_plugin(slot: dict, *, cancelled: Cancelled = lambda: False,
+                close_requested: Cancelled = lambda: False, timeout: float = 30 * 60) -> dict:
+    effect = validate_chain([slot])[0]
+    # A bypassed slot can still be edited, but its plugin must actually exist.
+    effect["path"] = validate_plugin_path(effect["path"])
+    return _run_worker({"operation": "editor", "effect": effect}, timeout=timeout,
+                       stall_timeout=timeout, cancelled=cancelled, close_requested=close_requested)
 
 
 def _pcm_wav_info(path: Path) -> dict:

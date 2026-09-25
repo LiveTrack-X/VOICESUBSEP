@@ -14,6 +14,8 @@ Start with the [0.3.2 release record](releases/v0.3.2.md) for the published Wind
 
 ## Users / 사용자
 
+[0.3.3 preparation / 개발·검증 중인 0.3.3](releases/v0.3.3.md) documents native VST windows, built-in RNNoise, shortcut customization and editing fixes. Publication and installation are tracked separately. / VST 전용 창·내장 RNNoise·단축키·편집 개선의 구현과 게시·설치를 구분합니다.
+
 | Purpose / 목적 | Document / 문서 |
 | --- | --- |
 | 0.3.1 publication, verified installer and checksums / 0.3.1 게시 상태·설치 검증·체크섬 | [0.3.1 release record / 릴리즈 기록](releases/v0.3.1.md) |

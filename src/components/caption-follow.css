@@ -1,0 +1,3 @@
+.caption-follow-toggle { margin-left: auto; white-space: nowrap; }
+.caption-follow-toggle[aria-pressed="true"] { color: var(--accent-text); background: var(--accent-soft); border-color: var(--purple); }
+@media (max-width: 600px) { .caption-follow-toggle { margin-left: 0; } }

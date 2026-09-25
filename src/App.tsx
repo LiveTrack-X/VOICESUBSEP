@@ -13,6 +13,7 @@ import {
   Settings2,
   History,
   ArchiveRestore,
+  Keyboard,
   X,
 } from "lucide-react";
 import {
@@ -51,6 +52,9 @@ import { JobHistoryDialog } from "./components/JobHistoryDialog";
 import { ProjectRecoveryDialog } from "./components/ProjectRecoveryDialog";
 import { exportAss, exportSpeakerSrtZip } from "./subtitle-export";
 import { YttExportPanel } from "./components/YttExportPanel";
+import { ShortcutDialog } from "./components/ShortcutDialog";
+import { useShortcuts } from "./useShortcuts";
+import { adjacentCaptionId, formatShortcut, type ShortcutAction } from "./shortcuts";
 import { saveBlob } from "./recordingStore";
 import { buildKeepSpans, projectForEditedExport } from "./cuts";
 import { useI18n } from "./i18n";
@@ -70,7 +74,7 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [revealCaption, setRevealCaption] = useState<{ id: string } | null>(null);
   const [revealNote, setRevealNote] = useState<{ id: string } | null>(null);
-  const [dialog, setDialog] = useState<"export" | "analysis" | "background" | "update" | "render" | "settings" | "documents" | "live" | "history" | "recovery" | "mixer" | null>(null);
+  const [dialog, setDialog] = useState<"export" | "analysis" | "background" | "update" | "render" | "settings" | "documents" | "live" | "history" | "recovery" | "mixer" | "shortcuts" | null>(null);
   const [editedPreview, setEditedPreview] = useState(false);
   const [projectSession, setProjectSession] = useState(0);
   const [notice, setNotice] = useState("");
@@ -90,6 +94,7 @@ export default function App() {
   const playerRef = useRef<MediaPlayerHandle>(null);
   const projectRef = useRef(project);
   projectRef.current = project;
+  const shortcuts = useShortcuts(runShortcut, dialog !== null || confirm !== null);
   useEffect(()=>()=>mediaSelection.current.cancel(),[]);
   useEffect(() => {
     const input = mediaInput.current;
@@ -125,16 +130,28 @@ export default function App() {
     const timer = setTimeout(() => setNotice(""), 7000);
     return () => clearTimeout(timer);
   }, [notice]);
-  useEffect(() => {
-    const listener = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        save();
+  function runShortcut(action: ShortcutAction): boolean {
+    switch (action) {
+      case "save": save(); return true;
+      case "open": projectInput.current?.click(); return true;
+      case "new": guarded(t("새 프로젝트를 시작합니다. 현재 작업은 먼저 파일로 저장해 두세요."), () => changeProject(createProject())); return true;
+      case "undo": if (canUndo) undo(); return canUndo;
+      case "redo": if (canRedo) redo(); return canRedo;
+      case "play": if (source) playerRef.current?.toggle(); return !!source;
+      case "back": seek(time - 5); return true;
+      case "forward": seek(time + 5); return true;
+      case "previousCaption":
+      case "nextCaption": {
+        const id = adjacentCaptionId(project.captions, selected, time, action === "previousCaption" ? -1 : 1);
+        const caption = project.captions.find(item => item.id === id);
+        if (!caption) return false;
+        setSelected(caption.id); setRevealCaption({ id: caption.id }); setRevealNote(null); seek(caption.start); return true;
       }
-    };
-    window.addEventListener("keydown", listener);
-    return () => window.removeEventListener("keydown", listener);
-  });
+      case "analyze": if (!mediaVerifying) { if (file) setDialog("analysis"); else chooseMedia(true); } return !mediaVerifying;
+      case "export": setDialog("export"); return true;
+      case "shortcuts": setDialog("shortcuts"); return true;
+    }
+  }
   function seek(t: number) {
     const end = Math.max(
       project.duration,
@@ -385,10 +402,12 @@ export default function App() {
                 update((p) => ({ ...p, name: t("새 자막 프로젝트") }));
             }}
           />
-          <span>{t("인물별 자막 워크스페이스")}</span>
         </div>
         <div className="header-actions">
           <ThemeSelector />
+          <button aria-label={t("단축키 허브")} title={`${t("단축키 허브")} · ${formatShortcut(shortcuts.bindings.shortcuts)}`} className="icon-button shortcut-hub-button" onClick={() => setDialog("shortcuts")}>
+            <Keyboard size={17} />
+          </button>
           <button aria-label={t("설정 및 오류 로그")} title={t("설정 및 오류 로그")} className="icon-button settings-button" onClick={() => setDialog("settings")}>
             <Settings2 size={17} />
           </button>
@@ -483,9 +502,11 @@ export default function App() {
                 selected={project.captions.find((c) => c.id === selected)}
                 keepSpans={editedPreview && project.cuts?.length ? keepSpans : undefined}
               />
-              <CutPanel project={project} update={update} time={time} selected={project.captions.find(c=>c.id===selected)} preview={preview} editedPreview={editedPreview} setEditedPreview={setEditedPreview} onExport={()=>setDialog("render")}/>
+              <CutPanel project={project} update={update} time={time} selected={project.captions.find(c=>c.id===selected)} preview={preview} editedPreview={editedPreview} setEditedPreview={setEditedPreview} onExport={()=>setDialog("render")}
+                previewRange={(from,to)=>{flushSync(()=>setEditedPreview(false));playerRef.current?.previewRange(from,to);}} stopPreview={()=>videoRef.current?.pause()} mediaAvailable={!!source}/>
               <CaptionEditor
                 project={project}
+                playing={playing && dialog === null && confirm === null}
                 update={update}
                 preview={preview}
                 reveal={revealCaption}
@@ -644,6 +665,7 @@ export default function App() {
         />
       )}
       {dialog === "background" && <BackgroundJobDialog snapshot={background.snapshot} project={project} file={file} onClose={()=>setDialog(null)} onApply={applyAnalysis} onRetry={background.retry}/>}
+      {dialog === "shortcuts" && <ShortcutDialog bindings={shortcuts.bindings} status={shortcuts.status} onSave={shortcuts.save} onClose={() => setDialog(null)}/>}
       {dialog === "export" && (
         <Dialog title={t("자막과 노트 내보내기")} onClose={() => setDialog(null)}>
           <p className="dialog-intro">{t("편집기에 맞는 형식을 선택하세요. SRT·ASS·노트는 원본 시간이며, YTT는 시간 기준을 선택할 수 있습니다.")}</p>

@@ -3,6 +3,7 @@ import { request } from "./api";
 export const VST_STORAGE_KEY = "voicesubsep-vst-chain-v1";
 export const MAX_VST_SLOTS = 4;
 export const MAX_VST_SETTINGS_BYTES = 2 * 1024 * 1024;
+export const MAX_VST_STATE_BYTES = 256 * 1024;
 export const VST_SETTINGS_FORMAT = "voicesubsep-vst-settings";
 export type VstValue = string | number | boolean;
 export type VstSlotRequest = {
@@ -10,10 +11,12 @@ export type VstSlotRequest = {
   pluginName?: string;
   enabled: boolean;
   parameters: Record<string, VstValue>;
+  state?: string;
 };
 export type VstSlot = VstSlotRequest & { id: string; name: string };
-export type VstSettings = { enabled: boolean; applyTo: "asr" | "both"; chain: VstSlot[] };
-export type VstPreprocessing = { chain: VstSlotRequest[]; applyTo: "asr" | "both" };
+export type NoiseReduction = { engine: "rnnoise"; mix: number };
+export type VstSettings = { enabled: boolean; applyTo: "asr" | "both"; chain: VstSlot[]; noiseReduction?: NoiseReduction };
+export type VstPreprocessing = { chain: VstSlotRequest[]; applyTo: "asr" | "both"; noiseReduction?: NoiseReduction };
 export type VstParameter = {
   key: string;
   label: string;
@@ -30,8 +33,17 @@ export type VstInspection = {
   pluginName?: string;
   name?: string;
   parameters?: VstParameter[];
+  state?: string;
 };
-export type VstStatus = { available: boolean; version: string | null; issue: string | null };
+export type VstEditor = {
+  id: string;
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
+  closeRequested?: boolean;
+  cancelRequested?: boolean;
+  result?: VstInspection;
+  error?: string;
+};
+export type VstStatus = { available: boolean; version: string | null; issue: string | null; noiseReduction?: { engine: "rnnoise"; available: boolean; issue?: string | null } };
 export type VstPlugins = { plugins: { path: string; name: string }[]; roots: string[] };
 export type VstResidualMeasurement = {
   status: "verified" | "corrected" | "uncertain";
@@ -64,6 +76,15 @@ const valueValid = (value: unknown): value is VstValue => typeof value === "bool
 const keyValid = (value: unknown): value is string => safeText(value, 256) && !value.startsWith("_") && !["constructor", "prototype"].includes(value);
 const fail = (): never => { throw new Error("VST 응답 형식이 올바르지 않습니다."); };
 
+/** Bounded opaque state is restored only by the isolated native worker. */
+export function validVstState(value: unknown): value is string {
+  if (typeof value !== "string" || value.length > Math.ceil(MAX_VST_STATE_BYTES / 3) * 4) return false;
+  try {
+    const decoded = atob(value);
+    return decoded.length <= MAX_VST_STATE_BYTES && btoa(decoded) === value;
+  } catch { return false; }
+}
+
 export function defaultVstSettings(): VstSettings {
   return { enabled: false, applyTo: "asr", chain: [] };
 }
@@ -72,19 +93,21 @@ const settingsFailure = (): never => { throw new Error("VST 설정 파일이 올
 const onlyKeys = (data: Record<string, unknown>, keys: string[]) => Object.keys(data).every((key) => keys.includes(key));
 
 function checkedSettings(data: unknown): VstSettings {
-  if (!record(data) || !onlyKeys(data, ["enabled", "applyTo", "chain"]) || typeof data.enabled !== "boolean" || !["asr", "both"].includes(String(data.applyTo)) || !Array.isArray(data.chain) || data.chain.length > MAX_VST_SLOTS) return settingsFailure();
+  if (!record(data) || !onlyKeys(data, ["enabled", "applyTo", "chain", "noiseReduction"]) || typeof data.enabled !== "boolean" || typeof data.applyTo !== "string" || !["asr", "both"].includes(data.applyTo) || !Array.isArray(data.chain) || data.chain.length > MAX_VST_SLOTS) return settingsFailure();
+  if (data.noiseReduction !== undefined && (!record(data.noiseReduction) || !onlyKeys(data.noiseReduction, ["engine", "mix"]) || data.noiseReduction.engine !== "rnnoise" || typeof data.noiseReduction.mix !== "number" || !Number.isFinite(data.noiseReduction.mix) || data.noiseReduction.mix < 0 || data.noiseReduction.mix > 1)) return settingsFailure();
   const ids = new Set<string>();
   const chain = data.chain.map((item): VstSlot => {
-    if (!record(item) || !onlyKeys(item, ["id", "name", "path", "pluginName", "enabled", "parameters"]) || !safeText(item.id, 128) || !keyValid(item.id) || Object.hasOwn(Object.prototype, item.id) || ids.has(item.id) || !safeText(item.name, 512) || !safeText(item.path, 2048) || !/^[a-z]:[\\/].*\.vst3$/iu.test(item.path) || item.path.split(/[\\/]/u).includes("..") || typeof item.enabled !== "boolean" || (item.pluginName !== undefined && !safeText(item.pluginName, 512)) || !record(item.parameters) || Object.keys(item.parameters).length > 256) return settingsFailure();
+    if (!record(item) || !onlyKeys(item, ["id", "name", "path", "pluginName", "enabled", "parameters", "state"]) || !safeText(item.id, 128) || !keyValid(item.id) || Object.hasOwn(Object.prototype, item.id) || ids.has(item.id) || !safeText(item.name, 512) || !safeText(item.path, 2048) || !/^[a-z]:[\\/].*\.vst3$/iu.test(item.path) || item.path.split(/[\\/]/u).includes("..") || typeof item.enabled !== "boolean" || (item.pluginName !== undefined && !safeText(item.pluginName, 512)) || !record(item.parameters) || Object.keys(item.parameters).length > 256) return settingsFailure();
+    if (item.state !== undefined && !validVstState(item.state)) return settingsFailure();
     const parameters: Record<string, VstValue> = {};
     for (const [key, value] of Object.entries(item.parameters)) {
       if (!keyValid(key) || !valueValid(value)) return settingsFailure();
       parameters[key] = value;
     }
     ids.add(item.id);
-    return { id: item.id, name: item.name, path: item.path, enabled: item.enabled, parameters, ...(item.pluginName === undefined ? {} : { pluginName: item.pluginName as string }) };
+    return { id: item.id, name: item.name, path: item.path, enabled: item.enabled, parameters, ...(item.state === undefined ? {} : { state: item.state as string }), ...(item.pluginName === undefined ? {} : { pluginName: item.pluginName as string }) };
   });
-  return { enabled: data.enabled, applyTo: data.applyTo as VstSettings["applyTo"], chain };
+  return { enabled: data.enabled, applyTo: data.applyTo as VstSettings["applyTo"], chain, ...(data.noiseReduction === undefined ? {} : { noiseReduction: { ...(data.noiseReduction as NoiseReduction) } }) };
 }
 
 function boundedSettingsJson(raw: string): unknown {
@@ -92,7 +115,7 @@ function boundedSettingsJson(raw: string): unknown {
   try { return JSON.parse(raw.replace(/^\uFEFF/u, "")); } catch { return settingsFailure(); }
 }
 
-/** Versioned application presets contain values only; parsing never loads a native plugin. */
+/** Versioned application presets contain values and optional native state; parsing never loads a native plugin. */
 export function serializeVstSettings(settings: VstSettings): string {
   const raw = `${JSON.stringify({ format: VST_SETTINGS_FORMAT, version: 1, settings: checkedSettings(settings) }, null, 2)}\n`;
   boundedSettingsJson(raw);
@@ -111,7 +134,7 @@ export function parseVstSettings(raw: string | null): VstSettings {
   if (!raw) return defaultVstSettings();
   try {
     const data = boundedSettingsJson(raw);
-    if (!record(data) || data.version !== 1 || !onlyKeys(data, ["version", "enabled", "applyTo", "chain"])) return defaultVstSettings();
+    if (!record(data) || data.version !== 1 || !onlyKeys(data, ["version", "enabled", "applyTo", "chain", "noiseReduction"])) return defaultVstSettings();
     const { version: _version, ...settings } = data;
     return checkedSettings(settings);
   } catch { return defaultVstSettings(); }
@@ -129,11 +152,11 @@ export function saveVstSettings(settings: VstSettings): boolean {
   } catch { return false; }
 }
 
-/** Native execution receives only values, never presentation or inspection metadata. */
+/** Native execution receives settings and optional state, never presentation metadata. */
 export function vstRequest(settings: VstSettings): VstPreprocessing | undefined {
-  if (!settings.enabled || !settings.chain.some((slot) => slot.enabled)) return undefined;
-  return { applyTo: settings.applyTo, chain: settings.chain.map(({ path, pluginName, enabled, parameters }) => ({
-    path, ...(pluginName === undefined ? {} : { pluginName }), enabled, parameters: { ...parameters },
+  if (!settings.enabled || (!settings.noiseReduction && !settings.chain.some((slot) => slot.enabled))) return undefined;
+  return { applyTo: settings.applyTo, ...(settings.noiseReduction ? { noiseReduction: { ...settings.noiseReduction } } : {}), chain: settings.chain.map(({ path, pluginName, enabled, parameters, state }) => ({
+    path, ...(pluginName === undefined ? {} : { pluginName }), enabled, parameters: { ...parameters }, ...(state === undefined ? {} : { state }),
   })) };
 }
 
@@ -181,6 +204,34 @@ export async function inspectVst(path: string, pluginName?: string): Promise<Vst
     signal: AbortSignal.timeout(90_000),
   });
   return checkedInspection(result, path, pluginName);
+}
+
+export function checkedEditor(value: unknown, slot: VstSlotRequest, expectedId?: string): VstEditor {
+  if (!record(value) || typeof value.id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/u.test(value.id) ||
+      (expectedId !== undefined && value.id !== expectedId) ||
+      typeof value.status !== "string" || !["queued", "running", "completed", "failed", "cancelled"].includes(value.status) ||
+      (value.error !== undefined && (typeof value.error !== "string" || value.error.length > 8000)) ||
+      (value.closeRequested !== undefined && typeof value.closeRequested !== "boolean") ||
+      (value.cancelRequested !== undefined && typeof value.cancelRequested !== "boolean")) return fail();
+  const next = { id: value.id, status: value.status, error: value.error, closeRequested: value.closeRequested, cancelRequested: value.cancelRequested } as VstEditor;
+  if (value.status === "completed") {
+    const result = checkedInspection(value.result, slot.path, slot.pluginName);
+    if (!result.parameters || !record(value.result) || (value.result.state !== undefined && !validVstState(value.result.state))) return fail();
+    next.result = { ...result, ...(value.result.state === undefined ? {} : { state: value.result.state as string }) };
+  } else if (value.result !== undefined) return fail();
+  return next;
+}
+
+/** Preserve a newer slot if an old editor response arrives after a project/settings change. */
+export function applyVstEditorResult(settings: VstSettings, original: VstSlot, result: VstInspection): VstSettings {
+  const current = settings.chain.find((slot) => slot.id === original.id);
+  if (!current || current.path !== original.path || current.pluginName !== original.pluginName ||
+      current.state !== original.state || JSON.stringify(current.parameters) !== JSON.stringify(original.parameters) || !result.parameters) return settings;
+  const updated: VstSlot = { ...current, name: result.name ?? current.name, pluginName: result.pluginName ?? current.pluginName,
+    parameters: Object.fromEntries(result.parameters.map((parameter) => [parameter.key, parameter.value])) };
+  if (result.state === undefined) delete updated.state;
+  else updated.state = result.state;
+  return { ...settings, chain: settings.chain.map((slot) => slot.id === original.id ? updated : slot) };
 }
 
 export function checkedPreview(value: unknown): VstPreview {

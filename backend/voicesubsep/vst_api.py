@@ -19,10 +19,11 @@ import wave
 
 from fastapi import APIRouter, HTTPException, Path as ApiPath, Request
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .storage import ID_PATTERN, Storage, new_id, valid_id
 from .diagnostics import Diagnostics
+from .vst_state import MAX_STATE_BASE64, decode_plugin_state
 
 router = APIRouter(prefix="/api/vst", tags=["VST3"])
 Identifier = Annotated[str, ApiPath(pattern=ID_PATTERN)]
@@ -34,6 +35,13 @@ class VstSlot(BaseModel):
     pluginName: str | None = Field(default=None, min_length=1, max_length=512)
     enabled: bool = True
     parameters: dict[str, float | bool | str] = Field(default_factory=dict, max_length=256)
+    state: str | None = Field(default=None, max_length=MAX_STATE_BASE64)
+
+    @field_validator("state")
+    @classmethod
+    def bounded_state(cls, value):
+        decode_plugin_state(value)
+        return value
 
     @field_validator("parameters")
     @classmethod
@@ -46,10 +54,23 @@ class VstSlot(BaseModel):
         return values
 
 
+class NoiseReductionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    engine: Literal["rnnoise"]
+    mix: float = Field(default=1, ge=0, le=1)
+
+
 class PreprocessingRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
-    chain: list[VstSlot] = Field(min_length=1, max_length=4)
+    chain: list[VstSlot] = Field(max_length=4)
     applyTo: Literal["asr", "both"] = "asr"
+    noiseReduction: NoiseReductionRequest | None = None
+
+    @model_validator(mode="after")
+    def require_processing(self):
+        if not self.chain and self.noiseReduction is None:
+            raise ValueError("Select RNNoise or at least one VST effect.")
+        return self
 
 
 class InspectRequest(BaseModel):
@@ -58,13 +79,24 @@ class InspectRequest(BaseModel):
     pluginName: str | None = Field(default=None, min_length=1, max_length=512)
 
 
+class CloseEditorRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
 class PreviewRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
     mediaId: str = Field(pattern=ID_PATTERN)
     audioTrack: int = Field(ge=0, le=4096)
     start: float = Field(default=0, ge=0)
     duration: float = Field(default=30, gt=0, le=30)
-    chain: list[VstSlot] = Field(min_length=1, max_length=4)
+    chain: list[VstSlot] = Field(max_length=4)
+    noiseReduction: NoiseReductionRequest | None = None
+
+    @model_validator(mode="after")
+    def require_processing(self):
+        if not self.chain and self.noiseReduction is None:
+            raise ValueError("Select RNNoise or at least one VST effect.")
+        return self
 
 
 def runtime_status() -> dict:
@@ -128,6 +160,24 @@ def validate_available_chain(chain: list[dict]) -> None:
     validate_chain(chain)
     if any(slot.get("enabled", True) for slot in chain) and not runtime_status()["available"]:
         raise ValueError(runtime_status()["issue"])
+
+
+def noise_reduction_status() -> dict:
+    try:
+        from .noise_reduction import noise_reduction_status as get_status
+    except ImportError:
+        return {"available": False, "engine": "rnnoise", "issue": "RNNoise is not included in this runtime."}
+    return get_status()
+
+
+def validate_available_preprocessing(settings: dict) -> None:
+    validate_available_chain(settings["chain"])
+    if settings.get("noiseReduction") is not None:
+        from .noise_reduction import validate_noise_reduction
+        validate_noise_reduction(settings["noiseReduction"])
+        status = noise_reduction_status()
+        if not status["available"]:
+            raise ValueError(status.get("issue") or "RNNoise is unavailable in this runtime.")
 
 
 def _extract_preview(source: Path, track: int, start: float, duration: float,
@@ -288,7 +338,8 @@ class PreviewManager:
 
     def _work(self):
         try:
-            from .vst_host import VSTCancelled, process_chain
+            from .vst_host import VSTCancelled
+            from .audio_preprocessing import process_preprocessing
 
             while True:
                 item = self._queue.get()
@@ -313,8 +364,8 @@ class PreviewManager:
                                 if not event.is_set() and math.isfinite(value):
                                     self._update(identifier, progress=0.1 + 0.85 * min(1, max(0, value)))
 
-                        result = process_chain(folder / "original.wav", folder / "processed.wav",
-                                               request["chain"], event.is_set, report)
+                        result = process_preprocessing(folder / "original.wav", folder / "processed.wav",
+                            request["chain"], event.is_set, report, request.get("noiseReduction"))
                         with self._lock:
                             if event.is_set():
                                 raise VSTCancelled("미리듣기를 취소했습니다.")
@@ -346,7 +397,44 @@ class PreviewManager:
 
 @router.get("/status")
 def status():
-    return runtime_status()
+    return {**runtime_status(), "noiseReduction": noise_reduction_status()}
+
+
+@router.post("/editors", status_code=202)
+def create_editor(body: VstSlot, request: Request):
+    runtime = runtime_status()
+    if not runtime["available"]:
+        raise HTTPException(503, runtime["issue"])
+    try:
+        return request.app.state.vst_editors.submit(body.model_dump(exclude_none=True))
+    except OverflowError as error:
+        raise HTTPException(409, str(error)) from error
+    except (ValueError, OSError, RuntimeError) as error:
+        raise HTTPException(400, str(error)) from error
+
+
+@router.get("/editors/{identifier}")
+def get_editor(identifier: Identifier, request: Request):
+    try:
+        return request.app.state.vst_editors.get(identifier)
+    except KeyError as error:
+        raise HTTPException(404, "This VST editor is missing or expired.") from error
+
+
+@router.post("/editors/{identifier}/close")
+def close_editor(identifier: Identifier, body: CloseEditorRequest, request: Request):
+    try:
+        return request.app.state.vst_editors.close(identifier)
+    except KeyError as error:
+        raise HTTPException(404, "This VST editor is missing or expired.") from error
+
+
+@router.delete("/editors/{identifier}")
+def cancel_editor(identifier: Identifier, request: Request):
+    try:
+        return request.app.state.vst_editors.cancel(identifier)
+    except KeyError as error:
+        raise HTTPException(404, "This VST editor is missing or expired.") from error
 
 
 @router.get("/plugins")
@@ -373,7 +461,7 @@ def inspect(body: InspectRequest, request: Request):
 def create_preview(body: PreviewRequest, request: Request):
     try:
         values = body.model_dump(exclude_none=True)
-        validate_available_chain(values["chain"])
+        validate_available_preprocessing(values)
         return request.app.state.vst_previews.submit(values)
     except (FileNotFoundError, KeyError) as error:
         raise HTTPException(404, "원본 미디어를 다시 연결하세요.") from error

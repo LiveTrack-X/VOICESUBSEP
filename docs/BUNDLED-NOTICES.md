@@ -69,6 +69,26 @@ The actual bundled distributor README identifies **`8.0.1-essentials_build-www.g
 
 The Gyan essentials binaries statically include external libraries. The FFmpeg commit alone does not identify every external library's exact source revision or the distributor's complete build environment. Those inputs have not been independently reconstructed by this project. / Gyan essentials 바이너리는 외부 라이브러리를 정적으로 포함합니다. FFmpeg 커밋 하나로 모든 외부 라이브러리의 정확한 소스 버전이나 배포자의 전체 빌드 환경까지 식별되지는 않으며, 이 프로젝트는 그 입력을 독립적으로 재구성하지 않았습니다.
 
+## Optional RNNoise model / 선택 RNNoise 모델
+
+Current source adds the 302,903-byte Xiph RNNoise v0.1 standard model for FFmpeg
+`arnndn`. This is a new source addition after v0.3.2, not a claim that the public
+v0.3.2 installer already contains it. Future bundles include the model, original
+Xiph `COPYING` and provenance README under
+`_internal/voicesubsep/assets/rnnoise/`; the build verifies each copied hash.
+The package license does not replace these upstream redistribution terms.
+
+현재 소스에 FFmpeg `arnndn`용 Xiph RNNoise v0.1 원모델 302,903바이트를 추가했습니다.
+공개 v0.3.2 설치본 이후의 변경이며, 기존 설치본에 포함됐다는 뜻은 아닙니다.
+새 번들은 `_internal/voicesubsep/assets/rnnoise/`에 모델과 원본 `COPYING`, 출처
+README를 함께 포함하고 복사본 해시를 검사합니다. 앱 라이선스가 원본 재배포 조건을
+대체하지 않습니다.
+
+- Serialized model / 직렬화 모델: [std.rnnn at 0fda24c46d78f0207d820bb970fbe85c1971b39c](https://github.com/richardpl/arnndn-models/blob/0fda24c46d78f0207d820bb970fbe85c1971b39c/std.rnnn), SHA-256 `6b8943dc4a9b6b24425873992a44f29c0577503276456af46a8854774faeb294`.
+- Original arrays and terms / 원본 배열과 조건: [Xiph RNNoise v0.1 rnn_data.c](https://github.com/xiph/rnnoise/blob/cdf196b1e9de2f8ff1003328ebf9a4316477429d/src/rnn_data.c), [COPYING](https://github.com/xiph/rnnoise/blob/cdf196b1e9de2f8ff1003328ebf9a4316477429d/COPYING).
+- The serialized weight/bias values were compared against every corresponding original array and matched. Attribution identifies Xiph's standard model, not Gregor Richards' other trained models. / 원본 전체 가중치·편향 배열과 수치 일치를 확인했으며, Gregor Richards의 별도 학습 모델이 아닌 Xiph 원모델로 표기합니다.
+- Full provenance / 전체 출처: [bundled model README](../backend/voicesubsep/assets/rnnoise/README.md). FFmpeg licensing above still applies; this addition is not a comprehensive legal audit of all bundled dependencies. / 위 FFmpeg 배포 조건도 적용되며, 이번 확인이 전체 번들 의존성의 법률 감사를 뜻하지는 않습니다.
+
 ## Verification and remaining scope / 검증과 남은 범위
 
 `powershell -ExecutionPolicy Bypass -File scripts/build-backend.ps1 -CheckDependenciesOnly` checks the required Nemotron module files, CUDA source selection and original notice inventory without running PyInstaller. The build selects the Nemotron diarization model, processor, configuration, streaming feature extractor and AutoFeatureExtractor imports explicitly. A generated build-directory hook retains the installed Transformers hook's metadata/source rules and excludes unrelated model families; it does not modify the installed Transformers package. Standard PyInstaller hooks preserve librosa's lazy-loader data, llvmlite and SciPy native libraries, and SoundFile's bundled libsndfile notice. The build also preserves the sibling `llvmlite.libs` directory used by newer Windows wheels. A complete runtime bundle still needs a separate frozen-server health and inference check; source dependency checks alone do not prove it works.

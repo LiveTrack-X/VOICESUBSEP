@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Download, LoaderCircle, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, LoaderCircle, Plus, RefreshCw, Trash2, Upload, AppWindow } from "lucide-react";
 import { download, request, type MediaInfo } from "../api";
 import { useI18n } from "../i18n";
 import { recordClientError } from "../diagnostics";
 import { vstPollFailure } from "../vst-polling";
+import { useVstEditor } from "../useVstEditor";
 import {
-  checkedPreview, importVstSettings, inspectVst, loadVstSettings, MAX_VST_SETTINGS_BYTES, MAX_VST_SLOTS, moveVstSlot, saveVstSettings, serializeVstSettings, validParameterValue, vstLatencySummary, vstRequest,
+  applyVstEditorResult, checkedPreview, importVstSettings, inspectVst, loadVstSettings, MAX_VST_SETTINGS_BYTES, MAX_VST_SLOTS, moveVstSlot, saveVstSettings, serializeVstSettings, validParameterValue, vstLatencySummary, vstRequest,
   type VstParameter, type VstPlugins, type VstPreprocessing, type VstPreview, type VstSettings, type VstSlot, type VstStatus, type VstValue,
 } from "../vst";
 import "./vst-chain.css";
@@ -62,12 +63,20 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
   const originalAudio = useRef<HTMLAudioElement | null>(null);
   const processedAudio = useRef<HTMLAudioElement | null>(null);
   const presetInput = useRef<HTMLInputElement | null>(null);
+  const editor = useVstEditor((slot, result) => {
+    setSettings((current) => applyVstEditorResult(current, slot, result));
+    setMetadata((current) => ({ ...current, [slot.id]: result.parameters ?? [] }));
+    setInvalidParameters((current) => new Set([...current].filter((key) => !key.startsWith(`${slot.id}:`))));
+    setPresetMessage(t("플러그인 창의 설정을 적용했습니다."));
+  });
   const previewRunning = !pollPaused && (preview?.status === "queued" || preview?.status === "running");
-  const busy = previewStarting || previewRunning || inspecting || importing;
+  const busy = previewStarting || previewRunning || inspecting || importing || editor.busy;
   const locked = disabled || busy || checking || pollPaused;
   const preprocessing = useMemo(() => vstRequest(settings), [settings]);
   const badParameters = settings.chain.some((slot) => slot.enabled && [...invalidParameters].some((key) => key.startsWith(`${slot.id}:`)));
-  const blocked = pollPaused || (settings.enabled && (!status?.available || checking || !preprocessing || badParameters));
+  const needsVst = settings.chain.some(slot => slot.enabled);
+  const blocked = pollPaused || (settings.enabled && (checking || !preprocessing || badParameters ||
+    (needsVst && !status?.available) || (!!settings.noiseReduction && !status?.noiseReduction?.available)));
   const startSeconds = Number(start);
   const durationSeconds = Number(duration);
   const validRange = !!media && !!start.trim() && !!duration.trim() && Number.isFinite(startSeconds) && startSeconds >= 0 && startSeconds < media.duration && Number.isFinite(durationSeconds) && durationSeconds > 0 && durationSeconds <= 30;
@@ -78,7 +87,7 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
   useEffect(() => { setPreview(null); setError(""); }, [settings, media?.id, audioTrack]);
 
   async function refresh() {
-    if (busyRef.current) return;
+    if (busyRef.current || editor.busy) return;
     setChecking(true); setError("");
     const results = await Promise.allSettled([request<VstStatus>("/api/vst/status"), request<VstPlugins>("/api/vst/plugins")]);
     if (!alive.current) return;
@@ -194,7 +203,8 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
     try {
       const next = checkedPreview(await request("/api/vst/previews", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mediaId: media.id, audioTrack, start: startSeconds, duration: Math.min(durationSeconds, media.duration - startSeconds), chain: preprocessing.chain }),
+        body: JSON.stringify({ mediaId: media.id, audioTrack, start: startSeconds, duration: Math.min(durationSeconds, media.duration - startSeconds), chain: preprocessing.chain,
+          ...(preprocessing.noiseReduction ? { noiseReduction: preprocessing.noiseReduction } : {}) }),
       }));
       if (!alive.current) { if (["queued", "running"].includes(next.status)) void request(`/api/vst/previews/${encodeURIComponent(next.id)}`, { method: "DELETE" }).catch(() => {}); return; }
       setPreview(next);
@@ -215,9 +225,9 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
     } catch (caught) { if (alive.current) { if (vstPollFailure(caught, 1) === "missing") finishMissingPreview(preview.id); else { setError((caught as Error).message); setCancelPending(false); } } }
   }
 
-  return <section className="vst-chain-panel" aria-label={t("VST3 사전처리")}>
+  return <section className="vst-chain-panel" aria-label={t("오디오 사전처리")}>
     <div className="vst-panel-heading"><label className="checkbox-label"><input type="checkbox" checked={settings.enabled} disabled={locked}
-      onChange={(event) => setSettings((current) => ({ ...current, enabled: event.target.checked }))} />{t("VST3 사전처리 사용")}</label>
+      onChange={(event) => setSettings((current) => ({ ...current, enabled: event.target.checked }))} />{t("오디오 사전처리 사용")}</label>
       <button type="button" className="vst-refresh" disabled={locked} title={t("플러그인 목록 새로고침")} aria-label={t("플러그인 목록 새로고침")} onClick={() => void refresh()}>
         {checking ? <LoaderCircle size={16} className="spin" /> : <RefreshCw size={16} />}
       </button></div>
@@ -233,8 +243,21 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
     <p className="vst-hint">{t("체인 순서·활성화·적용 범위·조절값을 앱 설정 JSON으로 저장합니다. 플러그인 파일은 포함하지 않습니다.")}</p>
     {settings.enabled && <>
       <p className="info-box">{t("CLEAR·RX 등은 직접 설치하고 라이선스를 활성화해야 합니다. 플러그인과 모델을 자동 다운로드하지 않습니다.")}<br />{t("강한 소음 제거는 짧은 말이나 말끝을 손상할 수 있습니다. 먼저 원본과 처리음을 비교하세요.")}</p>
-      {!checking && !status?.available && <p className="error-box" role="status">{t("VST 실행환경이 준비되지 않았습니다. 이 옵션을 끄면 원본으로 분석할 수 있습니다.")}{status?.issue && <><br />{status.issue}</>}</p>}
+      {!checking && needsVst && !status?.available && <p className="error-box" role="status">{t("VST 실행환경이 준비되지 않았습니다. 이 옵션을 끄면 원본으로 분석할 수 있습니다.")}{status?.issue && <><br />{status.issue}</>}</p>}
       <fieldset className="vst-controls" disabled={locked}>
+        <section className="noise-reduction-card" aria-label={t("로컬 잡음 제거 · RNNoise")}>
+          <label className="checkbox-label"><input type="checkbox" checked={!!settings.noiseReduction} onChange={event=>setSettings(current=>{
+            if(event.target.checked)return {...current,noiseReduction:{engine:"rnnoise",mix:0.7}};
+            const {noiseReduction:_noise,...rest}=current;return rest;
+          })}/><strong>{t("로컬 잡음 제거 · RNNoise")}</strong></label>
+          <p>{t("별도 플러그인 없이 CPU에서 처리합니다. 켜면 VST보다 먼저 적용합니다.")}</p>
+          {settings.noiseReduction && <><label className="noise-mix">{t("처리음 비율")} <strong>{Math.round(settings.noiseReduction.mix*100)}%</strong>
+            <input type="range" min="0" max="1" step="0.05" aria-label={t("처리음 비율")} value={settings.noiseReduction.mix}
+              onChange={event=>setSettings(current=>({...current,noiseReduction:{engine:"rnnoise",mix:Number(event.target.value)}}))}/></label>
+            <small>{t("낮추면 원본을 더 섞습니다. 음성 손상을 확인한 뒤 사용하세요.")}</small>
+            {!checking && !status?.noiseReduction?.available && <p className="error-box" role="status">{t("RNNoise 실행환경을 사용할 수 없습니다.")}{status?.noiseReduction?.issue && <><br/>{status.noiseReduction.issue}</>}</p>}
+          </>}
+        </section>
         <label>{t("사전처리 적용 범위")}<select value={settings.applyTo} onChange={(event) => setSettings((current) => ({ ...current, applyTo: event.target.value as VstSettings["applyTo"] }))}>
           <option value="asr">{t("음성 인식만 · 화자 구분은 원본 사용")}</option><option value="both">{t("음성 인식과 화자 구분 모두")}</option>
         </select></label>
@@ -247,6 +270,10 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
               <button type="button" aria-label={t("{name} 슬롯 삭제", { name: slot.name })} onClick={() => { setSettings((current) => ({ ...current, chain: current.chain.filter((item) => item.id !== slot.id) })); setInvalidParameters((current) => new Set([...current].filter((key) => !key.startsWith(`${slot.id}:`)))); }}><Trash2 size={15} /></button>
             </div></div>
           <small className="vst-path" title={slot.path}>{slot.path}{slot.pluginName ? ` · ${slot.pluginName}` : ""}</small>
+          <button type="button" className="vst-native-open" disabled={!status?.available || badParameters}
+            onClick={() => { if (!locked && !busyRef.current) { setPresetMessage(""); setError(""); void editor.open(slot); } }}>
+            <AppWindow size={16} />{t("플러그인 창 열기")}
+          </button>
           <details className="vst-parameters"><summary>{t("플러그인 매개변수")}</summary>
             {!metadata[slot.id] ? <><p>{t("저장된 설정을 사용합니다. 조정하려면 플러그인을 불러오세요.")}</p><button type="button" disabled={!status?.available} onClick={() => void inspect(slot)}>{t("매개변수 불러오기")}</button></>
               : !metadata[slot.id]!.length ? <p>{t("이 플러그인은 조정 가능한 매개변수를 제공하지 않습니다.")}</p>
@@ -265,12 +292,25 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
           <button type="button" disabled={!path.trim() || !status?.available} onClick={() => void inspect()}><Plus size={16} />{bundleNames.length ? t("선택한 플러그인 추가") : t("플러그인 확인 및 추가")}</button>
           <small>{t("목록 확인은 파일만 검색합니다. 추가 또는 매개변수 불러오기를 누르면 플러그인을 실행합니다.")}</small>
         </div>}
-        {settings.enabled && !preprocessing && <p className="vst-hint" role="status">{t("사용할 플러그인을 하나 이상 추가하고 활성화하세요.")}</p>}
-        <p className="vst-hint">{t("플러그인의 기본 조절값과 앱 설정 JSON을 지원합니다. 전용 창·제조사 프리셋 파일·학습 기능은 지원하지 않습니다.")}<br />{t("플러그인의 기본값은 소음 제거가 꺼져 있을 수 있습니다. 매개변수를 조절한 뒤 비교하세요.")}</p>
+        {settings.enabled && !preprocessing && <p className="vst-hint" role="status">{t("RNNoise를 켜거나 사용할 플러그인을 추가하세요.")}</p>}
+        <p className="vst-hint">{t("전용 창을 닫으면 조절값과 플러그인 상태를 저장합니다. 창에는 오디오가 재생되지 않으므로 조절 후 비교 음성을 생성하세요.")}<br />{t("GUI 배율은 플러그인 자체 메뉴에서 조절합니다. 공통 배율 변경은 지원하지 않습니다.")}</p>
         <div className="vst-preview-settings"><label>{t("비교 시작 (초)")}<input type="number" min={0} max={media?.duration} step="any" value={start} onChange={(event) => { setStart(event.target.value); setPreview(null); }} /></label>
           <label>{t("비교 길이 (최대 30초)")}<input type="number" min={0.01} max={30} step="any" value={duration} onChange={(event) => { setDuration(event.target.value); setPreview(null); }} /></label>
           <button type="button" disabled={blocked || !validRange} onClick={() => void startPreview()}>{t("원본 / 처리음 비교 생성")}</button></div>
       </fieldset>
+      {editor.busy && <section className="vst-editor-status" aria-label={t("플러그인 설정창")}>
+        <p className="inline-status" role="status"><LoaderCircle size={16} className="spin" />{t("별도 플러그인 창에서 설정을 조절하세요.")}</p>
+        <p>{t("창을 닫으면 적용됩니다. 이 창을 여는 동안 다른 VST 작업은 기다려야 합니다.")}</p>
+        <div className="vst-preset-actions">
+          <button type="button" disabled={!editor.session || editor.commandPending || editor.session.cancelRequested || editor.session.closeRequested}
+            onClick={() => void editor.finish(false)}>{t("닫고 적용")}</button>
+          <button type="button" disabled={!editor.session || editor.commandPending || editor.session.cancelRequested}
+            onClick={() => void editor.finish(true)}>{t("변경 취소·창 닫기")}</button>
+          {editor.paused && <><button type="button" onClick={editor.retry}>{t("상태 다시 확인")}</button>
+            <button type="button" onClick={editor.detach}>{t("창 닫기 요청·연결 해제")}</button></>}
+        </div>
+      </section>}
+      {editor.session?.status === "cancelled" && <p role="status">{t("플러그인 설정 변경을 취소했습니다.")}</p>}
       {inspecting && <p className="inline-status" role="status"><LoaderCircle size={16} className="spin" />{t("플러그인을 확인하고 있습니다…")}</p>}
       {(previewStarting || previewRunning) && <div className="vst-preview-progress" role="status"><p className="inline-status"><LoaderCircle size={16} className="spin" />{t("비교 음성을 준비하고 있습니다…")}</p>
         {preview?.progress !== undefined && <progress value={preview.progress} max={1} aria-label={t("비교 음성 진행률")} />}
@@ -280,7 +320,7 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
       {preview?.status === "cancelled" && <p role="status">{t("비교 음성 생성을 취소했습니다.")}</p>}
       {preview?.status === "failed" && <p className="error-box" role="alert">{preview.error ?? t("비교 음성 생성에 실패했습니다.")}</p>}
       {preview?.status === "completed" && <div className="vst-preview-audio"><label>{t("원본 음성")}<audio ref={originalAudio} controls preload="metadata" src={preview.originalUrl} onPlay={() => processedAudio.current?.pause()} /></label>
-        <label>{t("VST 처리 음성")}<audio ref={processedAudio} controls preload="metadata" src={preview.processedUrl} onPlay={() => originalAudio.current?.pause()} /></label>
+        <label>{t("처리한 음성")}<audio ref={processedAudio} controls preload="metadata" src={preview.processedUrl} onPlay={() => originalAudio.current?.pause()} /></label>
         {latency && <section className="vst-latency-report" aria-label={t("플러그인 지연 확인 · 자동 보정")}>
           <strong>{t("플러그인 지연 확인 · 자동 보정")}</strong>
           <ul>{latency.plugins.map((plugin, index) => <li key={index}><span>{plugin.name}</span><span>
@@ -296,6 +336,6 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
         <small>{t("음성 인식 결과가 좋아지는지는 별도로 비교해야 합니다. 소음이 줄어도 인식률이 낮아질 수 있습니다.")}</small>
       </div>}
     </>}
-    {error && <p className="error-box" role="alert">{t(error)}</p>}
+    {(error || editor.error) && <p className="error-box" role="alert">{t(error || editor.error)}</p>}
   </section>;
 }

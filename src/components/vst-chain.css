@@ -39,3 +39,8 @@
 .vst-latency-report small { display: block; }
 .vst-preset-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .vst-save-status { color: var(--button-ink); margin: 8px 0; }
+.vst-native-open { margin: 4px 0; color: var(--button-ink); }
+.vst-editor-status { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--surface-alt); margin-top: 12px; }
+.noise-reduction-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 14px; background: var(--surface-alt); }
+.noise-mix { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; }
+.noise-mix input { flex: 1 0 100%; min-width: 0; }

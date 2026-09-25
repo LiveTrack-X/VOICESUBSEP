@@ -1,6 +1,8 @@
 # 음성 전처리·VST 확장 제안
 
-검토일: 2026-09-24. 아래는 초기 설계 제안이다. 이후 사용자 요청으로 최소 VST3 체인을 먼저 구현했다. **현재 구현 범위와 검증은 [VST-CHAIN.md](VST-CHAIN.md)를 기준으로 한다.** RNNoise/DeepFilterNet 내장 처리는 여전히 제안 단계다.
+검토일: 2026-09-24. 아래는 초기 설계 제안이다. 이후 최소 VST3 체인을 구현했고 **0.3.3 개발 소스에는 선택형 RNNoise와 VST 전용 GUI도 추가했다**. 0.3.3은 아직 미게시·미설치이며 DeepFilterNet은 제안 단계로 남는다. **현재 구현 범위와 검증은 [VST-CHAIN.md](VST-CHAIN.md)를 기준으로 한다.** 아래 초기 후보·미래 계약은 현재 구현 전체를 뜻하지 않는다.
+
+This is the original design proposal. Current 0.3.3 source now includes optional RNNoise and native VST editors; publication and installation are pending. DeepFilterNet remains a proposal. Use [the current preprocessing contract](VST-CHAIN.md) for implemented behavior and limits.
 
 권장 순서는 **텍스트 기반 컷편집 안정화 → 선택형 내장 잡음 억제 → 사용자 VST3 연결**이다. 스트리머 영상에서는 목소리뿐 아니라 웃음, 반응, 게임 소리도 편집 재료다. 전처리는 기본적으로 끄고, 켤 때도 약한 설정부터 비교한다. 원본과 시간축은 항상 보존한다.
 

@@ -18,11 +18,13 @@ from pathlib import Path
 import shutil
 import struct
 import tempfile
+import threading
 import time
 from typing import Callable
 
 from .vst_host import MAX_JSON_BYTES, MAX_PARAMETERS, validate_chain, validate_plugin_path
 from .vst_latency import MAX_RESIDUAL_FRAMES, measure_residual
+from .vst_state import decode_plugin_state, encode_plugin_state
 
 SAMPLE_RATE = 48000
 CHUNK_FRAMES = 48000
@@ -30,13 +32,33 @@ BUFFER_FRAMES = 1024
 MAX_FLUSH_FRAMES = SAMPLE_RATE * 10
 
 
-def _write_json(path: Path, value: dict) -> None:
+def _write_json(path: Path, value: dict, *, best_effort: bool = False) -> bool:
     data = json.dumps(value, ensure_ascii=False, allow_nan=False).encode("utf-8")
     if len(data) > MAX_JSON_BYTES:
         raise ValueError("VST worker response exceeded its size limit.")
     temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_bytes(data)
-    os.replace(temporary, path)
+    # Windows readers/antivirus can briefly hold a delete-denying handle on
+    # the previous snapshot. A missed progress update must not abort the audio
+    # stream; the final response, in contrast, must be durably published.
+    attempts = 3 if best_effort else 21
+    try:
+        for attempt in range(attempts):
+            try:
+                temporary.write_bytes(data)
+                os.replace(temporary, path)
+                return True
+            except PermissionError:
+                if attempt == attempts - 1:
+                    if best_effort:
+                        return False
+                    raise RuntimeError("Could not save the VST worker response because Windows kept the result file locked.") from None
+                time.sleep(.02 if best_effort else .05)
+    finally:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+    return False
 
 
 def _pedalboard():
@@ -128,9 +150,79 @@ def _apply_parameters(plugin, values: dict) -> dict:
                 raise ValueError(f"VST parameter {key} is outside its exposed range.")
         # Only exposed parameter keys pass this gate: attributes such as
         # preset_data or raw_state cannot be injected through this API.
-        setattr(plugin, key, value)
+        # Re-selecting an unchanged program (or linked master control) can erase
+        # opaque settings restored from raw_state. Compare the current native
+        # value after preceding writes, rather than the stale metadata snapshot.
+        if getattr(plugin, key) != value:
+            setattr(plugin, key, value)
     # Record the actual values after the plugin's quantization/normalization.
     return {item["key"]: item["value"] for item in _parameter_metadata(plugin)}
+
+
+def _apply_effect(plugin, effect: dict) -> dict:
+    if "state" in effect:
+        raw = decode_plugin_state(effect["state"])
+        try:
+            plugin.raw_state = raw
+        except Exception:
+            raise ValueError("The plugin could not restore its saved state.") from None
+    return _apply_parameters(plugin, effect["parameters"])
+
+
+def edit(effect: dict, close_path: Path) -> dict:
+    """Only the dedicated worker's main thread may own a native editor."""
+    if threading.current_thread() is not threading.main_thread():
+        raise RuntimeError("The VST editor must run on the worker main thread.")
+    effect = validate_chain([effect])[0]
+    path = validate_plugin_path(effect["path"])
+    names = _pedalboard().VST3Plugin.get_plugin_names_for_file(path)
+    if not names or len(names) > 128 or any(not isinstance(name, str) or len(name) > 512 for name in names):
+        raise ValueError("The VST3 bundle returned an invalid plugin list.")
+    selected = effect["pluginName"]
+    if selected is None:
+        if len(names) != 1:
+            raise ValueError("Select a plugin from this VST3 bundle before opening its editor.")
+        selected = names[0]
+    if selected not in names:
+        raise ValueError("The selected plugin does not exist in this VST3 bundle.")
+    plugin = _load_effect(path, selected)
+    _apply_effect(plugin, effect)
+    close_event, finished = threading.Event(), threading.Event()
+
+    def watch_close():
+        while not finished.wait(.05):
+            if close_path.exists():
+                close_event.set()
+                return
+
+    def place_window():
+        from .vst_window import position_editor
+        for _ in range(100):
+            if finished.wait(.05) or close_event.is_set():
+                return
+            try:
+                if position_editor(selected):
+                    return
+            except (OSError, ValueError):
+                return  # Placement is optional; the close watcher is independent.
+
+    watcher = threading.Thread(target=watch_close, name="vst-editor-close", daemon=True)
+    watcher.start()
+    placement = threading.Thread(target=place_window, name="vst-editor-position", daemon=True)
+    placement.start()
+    try:
+        if close_path.exists():
+            close_event.set()
+        plugin.show_editor(close_event=close_event)
+        try:
+            state = encode_plugin_state(plugin.raw_state)
+        except Exception:
+            raise ValueError("The plugin state is unavailable or exceeds 256 KiB; changes were not saved.") from None
+        return {"path": path, "pluginName": selected, "name": str(plugin.name)[:512],
+                "parameters": _parameter_metadata(plugin), "state": state}
+    finally:
+        finished.set()
+        watcher.join(timeout=1)
 
 
 def _wav_header(frames: int, channels: int) -> bytes:
@@ -294,7 +386,7 @@ def process(source: Path, destination: Path, chain: list[dict],
     for index, effect in enumerate(enabled):
         progress(f"Loading VST effect {index + 1}/{len(enabled)}", 0.01 * (index + 1))
         plugin = _load_effect(effect["path"], effect["pluginName"])
-        actual = _apply_parameters(plugin, effect["parameters"])
+        actual = _apply_effect(plugin, effect)
         loaded.append(plugin)
         reports.append({"path": effect["path"], "pluginName": str(plugin.name)[:512], "parameters": actual})
     with AudioFile(str(source)) as reader:
@@ -379,6 +471,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--response", required=True)
     arguments = parser.parse_args(argv)
     response_path = Path(arguments.response)
+    request = None
     try:
         request_path = Path(arguments.request)
         if request_path.stat().st_size > MAX_JSON_BYTES:
@@ -392,19 +485,36 @@ def main(argv: list[str] | None = None) -> int:
             nonlocal last_write
             now = time.monotonic()
             if now - last_write >= 0.2 or fraction >= 1:
-                _write_json(progress_path, {"stage": stage, "fraction": fraction})
+                _write_json(progress_path, {"stage": stage, "fraction": fraction}, best_effort=True)
                 last_write = now
 
         if request["operation"] == "inspect":
             result = inspect(request["path"], request.get("pluginName"))
         elif request["operation"] == "process":
             result = process(Path(request["source"]), Path(request["destination"]), request["chain"], progress)
+        elif request["operation"] == "editor":
+            close_path = Path(request["closePath"])
+            if close_path.parent.resolve() != request_path.parent.resolve() or close_path.name != "close-editor":
+                raise ValueError("Invalid private editor close marker.")
+            start_path = Path(request["startPath"])
+            if start_path.parent.resolve() != request_path.parent.resolve() or start_path.name != "start-editor":
+                raise ValueError("Invalid private editor start marker.")
+            deadline = time.monotonic() + 10
+            while not start_path.exists():
+                if time.monotonic() > deadline:
+                    raise ValueError("The VST editor was not attached to its host process.")
+                time.sleep(.02)
+            result = edit(request["effect"], close_path)
         else:
             raise ValueError("Unknown VST worker operation.")
         _write_json(response_path, {"ok": True, "result": result})
         return 0
     except Exception as exc:
-        _write_json(response_path, {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:1800]}"})
+        carries_state = isinstance(request, dict) and (request.get("operation") == "editor"
+            or any(isinstance(effect, dict) and "state" in effect for effect in request.get("chain", [])))
+        error = (f"VST operation failed while using plugin settings ({type(exc).__name__})."
+                 if carries_state else f"{type(exc).__name__}: {str(exc)[:1800]}")
+        _write_json(response_path, {"ok": False, "error": error})
         return 1
 
 

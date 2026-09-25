@@ -4,6 +4,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 import os
 from pathlib import Path
+import time
 
 BUSY_MESSAGE = "Another VST operation is running. Wait for it to finish or cancel it first."
 
@@ -32,16 +33,24 @@ def vst_process_lock():
             stream.write(b"\0")
             stream.flush()
         stream.seek(0)
-        try:
-            if os.name == "nt":
-                import msvcrt
-                msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
-            else:
-                import fcntl
-                fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            acquired = True
-        except OSError:
-            raise RuntimeError(BUSY_MESSAGE) from None
+        # Windows may signal process exit a few milliseconds before releasing
+        # that process's byte-range locks. Permit only this short hand-off;
+        # never wait indefinitely or break an active editor/analysis lock.
+        attempts = 4 if os.name == "nt" else 1
+        for attempt in range(attempts):
+            try:
+                if os.name == "nt":
+                    import msvcrt
+                    msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                acquired = True
+                break
+            except OSError:
+                if attempt == attempts - 1:
+                    raise RuntimeError(BUSY_MESSAGE) from None
+                time.sleep(.02)
         yield
     finally:
         try:

@@ -69,7 +69,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   return <Dialog title={t("설정 및 오류 로그")} onClose={onClose} closeDisabled={busy}>
     <section className="settings-section" aria-labelledby="settings-backup-heading">
       <h3 id="settings-backup-heading">{t("설정 백업")}</h3>
-      <p>{t("화면 언어, 음성 인식 설정, VST 체인을 하나의 JSON 파일로 저장하고 불러옵니다. 자막과 편집 메모는 프로젝트 저장을 사용하세요.")}</p>
+      <p>{t("화면 언어, 음성 인식 설정, VST 체인과 저장된 개인 단축키를 하나의 JSON 파일로 보관합니다. 자막과 편집 메모는 프로젝트 저장을 사용하세요.")}</p>
       <div className="settings-actions">
         <button onClick={exportSettings} disabled={busy}><Download size={16}/>{t("설정 파일 저장")}</button>
         <button onClick={() => input.current?.click()} disabled={busy}><FolderOpen size={16}/>{t("설정 파일 불러오기")}</button>

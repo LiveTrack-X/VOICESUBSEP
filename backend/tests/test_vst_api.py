@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import base64
 import io
 from pathlib import Path
 import shutil
@@ -169,6 +170,7 @@ def test_preview_cancellation_releases_worker(setup, monkeypatch):
 
 def test_preprocessing_snapshot_reaches_analysis_worker(setup):
     app, slot = setup
+    slot["state"] = base64.b64encode(b"native preset" * 6000).decode("ascii")
     with TestClient(app, base_url="http://127.0.0.1:8787") as client:
         identifier = upload(client)
         response = client.post("/api/jobs", json={"mediaId": identifier, "speakerCount": 2, "audioTrack": 0,

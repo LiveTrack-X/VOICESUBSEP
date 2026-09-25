@@ -115,6 +115,29 @@ def test_processed_asr_and_explicit_diarization_routing_preserve_source_times(pi
     assert any("처리 전 원본" in item for item in result["warnings"]) == (apply_to == "asr")
 
 
+@pytest.mark.parametrize("apply_to", ["asr", "both"])
+def test_rnnoise_precedes_vst_and_keeps_explicit_diarization_scope(pipeline, monkeypatch, apply_to):
+    def denoise(source, destination, mix, cancelled, progress):
+        pipeline.calls.append("rnnoise")
+        assert mix == .7 and source.read_bytes() == b"original 48k"
+        destination.write_bytes(source.read_bytes())
+        progress("RNNoise", 0); progress("RNNoise", 1)
+        return {"engine": "rnnoise", "mix": mix, "warnings": ["noise notice"]}
+    monkeypatch.setitem(sys.modules, "voicesubsep.noise_reduction", SimpleNamespace(
+        validate_noise_reduction=lambda value: value, denoise_rnnoise=denoise,
+        NoiseReductionCancelled=type("NoiseCancelled", (RuntimeError,), {})))
+    settings = {**chain_config(apply_to), "noiseReduction": {"engine": "rnnoise", "mix": .7}}
+    result = pipeline.run(settings)
+    assert pipeline.calls == ["rnnoise", "vst", "diarizer", "asr"]
+    assert pipeline.diarizer_bytes == (b"processed 16k" if apply_to == "both" else b"original 16k")
+    assert pipeline.asr_bytes == b"processed 16k"
+    assert [(caption["start"], caption["end"]) for caption in result["captions"]] == [(10, 11)]
+    assert result["preprocessing"]["report"]["noiseReduction"]["mix"] == .7
+    assert "noise notice" in result["warnings"]
+    assert pipeline.stages == sorted(pipeline.stages)
+    assert pipeline.source.read_bytes() == b"original file"
+
+
 @pytest.mark.parametrize("preprocessing", [None, {"chain": [], "applyTo": "asr"},
                                           {"chain": [{"enabled": False}], "applyTo": "both"}])
 def test_disabled_chain_keeps_original_path_and_no_host_dependency(pipeline, preprocessing):

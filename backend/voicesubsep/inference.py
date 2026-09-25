@@ -653,6 +653,10 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
     if any(not isinstance(item, dict) for item in chain):
         raise RuntimeError("VST 체인 항목이 유효하지 않습니다.")
     enabled_chain = [item for item in chain if item.get("enabled", True)]
+    noise_reduction = preprocessing.get("noiseReduction") if preprocessing else None
+    if noise_reduction is not None:
+        from .noise_reduction import validate_noise_reduction
+        noise_reduction = validate_noise_reduction(noise_reduction)
     if asr_provider == "local":
         if local_asr_engine == "qwen":
             _qwen_classes()
@@ -677,19 +681,21 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
         asr_path = diarization_path = wav_path
         preprocessing_report = None
         engine_start, diarization_end = 0.10, 0.40
-        if enabled_chain:
-            from .vst_host import VSTCancelled, process_chain
+        if enabled_chain or noise_reduction is not None:
+            from .vst_host import VSTCancelled
+            from .audio_preprocessing import process_preprocessing
 
             raw_path = Path(directory) / "vst-original-48k.wav"
             processed_path = Path(directory) / "vst-processed-48k.wav"
             asr_path = Path(directory) / "vst-processed-16k.wav"
-            progress("VST 처리용 48 kHz 오디오 준비", 0.11)
+            progress("오디오 사전처리용 48 kHz 오디오 준비", 0.11)
             prepare_preprocessing_audio(media_path, audio_track, raw_path, cancelled)
             _checkpoint(cancelled)
             try:
-                preprocessing_report = process_chain(
+                preprocessing_report = process_preprocessing(
                     raw_path, processed_path, enabled_chain, cancelled=cancelled,
                     progress=mapped_progress(0.12, 0.23, 0.0, 1.0),
+                    noise_reduction=noise_reduction,
                 )
             except VSTCancelled as exc:
                 raise AnalysisCancelled("VST 사전처리 취소 요청을 처리했습니다.") from exc
@@ -698,7 +704,7 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
             if preprocessing.get("applyTo", "asr") == "both":
                 diarization_path = asr_path
             engine_start, diarization_end = 0.25, 0.50
-            progress("VST 처리 음성을 분석용 16 kHz로 준비", engine_start)
+            progress("처리한 음성을 분석용 16 kHz로 준비", engine_start)
 
         # Detect turns before ASR, then unload Nemotron. Decode windows cover
         # the WHOLE audio, including overlap and any speech Nemotron missed.
@@ -760,7 +766,10 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
             result["warnings"].insert(0, f"선택한 오디오 트랙 #{audio_track}의 {channels}개 채널을 분석용 모노로 변환했습니다. 원본과 다른 트랙은 보존했습니다.")
         if preprocessing_report is not None:
             target = "음성 인식과 화자 구분" if diarization and preprocessing.get("applyTo", "asr") == "both" else "음성 인식"
-            result["warnings"].append(f"VST 체인 {len(enabled_chain)}개를 {target}에 적용했습니다. 원본 미디어와 자막 시간 기준은 유지했습니다.")
+            description = "RNNoise 소음 제거" if noise_reduction is not None else ""
+            if enabled_chain:
+                description += (" 후 " if description else "") + f"VST 체인 {len(enabled_chain)}개"
+            result["warnings"].append(f"{description}를 {target}에 적용했습니다. 원본 미디어와 자막 시간 기준은 유지했습니다.")
             if diarization and preprocessing.get("applyTo", "asr") != "both":
                 result["warnings"].append("화자 구분은 처리 전 원본 음성으로 실행했습니다.")
             result["warnings"].extend(str(warning) for warning in preprocessing_report.get("warnings", []))
