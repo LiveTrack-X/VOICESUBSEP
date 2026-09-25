@@ -1,10 +1,18 @@
-# Windows 설치형 앱과 업데이트
+# Windows Desktop and Updates / 설치형 앱과 업데이트
+
+This document describes the desktop runtime, developer builds and future update contract. For the public Preview, use the [bilingual user guide](USER-GUIDE.md) and [online installer guide](ONLINE-INSTALLER.md). The small online EXE downloads the existing installer/payload without authentication, checks every file and the assembled SHA256, then opens the original NSIS wizard. The seven-file manual method remains a fallback. See [release evidence](releases/v0.2.0.md) for actual publication and verification; downloading/assembling is not proof of a full installation or new GPU inference.
 
 이 문서는 Electron 설치형 앱의 실행·빌드·업데이트 계약입니다. **v0.2.0 설치 파일·검증·GitHub 게시·서명·feed 구성의 현재 상태는 [v0.2.0 릴리즈 기록](releases/v0.2.0.md)을 기준으로 확인합니다.** 원격 업데이트 서버 공개나 코드 서명 완료를 뜻하지 않습니다. 설치와 일반 사용은 [사용자 가이드](USER-GUIDE.md), 웹 개발 실행은 `npm start`를 참고하세요.
 
-v0.2.0은 비공개 저장소의 **Windows Preview 시험 릴리즈**입니다. 코드 서명과 인증 feed가 없어 수동 설치하며 updater는 `unconfigured`로 빌드합니다. GitHub에 올릴 `.nsis.7z`는 1GiB 조각으로 나누고 EXE·manifest·체크섬·재조립 스크립트를 함께 제공합니다. 사용자는 모든 자산을 같은 폴더에 받은 뒤 `powershell -NoProfile -File .\Assemble-Installer.ps1`로 검증·재조립하고 EXE를 직접 실행합니다. 아래 빌드 명령의 `.nsis.7z`는 분할 전 로컬 산출물입니다.
+v0.2.0은 공개 저장소의 **Windows Preview 시험 릴리즈**입니다. 작은 온라인 EXE는 로그인 없이 기존 설치 EXE와 조각 3개를 받아 각 파일·재조립 SHA256 검증 후 원래 NSIS 마법사를 엽니다. 기존 자산 7개와 `Assemble-Installer.ps1`을 이용하는 수동 설치도 유지합니다. 온라인 도우미의 실제 게시·동작·캐시는 [온라인 설치 안내](ONLINE-INSTALLER.md)를 따릅니다. 아래 빌드 명령의 `.nsis.7z`는 분할 전 로컬 산출물입니다.
+
+The online helper requires Windows 10/11 x64 and .NET Framework 4.8. It defaults to 80 Mbps, with 40 Mbps/unlimited options. It checks 12 GiB free on the cache drive and recommends at least 16 GiB plus models/projects. Cache: `%LOCALAPPDATA%\VOICESUBSEP\InstallerCache\0.2.0`. Verified files are reused; partial downloads use Range when supported, while interrupted assembly restarts from verified parts. It passes no `--package-file`, preserving the original NSIS colocated-payload check. This unsigned Preview still has no in-app update feed (`unconfigured`). Read [dependency notices](BUNDLED-NOTICES.md) before redistributing.
+
+온라인 도우미에는 Windows 10/11 x64와 .NET Framework 4.8이 필요합니다. 기본 80Mbps, 40Mbps·제한 없음 선택을 지원합니다. 캐시 드라이브 여유 공간 12GiB를 검사하고 최소 16GiB 및 모델·프로젝트 공간을 권장합니다. 캐시는 `%LOCALAPPDATA%\VOICESUBSEP\InstallerCache\0.2.0`이며 검증된 파일을 재사용합니다. 미완료 다운로드는 서버가 지원하면 Range로 이어받고 조립 중단 시에는 검증된 조각으로 처음부터 다시 조립합니다. `--package-file` 없이 실행하여 원래 NSIS의 같은 폴더 payload 검사를 유지합니다. 무서명 Preview이며 인앱 업데이트 feed는 계속 `unconfigured`입니다. 재배포 전 [의존성 고지](BUNDLED-NOTICES.md)를 확인하세요.
 
 ## 설치형 앱의 구조
+
+*Runtime architecture.* Electron launches the bundled Python backend on a random loopback port, exposes a stable `voicesubsep://app/` origin, and keeps user data outside the install folder. Python, FFmpeg/FFprobe, speech libraries and CUDA runtime DLLs are bundled. Model weights, a compatible NVIDIA driver, optional Ollama/text models and third-party VST3 plugins are separate. On shutdown, the app requests graceful backend cleanup, waits up to 12 seconds and terminates only its own remaining process tree. Jobs do not automatically resume after restart.
 
 - 제품명 `VOICESUBSEP`, 앱 ID `com.livetrack.voicesubsep`, Windows x64 NSIS 설치 프로그램입니다.
 - Electron이 `resources/backend/voicesubsep-server.exe`를 임의의 `127.0.0.1` 포트로 실행합니다. 이 서버 하나가 웹 편집기와 API를 제공합니다. 개발용 5173·8787 포트를 사용하지 않습니다.
@@ -19,6 +27,8 @@ v0.2.0은 비공개 저장소의 **Windows Preview 시험 릴리즈**입니다. 
 업데이트 설치기는 백엔드 프로세스의 실제 종료를 확인한 뒤 실행합니다. 종료가 확인되지 않으면 설치를 차단하며, 설치기 실행에 실패하면 분석 서버를 복구한 뒤 오류를 표시하고 재시도를 허용합니다. 복구도 실패하면 앱을 다시 시작해야 한다는 오류를 표시합니다.
 
 ## 개발과 빌드
+
+*Development and builds.* Prepare Node/npm and the Python environment as described in the README. `desktop:dev` runs the UI, backend and Electron together; development updates are disabled. `desktop:pack` creates an unpacked app, `desktop:installer` a single NSIS installer, and `desktop:installer:split` a colocated EXE/payload pair. The existing backend bundle must be built first; packaging does not silently build it or download model weights. Package tools may download their own dependencies if uncached. Builds use `--publish never`; publishing is a separate action. Preserve the bundled original notices. Full runtime checks are separate from GPU inference and actual installer acceptance.
 
 Node/npm과 백엔드 개발 환경은 기존 README의 설치 절차를 따릅니다.
 
@@ -55,13 +65,17 @@ v0.1.1 로컬 패키징은 `electronDist`와 `ELECTRON_BUILDER_7ZIP_PATH`, `ELEC
 
 ### 앱 아이콘
 
+*App icons.* Windows executable, taskbar and installers use `desktop/assets/icon.ico`; other window contexts use `icon.png`. Rebuild after icon changes. Replacing a favicon does not update an installed executable; preserve user data and close the running app before replacement.
+
 `desktop/assets/icon.ico`는 Windows 실행 파일·작업 표시줄·NSIS 및 NSIS-web 설치/제거 프로그램에 공통으로 사용합니다. 작은 작업 표시줄부터 고해상도 표시까지 지원하도록 ICO에는 16·32·48·256px 이상의 여러 크기를 포함합니다. `desktop/assets/icon.png`는 다른 플랫폼의 창 아이콘입니다. 두 파일은 `app.asar`에 명시적으로 포함하며 개발 실행과 설치 실행 모두 `desktop/main.cjs` 옆의 `assets/`에서 읽습니다. Windows AppUserModelID는 설치기와 동일한 `com.livetrack.voicesubsep`입니다.
 
 아이콘을 변경한 뒤 `node --test desktop/build-config.test.cjs`로 빌더 스키마·포함 경로·ICO 크기를 확인하고 `npm run desktop:pack` 또는 설치기 빌드를 다시 실행합니다. 웹 favicon 변경만으로 이미 설치된 EXE나 작업 표시줄 아이콘이 바뀌지는 않습니다. 실행 중인 설치본의 파일을 덮어쓰지 말고 프로젝트를 저장하여 앱을 정상 종료한 뒤 새 빌드를 적용합니다. 사용자 데이터·자동 저장·모델 캐시는 아이콘 변경 대상이 아닙니다. Windows에 이전 바로가기 아이콘이 남는 경우 새 실행 파일로 다시 고정하여 확인합니다.
 
 ## 사용자가 선택하는 업데이트
 
-**이번 v0.2.0 Preview는 feed 미구성 상태이며 아래는 향후 feed를 연결할 때의 계약입니다.** 비공개 GitHub Release에 파일을 게시하는 것만으로 앱이 인증 다운로드하거나 업데이트할 수 없습니다.
+*User-controlled updates.* **The current Preview remains unconfigured.** Making the repository public and adding an online installer do not configure electron-updater. A future configured build requires an HTTPS feed, appropriate signed/publisher configuration and real migration tests. Check, download, and restart/install are separate user actions; automatic download and install-on-quit are disabled. A URL without an actual usable feed is not an update service.
+
+**이번 v0.2.0 Preview는 feed 미구성 상태이며 아래는 향후 feed를 연결할 때의 계약입니다.** 저장소 공개와 온라인 설치기 추가만으로 electron-updater가 구성되지 않습니다. 실제 사용 가능한 HTTPS feed·서명/publisher 구성·이전 버전 이동 검증이 별도로 필요합니다.
 
 자동 확인·자동 다운로드·종료 시 자동 설치는 하지 않습니다. 업데이트 확인 → 다운로드 → 저장 후 다시 시작을 각각 눌러야 합니다. `electron-updater`의 `autoDownload`와 `autoInstallOnAppQuit`은 모두 `false`입니다.
 
@@ -75,7 +89,7 @@ npm run desktop:installer:split
 Remove-Item Env:VOICESUBSEP_UPDATE_URL
 ```
 
-주소는 빌드된 앱 메타데이터와 updater 설정에 들어갑니다. HTTPS 외 프로토콜, URL 사용자명·암호, 쿼리 토큰, fragment는 거부합니다. GitHub 개인 액세스 토큰을 앱·브리지·저장소에 넣지 않습니다. 비공개 GitHub 저장소의 다운로드 주소만 지정하면 인증 없이 업데이트할 수 있는 것은 아닙니다. 별도의 배포용 HTTPS 저장소 또는 사용자 인증 설계가 필요합니다.
+주소는 빌드된 앱 메타데이터와 updater 설정에 들어갑니다. HTTPS 외 프로토콜, URL 사용자명·암호, 쿼리 토큰, fragment는 거부합니다. GitHub 개인 액세스 토큰을 앱·브리지·저장소에 넣지 않습니다. 공개 다운로드 링크를 지정하는 것만으로 `latest.yml`·패키지 메타데이터·서명 검증이 준비되는 것은 아닙니다. 올바른 업데이트 feed를 별도로 준비해야 합니다.
 
 새 버전 배포 절차는 다음과 같습니다.
 
@@ -84,9 +98,11 @@ Remove-Item Env:VOICESUBSEP_UPDATE_URL
 3. 빌드 결과의 설치 EXE, `.blockmap`, 분리 설치기의 `.nsis.7z` 데이터 파일, `latest.yml`을 같은 feed 경로에 게시합니다. `latest.yml`의 `packages` 메타데이터와 파일 이름·크기·해시를 유지하고, 업로드 완료 후 `latest.yml`을 마지막에 교체합니다. NSIS의 표준 `--package-file` 경로는 updater가 내려받은 데이터 파일에도 사용할 수 있습니다.
 4. 이전 버전 설치 상태에서 확인·다운로드·명시적 재시작·새 버전 확인·프로젝트와 캐시 보존을 실제 검증합니다.
 
-빌더의 `win.verifyUpdateCodeSignature`는 `true`이지만 이 값만으로 실제 업데이트의 서명 검증을 입증하지 않습니다. 유효한 서명·publisher 설정과 실제 feed를 연결해 검증 경로가 실행되는지 확인해야 합니다. **이번 Preview에는 서명 인증서와 인증 feed가 없으며 원격 업데이트 전체 과정은 미검증입니다.** 서명 없는 설치본은 Windows 신뢰도 경고가 발생할 수 있습니다. 로컬 설치 성공을 원격 업데이트 성공으로 간주하지 않습니다.
+빌더의 `win.verifyUpdateCodeSignature`는 `true`이지만 이 값만으로 실제 업데이트의 서명 검증을 입증하지 않습니다. 유효한 서명·publisher 설정과 실제 feed를 연결해 검증 경로가 실행되는지 확인해야 합니다. **이번 Preview에는 서명 인증서와 업데이트 feed가 없으며 원격 업데이트 전체 과정은 미검증입니다.** 서명 없는 설치본은 Windows 신뢰도 경고가 발생할 수 있습니다. 로컬 설치 성공을 원격 업데이트 성공으로 간주하지 않습니다.
 
 ## UI 브리지
+
+*Renderer bridge.* `window.voicesubsepDesktop` exists only in Electron, not the normal browser. It exposes limited version/update functions, not arbitrary filesystem/process/IPC access. The main frame and expected origin are checked. Context isolation, sandbox and web security stay enabled; Node integration is disabled.
 
 `window.voicesubsepDesktop`은 설치형 앱에만 존재합니다. 브라우저에서 열면 없는 것이 정상입니다.
 
@@ -116,11 +132,15 @@ interface DesktopBridge {
 
 ### 녹음 권한
 
+*Capture permissions.* Microphone access is explicitly approved for the app's own main frame. Windows display/system audio capture additionally checks the user gesture and explicit selection. Shared video is not stored in recordings; system audio can contain calls, games and notifications. Recording uses local chunks and post-recording analysis, not streaming ASR. Device and long-duration tests are distinct from permission-handler tests.
+
 장치 권한은 기본 거부하며 녹음 기능에 필요한 요청만 별도 확인합니다. 마이크 요청은 앱의 현재 메인 창·최상위 프레임·origin과 오디오 전용 요청을 검사한 뒤 사용자의 네이티브 확인창 응답으로 허용합니다. Windows 시스템 캡처는 해당 프레임의 사용자 동작, 오디오·영상 요청을 확인하고 화면 선택창에서 명시적으로 선택한 경우에만 loopback을 제공합니다. 외부 origin과 iframe 요청, 겹친 권한 요청은 허용하지 않습니다.
 
 시스템 캡처에는 게임·통화·알림 등 전체 출력음이 섞일 수 있음을 안내합니다. 공유 권한에 필요한 화면 트랙은 최종 녹음 파일에 넣지 않습니다. 녹음은 약 1초 단위 IndexedDB 저장과 종료 후 분석이며 별도 WASAPI 워커·스트리밍 ASR 구현을 뜻하지 않습니다. 실제 마이크·시스템 소리·장시간 녹음의 장치 검증은 [릴리즈 검증 표](releases/v0.2.0.md#검증-기록)에서 확인합니다.
 
 ## 검증과 한계
+
+*Evidence boundaries.* Current results are in the versioned release record. The historical v0.1.1 data below is retained for provenance and does not validate a newer installer. Developer Electron smoke uses a mock server/profile and is not proof of packaged-main behavior, actual NSIS installation, microphone capture, driver compatibility or a signed remote upgrade.
 
 **현재 v0.2.0의 검증은 [릴리즈 기록](releases/v0.2.0.md#검증-기록)에 모읍니다.** 아래는 v0.1.1 당시의 역사적 실행 기록이며 새 설치 파일의 성공 증거로 재사용하지 않습니다.
 

@@ -1,0 +1,26 @@
+{
+  "date": "2026-09-25",
+  "repositoryVisibility": "public",
+  "releaseTag": "v0.2.0",
+  "originalTagCommit": "3533d3f1672796a6b7ace3a1047265738517d3fe",
+  "existingSevenAssetsPreserved": true,
+  "onlineInstaller": {
+    "name": "VOICESUBSEP-0.2.0-Online-Setup-x64.exe",
+    "size": 166912,
+    "sha256": "c4ca8cb9acb43fc1c8361af10018eef25567ac5814ab7c6af7b31ddc547f0b62",
+    "githubDigestMatched": true,
+    "anonymousRedownloadHashMatched": true,
+    "signed": false
+  },
+  "checks": {
+    "inMemoryNetworkTestsPassed": 15,
+    "localBuiltBootstrapUiSmokeExitCode": 0,
+    "anonymousOriginalNsisExeDownloadBytes": 1045697,
+    "payloadAssembledBytes": 2416033719,
+    "payloadSha256": "ba00ff488bb8e5d70cb4b6dd05240ee471938440bd824b77a8fd518189b3e56f",
+    "largePartsSource": "Previously verified local copies; no complete network redownload",
+    "nsisLaunchedBySmoke": false,
+    "actualInstallation": "Not performed in v0.2.0 bootstrap checks",
+    "gpuInference": "Not performed in v0.2.0 bootstrap checks"
+  }
+}

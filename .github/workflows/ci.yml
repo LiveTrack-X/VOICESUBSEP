@@ -3,6 +3,13 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  online-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test download engine and build single EXE
+        shell: powershell
+        run: ./scripts/build-online-installer.ps1
   web:
     runs-on: ubuntu-latest
     steps:

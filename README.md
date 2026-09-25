@@ -1,156 +1,90 @@
 # VOICESUBSEP
 
-영상·음성의 대화를 인물별 자막으로 정리하고, 원본을 보면서 자막·편집 노트·인터뷰·회의록을 수정하는 로컬 편집기입니다. 한국어 예능·게임·토론·인터뷰 편집을 목표로 개발합니다.
+**Local speaker-aware subtitles, editing notes, interviews, and meeting minutes.** Whisper transcribes speech; NVIDIA Nemotron identifies speaker activity. You review the text and speaker assignments while listening to the original media.
 
-**[v0.2.0 Windows Preview 설치파일](https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.2.0)**을 제공합니다. 비공개 저장소의 시험 릴리즈이며 접근 권한이 필요합니다. 설치 파일·체크섬·검증 범위는 [v0.2.0 릴리즈 기록](docs/releases/v0.2.0.md)에 있습니다. 처음 사용한다면 [설치부터 출력까지의 사용자 가이드](docs/USER-GUIDE.md), 전체 자료는 [문서 목차](docs/INDEX.md)를 먼저 확인하세요.
+**로컬 인물별 자막·편집 메모·인터뷰·회의록 편집기입니다.** Whisper가 내용을 전사하고 NVIDIA Nemotron이 화자 활동을 분석합니다. 원본을 들으며 자막과 인물 배정을 검수합니다.
 
-React 편집 화면과 Python FastAPI 분석 서버로 구성됩니다. NVIDIA Nemotron-3-Diarization으로 화자 전환을 찾고 faster-whisper로 전사하는 **인물별 자막 생성이 기본 동작**입니다. 분석 서버는 내 컴퓨터의 `127.0.0.1`에서 실행하며 영상·음성을 외부 분석 API로 보내지 않습니다. 모델 파일이 없으면 첫 분석 때 Hugging Face에서 해당 모델을 내려받을 수 있습니다.
+[Windows v0.2.0 Preview](https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.2.0) · [User guide / 사용자 가이드](docs/USER-GUIDE.md) · [Documentation / 문서 목차](docs/INDEX.md)
 
-## 가능한 작업
+Read [dependency notices and distribution obligations / 의존성 고지·재배포 의무](docs/BUNDLED-NOTICES.md) before redistributing. Public source access does not grant a permissive app license. / 재배포 전 고지를 확인하세요. 소스 공개가 앱에 자유로운 재배포 라이선스를 부여하지는 않습니다.
 
-- 영상·음성 열기, 원본 시간으로 탐색하며 자막의 내용·시간·인물 수정
-- 예상 인원 1명·2명·3명·4명 이상 설정, 일반 대화 / 동시 발화 검수 모드 선택
-- 오디오 트랙 선택 후 Nemotron 화자 활동 분석과 로컬 전사, 필요할 때 전사 전용 선택
-- NVIDIA GPU 우선 실행, Whisper large-v3 기본 선택과 large-v3-turbo 선택
-- 동시 발화·인물 미지정·예상 인원 불일치 등을 검수 대상으로 확인
-- 시간에 연결된 편집·하이라이트·자막·확인 노트 작성
-- 타임라인 접기·높이 조절, 촘촘한 자막 목록, 미리보기와 보조 패널을 줄이는 자막 집중 보기. 화면 배치는 이 기기에 기억됩니다.
-- 100행 자막 페이지, 인물·검수·삭제 일괄 편집과 문자열 치환, 오디오 파형·자막 경계 조절
-- 프로젝트 JSON 저장·불러오기, 브라우저 자동 저장, 편집 실행 취소·다시 실행
-- 이전 정상 자동 저장본 복구, 오류 원본 보관·다운로드, 분석·렌더 작업 이력 재열기와 보호된 미디어 캐시 정리
-- 새 프로젝트는 인물 이름·색상·자막 스타일과 편집 내용을 기본값으로 초기화합니다. 실행 취소는 현재 프로젝트 안에서만 동작합니다.
-- SRT 불러오기, 전체 SRT와 인물별 SRT 내보내기, 노트 Markdown·CSV 내보내기
-- 스타일 포함 ASS와 인물별 SRT·메모·명세를 담은 ZIP 내보내기
-- 원본을 보존하는 구간 제외·복원, 편집본 미리보기, MP4·WAV·MP3·M4A와 편집본 SRT·메모 CSV 출력
-- OBS 등에서 분리 녹음한 트랙의 인물별 순차 전사, MP4 원본 프레임률·30·60fps 선택
-- 인터뷰 역할·질문/답변 분류, 원문 근거를 연결한 수동 회의록과 로컬 Ollama 초안 생성
-- 마이크·시스템 소리 녹음, 약 1초 단위 브라우저 저장·복구, 녹음 종료 후 새 프로젝트로 분석
-- 5개 표시 언어, 자동 감지·100개 코드의 음성 언어 선택, 준비된 로컬 Ollama 모델을 이용한 5개 언어 자막 번역
-- 설치된 Windows x64 VST3 효과 최대 4개를 분석 앞에 연결, 순서·우회·파라미터 조절과 30초 원본/처리음 비교. [VST 체인 사용법](docs/VST-CHAIN.md)
-- 분석·VST 설정 자동 저장, JSON 설정 백업·복원, 로컬 오류 로그 보관·내보내기. [설정과 오류 로그](docs/SETTINGS-AND-LOGS.md)
+## Install / 설치
 
-기능별 사용법과 한계는 [현재 편집 워크플로](docs/EDITING-WORKFLOWS.md), 컷편집·다국어 저장 계약은 [컷편집·다국어 구현 계약](docs/CUTS-AND-LANGUAGES.md)에 정리했습니다. 번역·회의록용 Ollama와 모델, CLEAR/RX 같은 외부 VST3 플러그인은 별도로 준비해야 하며 앱에 포함하지 않습니다. 녹음은 종료 후 분석하며 스트리밍 ASR, 지속적인 화자 ID 고정, 외부 오디오 드리프트 보정과 최종 렌더의 다중 트랙 믹스는 아직 없습니다.
+The public release requires no GitHub login. The small `VOICESUBSEP-0.2.0-Online-Setup-x64.exe` downloads the existing installer and three data parts, verifies SHA256, assembles the payload, and opens the installation wizard. See the [online installer guide](docs/ONLINE-INSTALLER.md) for publication status, download controls, and the seven-file manual fallback. The source-code ZIP is not the installer.
 
-처음에는 빈 프로젝트로 열립니다. 샘플 프로젝트는 사용자가 직접 열며, 업로드한 자료의 분석 결과를 대신하지 않습니다. 분석 결과는 사용자가 적용할 때 자막을 교체하고 기존 노트를 유지합니다.
+공개 릴리즈는 GitHub 로그인 없이 받을 수 있습니다. 작은 `VOICESUBSEP-0.2.0-Online-Setup-x64.exe`가 기존 설치 프로그램과 데이터 조각 3개를 다운로드하고 SHA256 검증·재조립 후 설치 마법사를 엽니다. 게시 상태·다운로드 조절·기존 7개 파일 수동 설치 방법은 [온라인 설치 안내](docs/ONLINE-INSTALLER.md)를 확인하세요. 소스 코드 ZIP은 설치 파일이 아닙니다.
 
-## 먼저 알아둘 한계
+| Requirement / 항목 | Details / 내용 |
+| --- | --- |
+| System / 운영체제 | Windows 10/11 x64, .NET Framework 4.8 for the online setup / 온라인 설치기에 .NET Framework 4.8 필요 |
+| Download / 다운로드 | About 2.42 GB of application data; model weights are separate / 앱 데이터 약 2.42GB, 모델 가중치 별도 |
+| Storage / 저장 공간 | At least 16 GiB free recommended; 12 GiB cache-drive minimum checked, plus room for models/projects / 16GiB 이상 권장, 캐시 드라이브 최소 12GiB 검사, 모델·프로젝트 공간 추가 |
+| Included / 포함 | Python, FFmpeg, speech-analysis libraries, CUDA runtime libraries / Python·FFmpeg·음성 분석 라이브러리·CUDA 런타임 |
+| Separate / 별도 준비 | NVIDIA driver, Whisper/Nemotron weights, optional Ollama models and VST3 plugins / NVIDIA 드라이버·Whisper/Nemotron 가중치·선택적 Ollama 모델·VST3 플러그인 |
 
-**화자 구분은 겹친 목소리를 분리하거나 가려진 두 번째 대사를 복원하는 기능이 아닙니다.** Whisper는 전사, Nemotron은 화자 활동을 분석합니다. 동시 발화 모드는 겹침 구간을 검수하기 위한 기능입니다. 여러 화자에게 동시에 걸치는 단어는 무리하게 한 사람에게 배정하지 않고 미지정으로 남깁니다. 화자 번호를 실제 인물 이름으로 바꾸는 작업은 직접 해야 합니다.
+This is an **unsigned Preview**. The online setup is a downloader for the existing installer; it does not configure in-app updates. The app's update feed remains `unconfigured`. Checksums, verification results, and limits are recorded in the [v0.2.0 release notes](docs/releases/v0.2.0.md); a new complete NSIS installation or GPU quality test is not implied by the online setup.
 
-예상 인원은 편집·검수 설정입니다. 1·2·3명은 해당 인원과 비교하고, 4명 이상은 최소 4명으로 해석합니다. 4명 이상을 선택했을 때 검출된 5~8명은 각각 보존하며 인원 불일치로 표시하지 않습니다. 8개 화자 채널이 모두 사용되면 추가 화자가 섞였는지 확인하도록 알립니다.
+**코드 서명 없는 Preview**입니다. 온라인 설치기는 기존 설치 파일을 받는 도구이며 인앱 업데이트를 설정하지 않습니다. 앱의 업데이트 feed는 계속 `unconfigured`입니다. 체크섬·확인 결과·한계는 [v0.2.0 릴리즈 기록](docs/releases/v0.2.0.md)을 따르며 온라인 설치기 추가가 새로운 전체 NSIS 설치·GPU 품질 검증을 뜻하지 않습니다.
 
-이전 v0.1.1 단계의 **RTX 3080 Ti 12 GB 실제 GPU 분석**과 39.47초 한·영 두 화자 합성 음성의 결과는 [Nemotron 실행 기록](docs/NEMOTRON-SMOKE.md)에 보존합니다. 해당 결과를 이번 설치본이나 장시간 한국어 방송의 정확도 검증으로 확대하지 않습니다. v0.2.0의 테스트·브라우저·번들·설치 확인은 [버전별 검증 기록](docs/releases/v0.2.0.md#검증-기록)에서 확인하세요.
+The helper defaults to **80 Mbps**; choose 40 Mbps or unlimited as needed. This limit applies only to setup downloads. / 도우미의 기본 제한은 **80Mbps**이며 40Mbps·제한 없음도 선택할 수 있습니다. 이 제한은 설치 파일 다운로드에만 적용합니다.
 
-자동 저장과 이전 정상본은 현재 브라우저에 남습니다. 프로젝트 JSON에는 자막·인물·노트·컷·인터뷰/회의록 정보가 포함되지만 원본 미디어는 포함되지 않으므로, 다시 열 때 원본을 연결해야 합니다. 중요한 작업은 JSON 파일로 따로 저장하세요. 브라우저에서 재생할 수 없는 영상 코덱은 분석 가능 여부와 별개입니다.
+## Features / 기능
 
-## Windows 설치
+| English | 한국어 |
+| --- | --- |
+| Local large-v3 / large-v3-turbo transcription, AUTO or explicit speech language, Nemotron diarization, isolated OBS track-to-speaker mapping | 로컬 large-v3 / large-v3-turbo 전사, AUTO·직접 음성 언어 선택, Nemotron 화자 구분, OBS 분리 트랙→인물 연결 |
+| Speaker names, colors and subtitle styles; timeline playback, notes, waveform and boundary adjustment | 인물 이름·색·자막 스타일, 타임라인 재생·메모·파형·경계 조절 |
+| 100-row pages, bulk edits, literal find/replace, autosave recovery and job history | 100행 페이지, 일괄 편집·문자열 치환, 자동 저장 복구·작업 이력 |
+| Non-destructive cuts; MP4/WAV/MP3/M4A rendering; source frame rate, 30 or 60 fps | 원본을 보존하는 컷, MP4/WAV/MP3/M4A 렌더, 원본 프레임률·30·60fps |
+| SRT, styled ASS, speaker SRT ZIP, editing notes and project JSON export | SRT·스타일 ASS·인물별 SRT ZIP·편집 메모·프로젝트 JSON 출력 |
+| Korean, English, Japanese, Simplified Chinese and Spanish UI; local Ollama subtitle translation and evidence-linked meeting drafts | 한·영·일·중국어 간체·스페인어 UI, 로컬 Ollama 자막 번역·근거 회의록 초안 |
+| Microphone/system recording with local chunk recovery, followed by analysis after recording stops | 마이크·시스템 녹음과 로컬 조각 복구, 녹음 종료 후 분석 |
+| Up to four installed VST3 effects before analysis, reported-latency compensation, A/B preview, settings and error logs | 설치된 VST3 최대 4개 분석 전처리, 보고 지연 보정·A/B 비교·설정·오류 로그 |
 
-설치 파일은 접근 권한이 있는 계정으로 [비공개 GitHub Releases](https://github.com/LiveTrack-X/VOICESUBSEP/releases)에서 받습니다. 현재 버전의 게시·설치 검증 상태는 [v0.2.0 릴리즈 기록](docs/releases/v0.2.0.md)을 확인하세요. EXE·분할 데이터 `.part001`부터 마지막 조각까지·manifest·체크섬·`Assemble-Installer.ps1`을 같은 폴더에 받은 뒤 아래 명령으로 검증·재조립하고 EXE를 직접 실행합니다. 상세 파일 목록과 절차는 [사용자 가이드](docs/USER-GUIDE.md#1-설치와-첫-실행)에 있습니다.
+Detailed workflows: [editing and recovery](docs/EDITING-WORKFLOWS.md), [cuts and translation](docs/CUTS-AND-LANGUAGES.md), [VST](docs/VST-CHAIN.md), [settings and logs](docs/SETTINGS-AND-LOGS.md). These detailed contracts are currently primarily Korean.
 
-```powershell
-powershell -NoProfile -File .\Assemble-Installer.ps1
-```
+자세한 흐름은 [편집·복구](docs/EDITING-WORKFLOWS.md), [컷·번역](docs/CUTS-AND-LANGUAGES.md), [VST](docs/VST-CHAIN.md), [설정·로그](docs/SETTINGS-AND-LOGS.md)에 있습니다. 이 상세 계약 문서는 현재 한국어 중심입니다.
 
-설치형에는 Python·CUDA 실행 라이브러리와 FFmpeg를 포함하며 모델 가중치는 별도 캐시를 사용합니다. **이번 Preview는 서명·인증 업데이트 feed가 없어 수동 설치하며 인앱 업데이트는 `unconfigured`입니다.** 다운로드 조각·재조립 파일·설치본을 위해 약 15GiB 이상과 별도 모델 여유 공간을 권장하며 정확한 크기는 릴리즈 기록을 따릅니다. 향후 feed가 구성되면 사용자가 확인·다운로드·재시작을 각각 선택하는 구조입니다. [데스크톱·업데이트 계약](docs/DESKTOP.md)을 참고하세요.
+## Limits and local data / 한계와 로컬 데이터
+
+- **Diarization is not voice separation.** Mixed overlapping voices may remain unassigned or incomplete. `4+` means at least four expected speakers; detected speakers 5–8 are retained, not merged into four. Automatic numbers need human naming.
+- **화자 구분은 음원 분리가 아닙니다.** 섞인 동시 발화는 미배정·누락될 수 있습니다. `4명 이상`은 최소 4명이며 검출된 5~8명을 4명으로 합치지 않습니다. 자동 번호의 실제 이름은 직접 지정합니다.
+- Recording is analyzed **after stopping**. Streaming ASR, stable live speaker IDs, external-audio clock-drift correction and final multitrack audio mixing are not implemented.
+- 녹음은 **종료 후 분석**합니다. 스트리밍 ASR·라이브 화자 ID 고정·외부 오디오 시계 드리프트 보정·최종 다중 트랙 믹스는 미구현입니다.
+- Project JSON contains edits, not the original media. Keep both and reconnect the same source when reopening. Autosave is local to the app/browser profile; save a separate JSON backup.
+- 프로젝트 JSON에는 편집 내용만 들어가며 원본 미디어는 없습니다. 둘 다 보관하고 재열기 때 같은 원본을 연결하세요. 자동 저장은 앱/브라우저 프로필에 남으므로 별도 JSON도 저장하세요.
+- Analysis calls the local backend. Missing speech models may download on first use. Ollama and its text models, and commercial VST3 plugins such as CLEAR/RX, are separate. Translation and minutes require human review.
+- 분석은 로컬 서버를 사용합니다. 음성 모델이 없으면 첫 사용 때 다운로드할 수 있습니다. Ollama·텍스트 모델·CLEAR/RX 등 상용 VST3는 별도이며 번역·회의록은 검수가 필요합니다.
+
+Use the app's job-history/storage dialog to remove unreferenced media copies. Referenced jobs/results are protected; source files you opened are not deleted. Recorded sessions and model caches have separate storage. See the [user guide](docs/USER-GUIDE.md).
+
+작업 이력·저장 공간에서 참조가 풀린 미디어 사본을 정리합니다. 작업·결과가 참조하는 사본은 보호하며 사용자가 연 원본은 삭제하지 않습니다. 녹음 보관함과 모델 캐시는 별도입니다. [사용자 가이드](docs/USER-GUIDE.md)를 참고하세요.
 
 ## 소스에서 개발 환경 실행
 
-필수 프로그램을 먼저 설치하고 터미널에서 실행되는지 확인합니다.
+**Run from source.** Requires Node.js 22.12+, npm, uv, and FFmpeg/FFprobe on PATH. Setup creates a Python 3.12 environment and may download dependencies; model weights are separate. This is not required for the Windows installer.
 
-- **Node.js 22.12 이상** 및 npm
-- **uv**: Python 가상환경과 의존성 설치에 사용
-- **FFmpeg와 FFprobe**: 둘 다 `PATH`에 등록되어 있어야 함
-
-새 개발 환경은 Python 3.12.13을 사용하며, 없으면 uv가 설치 과정에서 내려받을 수 있습니다. 기존 3.12 환경은 최소 3.12.1이어야 합니다. 3.12.0에는 설치형 패키징을 깨뜨리는 `code.replace()` 버그가 있어 거부합니다. 설치 안내는 [Node.js](https://nodejs.org/), [uv](https://docs.astral.sh/uv/getting-started/installation/), [FFmpeg](https://ffmpeg.org/download.html)를 참고하세요.
-
-저장소 루트 `VOICESUBSEP`에서 PowerShell로 실행합니다.
+**개발 실행.** Node.js 22.12 이상·npm·uv와 PATH의 FFmpeg/FFprobe가 필요합니다. setup은 Python 3.12 환경을 준비하며 의존성을 다운로드할 수 있습니다. 모델 가중치는 별도입니다. 설치형 사용자는 이 과정이 필요하지 않습니다.
 
 ```powershell
-# 사전 조건만 확인: 다운로드·설치 없음
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Check
-
-# .venv(Python 3.12), Python 패키지, npm 패키지 설치
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
-
-# 편집 화면과 분석 서버를 함께 실행
-node scripts/dev.mjs
-# 같은 실행: npm start
+powershell -NoProfile -File .\scripts\setup.ps1 -Check
+powershell -NoProfile -File .\scripts\setup.ps1
+npm start
 ```
 
-[http://127.0.0.1:5173](http://127.0.0.1:5173)을 엽니다. 종료는 실행한 터미널에서 `Ctrl+C`입니다. 한쪽 서버가 종료되면 실행기도 다른 서버를 종료합니다. 기존 `.venv`가 Python 3.12 환경이 아니면 설치 스크립트가 중단되며, 기존 환경을 자동 삭제하지 않습니다.
+Open [127.0.0.1:5173](http://127.0.0.1:5173); stop with Ctrl+C. `npm run dev` starts only the UI. See [model setup](docs/MODEL-SETUP.md) and [desktop build contracts](docs/DESKTOP.md). Run one backend per data directory; do not use multiple Uvicorn workers or reload against that directory.
 
-기본 설치는 **Whisper·Nemotron 실행 패키지와 CUDA 12.8 PyTorch**를 함께 준비합니다. 모델 가중치는 별도로 받습니다. 앱은 PyTorch의 완전한 CUDA DLL 묶음을 서버 프로세스에 등록하고, 사용할 수 없으면 설치된 NVIDIA 런타임 패키지를 확인합니다. 시스템 전체 `PATH`를 변경하지 않습니다. GPU/CUDA 및 고정된 Nemotron 버전 조건은 [모델 실행 환경](docs/MODEL-SETUP.md)을 참고하세요.
-
-분석 화면은 **large-v3를 기본 모델**로 선택하고, GPU 상태가 준비됐으면 CUDA를 우선 선택합니다. GPU를 사용할 수 없으면 사유와 함께 CPU 선택을 명시합니다. 실행 도중 GPU 오류가 발생해도 CPU로 조용히 바꾸지 않습니다. `engines`는 클래스 import 여부, `/api/health`의 `gpu`는 장치·런타임 의존성 확인 결과이며 모델 캐시·추론 성공·정확도를 보장하지 않습니다.
-
-large-v3-turbo는 빠른 전사 비교용 모델입니다. **Faster Whisper XXL은 별도 초대형 모델이 아닌 실행 패키지**이며, 현재 앱에서 큰 Whisper 모델을 사용하기 위한 필수 구성요소가 아닙니다. [GPU 모델과 XXL의 차이](docs/GPU-MODELS.md)를 참고하세요. 선택적 Windows 설치 파일 빌드 방법은 [데스크톱 빌드](docs/DESKTOP.md)에 정리합니다.
-
-## 사용 흐름
-
-1. 영상 또는 음성을 열고 예상 인원과 대화 모드를 설정합니다.
-2. 로컬 분석에서 오디오 트랙과 언어를 확인하고, large-v3 또는 large-v3-turbo와 GPU/CPU를 선택합니다.
-3. 분석 완료 후 결과와 경고를 확인하고 적용합니다.
-4. 인물 이름을 지정하고, 검수 대상 자막을 원본과 비교해 수정합니다.
-5. 필요한 장면에 노트를 남기고 프로젝트 JSON, SRT, 편집 노트를 내보냅니다.
-
-일반 분석은 한 오디오 트랙을 고릅니다. 원본에 인물별 마이크가 따로 녹음되어 있으면 `분리된 화자 트랙`에서 최대 8개 트랙을 인물에 연결해 순서대로 전사하고 원본 시간으로 합칠 수 있습니다. 전체 소리가 중복으로 들어 있는 믹스 트랙은 제외하세요. 이 경로는 트랙의 명시적인 인물 배정을 사용하며 한 트랙 안에서 이미 섞인 게임 채팅의 목소리를 개별 인물 트랙으로 복원하지는 않습니다.
-
-## 개발 및 테스트
-
-`npm run dev`는 편집 화면만 실행합니다. 두 서버를 한 번에 실행하려면 `node scripts/dev.mjs`를 사용합니다. 서버를 별도 터미널에서 실행할 수도 있습니다.
+[127.0.0.1:5173](http://127.0.0.1:5173)을 열고 Ctrl+C로 종료합니다. `npm run dev`는 화면만 실행합니다. [모델 환경](docs/MODEL-SETUP.md)과 [데스크톱 빌드 계약](docs/DESKTOP.md)을 참고하세요. 데이터 폴더마다 백엔드 하나만 실행하고 여러 Uvicorn worker·reload를 함께 사용하지 마세요.
 
 ```powershell
-.\.venv\Scripts\python.exe -m uvicorn voicesubsep.app:app --host 127.0.0.1 --port 8787
-npm run dev
-```
-
-```powershell
-# 편집 데이터 로직
 npm test
 npm run typecheck
 npm run build
-
-# API·검증·취소·화자 연결 및 FFmpeg 합성 fixture
 .\.venv\Scripts\python.exe -m pytest backend\tests -q
-
-# 개발 실행기의 실패·종료 처리
-node --test scripts/dev.test.mjs
-node scripts/dev.mjs --check
+npm run desktop:test
+npm run desktop:smoke
 ```
 
-위 자동 테스트는 실제 모델 추론이나 가중치 다운로드를 수행하지 않습니다. 실제 GPU 검증은 [별도 스모크](docs/NEMOTRON-SMOKE.md)로 실행합니다. FFmpeg fixture 테스트에는 FFmpeg와 FFprobe가 필요합니다. Unix에서 직접 준비하는 경우 플랫폼에 맞는 PyTorch를 준비한 뒤 `.venv/bin/python`으로 가상환경을 만들고 `uv pip install --python .venv/bin/python -e './backend[whisper,diarization,test]'`, `npm ci`를 실행하면 같은 개발 실행기를 사용할 수 있습니다. 기본 설치 경로와 테스트 범위는 Windows를 기준으로 합니다.
+Automated checks do not establish transcription accuracy, device recording quality, or installer deployment. [Release evidence](docs/releases/v0.2.0.md) separates those scopes. Source data defaults to `data/` (`VOICESUBSEP_DATA_DIR`); the upload limit defaults to 8 GiB (`VOICESUBSEP_MAX_UPLOAD_BYTES`). Desktop data lives outside the install folder. Third-party [notices and redistribution obligations](docs/BUNDLED-NOTICES.md) remain separate from app functionality.
 
-분석 작업은 한 번에 하나씩 처리합니다. 같은 데이터 폴더로 백엔드 여러 개를 실행하거나 Uvicorn `--workers`·`--reload`를 사용하지 마세요. 취소는 모델 처리 경계에서 반영되므로 진행 중인 다운로드나 native 연산이 끝날 때까지 시간이 걸릴 수 있습니다. 중단된 작업은 서버 재시작 때 자동 재실행하지 않습니다.
-
-## 로컬 데이터와 설정
-
-원본 사본·메타데이터·작업 결과는 기본적으로 저장소의 `data/`에 저장되며 Git에서 제외됩니다. Windows 신규 Whisper 모델은 `%LOCALAPPDATA%/VOICESUBSEP/models/whisper`에 저장하고 완성된 기존 Hugging Face 캐시도 재사용합니다. 프로젝트 JSON을 내보내도 `data/`의 원본 사본이 자동 삭제되지는 않습니다.
-
-| 환경 변수 | 기본값 | 의미 |
-| --- | --- | --- |
-| `VOICESUBSEP_DATA_DIR` | 저장소의 `data/` | 업로드·작업 저장 폴더 |
-| `VOICESUBSEP_MAX_UPLOAD_BYTES` | `8589934592` (8 GiB) | 원본 한 파일의 업로드 한도 |
-
-분석 전 업로드 사본과 추출 WAV를 위한 디스크 공간이 필요합니다. 같은 내용의 업로드는 해시로 사본을 재사용합니다. `작업 이력·저장 공간`에서 종료된 작업 이력을 명시적으로 삭제하고, 작업·결과·미리듣기 등이 참조하지 않는 미디어 캐시를 정리할 수 있습니다. 사용자가 연 원본은 지우지 않습니다. 모델 캐시와 브라우저 녹음 보관함은 별도입니다. 폴더를 직접 정리해야 한다면 서버를 종료하고 필요한 원본·프로젝트를 먼저 보관하세요. 이 개발 서버는 인터넷 공개 배포용 구성이 아닙니다.
-
-## 문서
-
-- [문서 목차](docs/INDEX.md) · [사용자 가이드](docs/USER-GUIDE.md) · [v0.2.0 릴리즈·검증 기록](docs/releases/v0.2.0.md)
-- [현재 개발 소스의 편집·복구·녹음 사용 흐름과 한계](docs/EDITING-WORKFLOWS.md)
-- [제품 설계](docs/PRODUCT-DESIGN.md)
-- [대안 및 동시 발화 처리 분석](docs/ALTERNATIVES-ANALYSIS.md)
-- [모델 실행 환경과 검증 범위](docs/MODEL-SETUP.md)
-- [GPU 모델과 Faster Whisper XXL 비교](docs/GPU-MODELS.md)
-- [실제 큰 모델 GPU 실행·데스크톱 검증 기록](docs/GPU-DESKTOP-VALIDATION.md)
-- [Nemotron 두 화자 GPU 분석 검증](docs/NEMOTRON-SMOKE.md)
-- [선택적 Windows 데스크톱 빌드](docs/DESKTOP.md)
-- [v0.1 구현 계약·API](docs/IMPLEMENTATION-CONTRACT.md)
-- [디자인 시스템](docs/design/DESIGN-SYSTEM.md)
-- [초기 v0.1 구현·검증 기록과 한계](docs/DEVELOPMENT-STATUS.md)
-- [실제 Whisper tiny 실행 기록](docs/MODEL-SMOKE.md)
-- [컷 편집·오디오·인터뷰·회의록 확장 계획: 역사적 제안과 현재 상태](docs/EXPANSION-ROADMAP.md)
-- [현재 소스의 컷편집·다국어 구현 계약](docs/CUTS-AND-LANGUAGES.md)
-- [잡음 억제·사용자 VST3 후속 설계](docs/AUDIO-PREPROCESSING.md)
-- [라이브 입력·출력 오디오 캡처 설계: 역사적 제안과 현재 상태](docs/LIVE-CAPTURE-PLAN.md)
-
-기존 자막 프로그램의 소스를 복사하지 않고 새로 구현했습니다. 모델·라이브러리의 라이선스는 각 upstream 조건을 따르며, 모델 가중치는 저장소에 포함하지 않습니다.
+자동 검사는 인식 정확도·장치 녹음 품질·설치 배포를 대신 입증하지 않습니다. [릴리즈 증거](docs/releases/v0.2.0.md)에서 범위를 구분합니다. 개발 데이터는 기본 `data/`(`VOICESUBSEP_DATA_DIR`), 업로드 제한은 기본 8GiB(`VOICESUBSEP_MAX_UPLOAD_BYTES`)입니다. 설치형 데이터는 설치 폴더 밖에 남습니다. 외부 의존성의 [고지·재배포 의무](docs/BUNDLED-NOTICES.md)는 앱 기능과 별도로 확인합니다.
