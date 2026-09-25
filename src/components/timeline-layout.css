@@ -38,13 +38,13 @@
   padding: 4px 8px;
   border: 1px solid var(--border);
   border-radius: 5px;
-  color: #59667b;
+  color: var(--muted);
   font-size: 11px;
 }
 
 .timeline-adjustable .timeline-collapse-button:hover {
-  background: #f3f0ff;
-  color: #7354db;
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 
 .timeline-resize-handle {
@@ -67,19 +67,19 @@
   height: 3px;
   width: 44px;
   border-radius: 3px;
-  background: #bac2d0;
+  background: var(--border);
 }
 
 .timeline-resize-handle:hover,
 .timeline-resize-handle:focus-visible,
 .timeline-resizing .timeline-resize-handle {
-  background: #ede8ff;
+  background: var(--accent-soft);
 }
 
 .timeline-resize-handle:hover > span,
 .timeline-resize-handle:focus-visible > span,
 .timeline-resizing .timeline-resize-handle > span {
-  background: #7954ef;
+  background: var(--purple);
 }
 
 .timeline-resizing {
@@ -96,8 +96,8 @@
   }
 }
 .caption-density-canvas{width:100%;height:23px;display:block;pointer-events:none}
-.caption-edge{position:absolute;top:1px;z-index:4;height:21px;width:8px;min-width:8px;transform:translateX(-50%);border:1px solid #fff;border-radius:2px;padding:0;background:#5634b6;cursor:ew-resize;touch-action:none}
-.caption-edge:focus-visible{outline:2px solid #2c166d;outline-offset:2px}
+.caption-edge{position:absolute;top:1px;z-index:4;height:21px;width:8px;min-width:8px;transform:translateX(-50%);border:1px solid var(--surface);border-radius:2px;padding:0;background:var(--accent-text);cursor:ew-resize;touch-action:none}
+.caption-edge:focus-visible{outline:2px solid var(--accent-text);outline-offset:2px}
 .caption-edge-start{transform:translateX(-100%)}.caption-edge-end{transform:none}
-.waveform-lane{height:36px}.waveform-lane .lane-track{height:32px}.waveform-lane svg{width:100%;height:32px;pointer-events:none}.waveform-lane path{stroke:#8c78c4;stroke-width:1;vector-effect:non-scaling-stroke}
+.waveform-lane{height:36px}.waveform-lane .lane-track{height:32px}.waveform-lane svg{width:100%;height:32px;pointer-events:none}.waveform-lane path{stroke:var(--accent-text);stroke-width:1;vector-effect:non-scaling-stroke}
 .timeline-heading-actions>button,.timeline-heading-actions>select{font-size:10px;padding:4px;max-width:130px}

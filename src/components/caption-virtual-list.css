@@ -1,0 +1,3 @@
+.caption-editor .caption-list { overflow-anchor: none; }
+.caption-virtual-space { position: relative; width: 100%; min-width: 0; }
+.caption-virtual-space > .caption-row { position: absolute; inset-inline: 0; top: 0; width: 100%; }

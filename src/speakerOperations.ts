@@ -8,6 +8,15 @@ export function editableSpeakers(project: Project): Speaker[] {
     : project.speakers.slice(0, project.speakerCount);
 }
 
+/** Offer the requested identities plus every identity already used by a caption.
+ * Retained, unused preparation records must not look like newly detected people.
+ */
+export function selectableSpeakers(project: Project): Speaker[] {
+  const ids = new Set(project.speakers.slice(0, project.speakerCount).map(speaker => speaker.id));
+  for (const caption of project.captions) if (caption.speakerId !== null) ids.add(caption.speakerId);
+  return project.speakers.filter(speaker => ids.has(speaker.id));
+}
+
 /** Called only after the user reviews and confirms a whole-project reassignment. */
 export function assignAllCaptionsToSpeaker(project: Project, speakerId: string): Project {
   if (!project.speakers.some(speaker => speaker.id === speakerId))

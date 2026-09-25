@@ -6,8 +6,8 @@
 
 .caption-editor .caption-density-toggle[aria-pressed="true"] {
   color: var(--purple);
-  background: #f0ecfb;
-  border-color: #ded5f7;
+  background: var(--accent-soft);
+  border-color: var(--border);
 }
 
 .caption-editor .caption-seek-icon {
@@ -47,7 +47,6 @@
 }
 
 .caption-navigation,
-.caption-pagination,
 .caption-bulk-actions,
 .caption-replace-controls {
   display: flex;
@@ -56,23 +55,14 @@
   gap: 6px;
 }
 
-.caption-navigation,
-.caption-pagination {
+.caption-navigation {
   padding: 5px 12px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   font-size: 10px;
 }
 
-.caption-pagination {
-  justify-content: center;
-  border-top: 1px solid var(--border);
-  border-bottom: 0;
-}
-
 .caption-navigation button,
-.caption-pagination button,
-.caption-pagination select,
 .caption-bulk-tools button,
 .caption-bulk-tools input,
 .caption-bulk-tools select {
@@ -94,8 +84,7 @@
 .caption-bulk-tools summary { cursor: pointer; padding: 2px 0; }
 .caption-bulk-actions,
 .caption-replace-controls { padding-top: 7px; }
-.caption-bulk-tools label,
-.caption-pagination label { display: flex; align-items: center; gap: 5px; }
+.caption-bulk-tools label { display: flex; align-items: center; gap: 5px; }
 .caption-bulk-tools .muted { font-size: 10px; margin: 6px 0 0; }
 .caption-replace-controls input { width: 130px; }
 .caption-bulk-notice { margin: 0; padding: 5px 12px; font-size: 11px; flex-shrink: 0; }
@@ -124,9 +113,9 @@
   justify-content: center;
   width: 24px;
   min-height: 32px;
-  border: 1px solid #e3e7f0;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  color: #65718a;
+  color: var(--muted);
 }
 
 .caption-density-compact .caption-seek-icon {
@@ -148,6 +137,11 @@
   margin-top: 0;
   padding-top: 3px;
   padding-bottom: 3px;
+}
+
+.caption-editor select option {
+  color: var(--ink);
+  background: var(--surface);
 }
 
 .caption-density-compact .caption-content textarea {

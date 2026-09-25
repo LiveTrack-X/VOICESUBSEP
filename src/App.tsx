@@ -43,6 +43,7 @@ import { UpdateDialog } from "./components/UpdateDialog";
 import { CutPanel } from "./components/CutPanel";
 import { RenderDialog } from "./components/RenderDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { ThemeSelector } from "./components/ThemeSelector";
 import { DocumentsDialog } from "./components/DocumentsDialog";
 import { AudioMixerDialog } from "./components/AudioMixerDialog";
 import { LiveCaptureDialog } from "./components/LiveCaptureDialog";
@@ -52,9 +53,12 @@ import { exportAss, exportSpeakerSrtZip } from "./subtitle-export";
 import { saveBlob } from "./recordingStore";
 import { buildKeepSpans, projectForEditedExport } from "./cuts";
 import { useI18n } from "./i18n";
+import { useBackgroundJob } from "./backgroundJob";
+import { BackgroundJobStatus, BackgroundJobDialog } from "./components/BackgroundJobStatus";
 
 export default function App() {
   const {t} = useI18n();
+  const background = useBackgroundJob();
   const { project, update, replace, undo, redo, canUndo, canRedo, saveState, recoveryWarning } =
     useProject();
   const [file, setFile] = useState<File | null>(null);
@@ -64,7 +68,7 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [revealCaption, setRevealCaption] = useState<{ id: string } | null>(null);
   const [revealNote, setRevealNote] = useState<{ id: string } | null>(null);
-  const [dialog, setDialog] = useState<"export" | "analysis" | "update" | "render" | "settings" | "documents" | "live" | "history" | "recovery" | "mixer" | null>(null);
+  const [dialog, setDialog] = useState<"export" | "analysis" | "background" | "update" | "render" | "settings" | "documents" | "live" | "history" | "recovery" | "mixer" | null>(null);
   const [editedPreview, setEditedPreview] = useState(false);
   const [projectSession, setProjectSession] = useState(0);
   const [notice, setNotice] = useState("");
@@ -310,6 +314,7 @@ export default function App() {
           <span>{t("인물별 자막 워크스페이스")}</span>
         </div>
         <div className="header-actions">
+          <ThemeSelector />
           <button aria-label={t("설정 및 오류 로그")} title={t("설정 및 오류 로그")} className="icon-button settings-button" onClick={() => setDialog("settings")}>
             <Settings2 size={17} />
           </button>
@@ -458,6 +463,7 @@ export default function App() {
         </span>
         <span>{t("로컬 작업")}<span className="status-dot">·</span>v{version}
         </span>
+        <BackgroundJobStatus snapshot={background.snapshot} onOpen={()=>setDialog("background")} onDismiss={background.dismiss}/>
       </footer>
       <input
         className="sr-only"
@@ -576,9 +582,11 @@ export default function App() {
           project={project}
           onClose={() => setDialog(null)}
           onApply={applyAnalysis}
+          onJob={background.track}
           onMediaReady={duration=>{if(Number.isFinite(duration)&&duration>0)update(p=>p.duration>0?p:{...p,duration});}}
         />
       )}
+      {dialog === "background" && <BackgroundJobDialog snapshot={background.snapshot} project={project} file={file} onClose={()=>setDialog(null)} onApply={applyAnalysis} onRetry={background.retry}/>}
       {dialog === "export" && (
         <Dialog title={t("자막과 노트 내보내기")} onClose={() => setDialog(null)}>
           <p className="dialog-intro">{t("편집기에 맞는 형식을 선택하세요. 모든 시간은 원본 기준입니다.")}</p>

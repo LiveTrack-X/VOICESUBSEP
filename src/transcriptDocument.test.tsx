@@ -4,6 +4,9 @@ import { createProject, type Caption } from "./domain";
 import { buildTranscriptDocument, DOCX_MIME, exportTranscriptDocx, exportTranscriptHtml, exportTranscriptTxt, exportTranscriptXlsx } from "./transcriptDocument";
 import { TranscriptDocumentPanel } from "./components/TranscriptDocumentPanel";
 import { I18nProvider, translate, LOCALES } from "./i18n";
+import { readableSpeakerColor } from "./speakerColor";
+import { exportWorkbook } from "./documentExports";
+import { MAX_TRANSCRIPT_ROWS } from "./transcriptScroll";
 
 const t = (key: string) => key;
 function fixture() {
@@ -130,5 +133,45 @@ describe("literal transcript documents", () => {
     expect(sheet).toContain("검수 필요");
     expect([...files.values()].join("")).not.toMatch(/<f>|TargetMode="External"/);
     expect(JSON.stringify(project)).toBe(before);
+  });
+  it("carries assigned names/colors into the screen and all rich exports while keeping speech neutral", () => {
+    const { project, caption } = fixture(); project.speakers[0].color = "#ffff00"; project.speakers[1].color = "#123456";
+    project.captions.push(caption("unassigned", 30, 31, null, "익명 발언"));
+    const original = JSON.stringify(project), readable = readableSpeakerColor("#ffff00");
+    const document = buildTranscriptDocument(project, t);
+    expect(document.turns[0].color).toBe("#ffff00"); expect(document.turns.at(-1)?.color).toBeNull();
+    const screen = renderToStaticMarkup(<I18nProvider><TranscriptDocumentPanel project={project}/></I18nProvider>);
+    expect(screen).toContain("--speaker-marker:#ffff00"); expect(screen).toContain(`--speaker-name-light:${readable}`);
+    const html = exportTranscriptHtml(project, t);
+    expect(html).toContain(`style="color:${readable};border-left-color:#ffff00">화자 A: </strong>  안녕하세요.`);
+    expect(html).toContain('style="color:#667085;border-left-color:#667085">미배정: </strong>익명 발언');
+    const docx = unzip(exportTranscriptDocx(project, t)).get("word/document.xml")!;
+    expect(docx).toContain('<w:color w:val="FFFF00"/>'); expect(docx).toContain(`<w:color w:val="${readable.slice(1).toUpperCase()}"/>`);
+    expect(docx).toContain('<w:r><w:t xml:space="preserve">  안녕하세요. ');
+    const xlsx = unzip(exportTranscriptXlsx(project, t));
+    expect(xlsx.get("xl/styles.xml")).toContain(`<color rgb="FF${readable.slice(1).toUpperCase()}"/>`);
+    expect(xlsx.get("xl/styles.xml")).toContain('<left style="medium"><color rgb="FFFFFF00"/></left>');
+    expect(xlsx.get("xl/worksheets/sheet1.xml")).toContain('<c r="B2" s="2" t="inlineStr">');
+    expect(xlsx.get("xl/worksheets/sheet1.xml")).toContain('<c r="G2" s="0" t="inlineStr">');
+    expect(exportTranscriptTxt(project, t)).not.toMatch(/#ffff00|▌/);
+    expect(JSON.stringify(project)).toBe(original);
+  });
+  it("renders a bounded continuous list while every export contains all 1001 turns", () => {
+    const { project, caption } = fixture(); project.duration = 4000;
+    project.captions = Array.from({length: 1001}, (_, index) => caption(`cue-${index}`, index * 3, index * 3 + 1, index % 2, `문장-${index}`));
+    const screen = renderToStaticMarkup(<I18nProvider><TranscriptDocumentPanel project={project}/></I18nProvider>);
+    expect(screen).toContain('class="transcript-scroll" role="list"');
+    expect(screen.match(/role="listitem"/g)?.length).toBeLessThanOrEqual(MAX_TRANSCRIPT_ROWS);
+    expect(screen).not.toContain("transcript-pagination"); expect(screen).not.toContain("100개 발언씩");
+    expect(exportTranscriptTxt(project, t)).toContain("문장-1000");
+    expect(exportTranscriptHtml(project, t)).toContain("문장-1000");
+    expect(unzip(exportTranscriptDocx(project, t)).get("word/document.xml")).toContain("문장-1000");
+    expect(unzip(exportTranscriptXlsx(project, t)).get("xl/worksheets/sheet1.xml")).toContain("문장-1000");
+  });
+  it("rejects invalid spreadsheet color values and keeps styled names literal", () => {
+    const make = (color: string) => exportWorkbook([{name: "Safe", widths: [20], filter: false, rows: [["Name"], [{text: '=HYPERLINK("x") _x000A_', color}]]}]);
+    expect(() => make('"/><script>')).toThrow("Invalid workbook text color");
+    const sheet = unzip(make("#123456")).get("xl/worksheets/sheet1.xml")!;
+    expect(sheet).toContain('=HYPERLINK(&quot;x&quot;) _x005F_x000A_'); expect(sheet).not.toContain("<f>");
   });
 });

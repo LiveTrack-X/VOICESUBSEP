@@ -47,6 +47,7 @@ class NativeLiveEngine:
         self.chunk_cursor = 0
         self.first = True
         self.committed = 0
+        self.detected_language: str | None = None
         self.np = importlib.import_module("numpy")
         try:
             stage("로컬 모델 캐시 확인")
@@ -139,10 +140,12 @@ class NativeLiveEngine:
             audio = self._read(path, start, audio_end)
             # Avoid known silence hallucinations without requiring another model.
             if len(audio) and float(self.np.max(self.np.abs(audio))) > 0.0001:
-                segments, _ = self.whisper.transcribe(audio,
-                    language=None if self.request["language"] == "auto" else self.request["language"],
-                    multilingual=self.request["language"] == "auto", word_timestamps=True,
+                auto_language = self.request["language"] == "auto"
+                segments, info = self.whisper.transcribe(audio,
+                    language=self.detected_language if auto_language else self.request["language"],
+                    task="transcribe", multilingual=False, word_timestamps=True,
                     vad_filter=False, condition_on_previous_text=False, beam_size=5)
+                first_record = len(self.records)
                 try:
                     for segment in segments:
                         _checkpoint(self.cancelled)
@@ -159,6 +162,18 @@ class NativeLiveEngine:
                 finally:
                     if callable(getattr(segments, "close", None)):
                         segments.close()
+                _checkpoint(self.cancelled)
+                # Each live window would otherwise start AUTO detection anew.
+                # Keep the first confident language with committed speech for
+                # this session; silence/uncertain windows never choose a fallback.
+                if auto_language and self.detected_language is None:
+                    detected = getattr(info, "language", None)
+                    probability = getattr(info, "language_probability", None)
+                    if (isinstance(detected, str) and 2 <= len(detected) <= 3 and detected.isalpha()
+                            and isinstance(probability, (int, float)) and not isinstance(probability, bool)
+                            and 0.5 <= probability <= 1
+                            and any(record["text"].strip() for record in self.records[first_record:])):
+                        self.detected_language = detected
             self.committed = end
             changed = True
             if len(self.records) > 50000 or len(self.intervals) > 200000:

@@ -1,0 +1,92 @@
+/* Shared palette. Import after styles.css so component CSS can use these tokens. */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --app-bg: #f7f8fb;
+  --surface: #ffffff;
+  --surface-alt: #f0f3f8;
+  --panel-bg: #fafbfe;
+  --ink: #293244;
+  --text: var(--ink);
+  --muted: #626d80;
+  --text-secondary: var(--muted);
+  --border: #dbe1ea;
+  --border-strong: #8995a8;
+  --light: var(--surface-alt);
+  --purple: #7558ee;
+  --accent-text: #6241cc;
+  --accent-hover: #6647df;
+  --accent-soft: #f0edff;
+  --on-accent: #ffffff;
+  --focus: #7558ee;
+  --button-ink: #526071;
+  --danger-text: #b42336;
+  --danger-bg: #fff0f2;
+  --warning-text: #865509;
+  --warning-bg: #fff6df;
+  --success-text: #17663c;
+  --success-bg: #eaf8f0;
+  --overlay-backdrop: #10182873;
+  --shadow: 0 12px 36px #10182824;
+  color: var(--ink);
+  background: var(--app-bg);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --app-bg: #10141d;
+  --surface: #181e2a;
+  --surface-alt: #202838;
+  --panel-bg: #1c2432;
+  --ink: #e9edf5;
+  --muted: #a9b5c9;
+  --border: #394457;
+  --border-strong: #79879f;
+  --purple: #7558ee;
+  --accent-text: #c0afff;
+  --accent-hover: #6847e0;
+  --accent-soft: #302748;
+  --focus: #baa8ff;
+  --button-ink: #d5ddec;
+  --danger-text: #ffafb8;
+  --danger-bg: #42242e;
+  --warning-text: #f3cc82;
+  --warning-bg: #3b3020;
+  --success-text: #8ee0af;
+  --success-bg: #203a30;
+  --overlay-backdrop: #000000b3;
+  --shadow: 0 12px 36px #00000066;
+}
+
+select,
+option,
+optgroup {
+  color-scheme: inherit;
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
+.theme-selector {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.theme-selector select {
+  min-width: 72px;
+  max-width: 140px;
+  padding: 5px 7px;
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--border);
+}
+.theme-save-warning {
+  flex-basis: 100%;
+  max-width: 200px;
+  white-space: normal;
+  color: var(--warning-text);
+  font-size: 10px;
+}

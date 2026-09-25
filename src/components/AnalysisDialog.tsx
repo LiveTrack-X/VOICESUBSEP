@@ -22,6 +22,9 @@ import { CloudAsrSettings } from "./CloudAsrSettings";
 import { cloudAsrBlockReason, cloudAsrRequestFields, defaultAsrSelection, type AsrSelection } from "../cloudAsr";
 import { providerName, type CredentialState } from "../providerCredentials";
 import { DiarizationSettings } from "./DiarizationSettings";
+import type { BackgroundJobPointer } from "../backgroundJob";
+import { AnalysisQueueControls } from "./AnalysisQueueControls";
+import { jobStageLabel } from "../jobStage";
 
 export function AnalysisDialog({
   file,
@@ -29,12 +32,14 @@ export function AnalysisDialog({
   onClose,
   onApply,
   onMediaReady,
+  onJob,
 }: {
   file: File;
   project: Project;
   onClose: () => void;
   onApply: (result: AnalysisResult) => void;
   onMediaReady?: (duration: number) => void;
+  onJob?: (pointer: BackgroundJobPointer, job: Job) => void;
 }) {
   const { t, locale } = useI18n();
   const mediaReady = useRef(onMediaReady);mediaReady.current=onMediaReady;
@@ -43,6 +48,9 @@ export function AnalysisDialog({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [job, setJob] = useState<Job | null>(null);
+  const jobSource = useRef<BackgroundJobPointer|null>(null);
+  const jobObserver = useRef(onJob); jobObserver.current=onJob;
+  useEffect(()=>{if(job&&jobSource.current?.id===job.id)jobObserver.current?.(jobSource.current,job);},[job]);
   const [starting, setStarting] = useState(false);
   const [asr, setAsr] = useState<AsrSelection>(defaultAsrSelection);
   const [cloudConsent, setCloudConsent] = useState(false);
@@ -134,7 +142,10 @@ export function AnalysisDialog({
             const previous = history.items.find(item => sameAnalysisSource(item, project.id, m.id) && ["queued", "running", "completed"].includes(item.status));
             if (previous) {
               const restored = await request<Job>(`/api/jobs/${previous.id}`);
-              if (alive) setJob(restored);
+              if (alive) {
+                jobSource.current={id:restored.id,projectId:previous.projectId??null,projectName:previous.projectName,mediaId:m.id,mediaName:previous.mediaName};
+                setJob(restored);
+              }
             }
           } catch { /* History is optional; fresh analysis remains available. */ }
         }
@@ -155,22 +166,24 @@ export function AnalysisDialog({
     if (!job?.id || !running) return;
     let alive = true;
     let timer: number;
+    let failures=0;
     const poll = async () => {
       try {
         const next = await request<Job>(`/api/jobs/${job.id}`);
         if (alive) {
           setJob(next);
           setError("");
+          failures=0;
         }
       } catch (e) {
         if (alive) {
+          failures++;
           if (e instanceof ApiError && e.status === 404) setJob(current => current ? {...current, status:"failed", stage:"interrupted", updatedAt:undefined, error:t("이전 작업을 찾을 수 없습니다. 새 분석을 시작하세요.")} : current);
-          setError(
-            t("진행 상태 확인 실패: {error}. 다시 확인하는 중입니다.", { error: (e as Error).message }),
-          );
+          setError(failures>=3?t("서버 연결을 확인하지 못해 자동 조회를 멈췄습니다. 연결 후 다시 확인하세요."):
+            t("진행 상태 확인 실패: {error}. 다시 확인하는 중입니다.", { error: (e as Error).message }));
         }
       } finally {
-        if (alive) timer = window.setTimeout(poll, 1200);
+        if (alive&&failures<3) timer = window.setTimeout(poll, 1200);
       }
     };
     timer = window.setTimeout(poll, 500);
@@ -213,6 +226,7 @@ export function AnalysisDialog({
         }),
       });
       // Server timestamps replace this local request timestamp on the first poll.
+      jobSource.current={id,projectId:project.id,projectName:project.name,mediaId:media.id,mediaName:media.name};
       setJob({ id, status: "queued", stage: "queued", progress: 0, createdAt: requestedAt, updatedAt: requestedAt });
     } catch (e) {
       setError((e as Error).message);
@@ -385,17 +399,10 @@ export function AnalysisDialog({
           </div>
           <progress value={job.progress} max={1} />
           <p>
-            {{
-              queued: t("분석 대기"),
-              completed: t("분석 결과를 확인한 뒤 적용하세요."),
-              preparing: t("분석을 준비하고 있습니다."),
-              failed: t("아래 오류 내용을 확인하세요."),
-              cancelled: t("작업이 취소되었습니다."),
-              "cancellation requested": t("현재 처리 단계가 끝나면 취소합니다."),
-              interrupted: t("서버가 중단되어 분석을 완료하지 못했습니다."),
-            }[job.stage] ?? job.stage}
+            {t(jobStageLabel(job.stage))}
           </p>
           <RecognitionPreview key={job.id} job={job} />
+          <AnalysisQueueControls key={`queue-${job.id}`} job={job} onUpdated={setJob}/>
           {job.error && <p className="error-box">{job.error}</p>}
           {job.result?.warnings.map((w, i) => (
             <p className="info-box" key={i}>

@@ -1,7 +1,7 @@
-.settings-section { margin: 18px 0; padding: 0 0 18px; border-bottom: 1px solid var(--line, #e4e7ee); }
+.settings-section { margin: 18px 0; padding: 0 0 18px; border-bottom: 1px solid var(--line, var(--border)); }
 .settings-section h3 { margin: 0 0 8px; font-size: 15px; }
 .settings-section p, .settings-section small { line-height: 1.6; }
-.settings-section small { display: block; margin-top: 10px; color: var(--muted, #657086); }
+.settings-section small { display: block; margin-top: 10px; color: var(--muted, var(--muted)); }
 .settings-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .settings-actions button { display: inline-flex; gap: 7px; align-items: center; }
 .settings-log-preview { margin-top: 12px; }

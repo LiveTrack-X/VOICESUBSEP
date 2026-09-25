@@ -2,9 +2,9 @@
   min-width: 0;
   margin: 12px 0;
   padding: 11px 12px;
-  border: 1px solid var(--border, #dce1eb);
+  border: 1px solid var(--border, var(--border));
   border-radius: 8px;
-  background: #f8f7fc;
+  background: var(--accent-soft);
 }
 .recognition-preview header {
   display: flex;
@@ -14,7 +14,7 @@
   gap: 4px 12px;
   font-size: 12px;
 }
-.recognition-preview header span { color: #647084; font-variant-numeric: tabular-nums; }
+.recognition-preview header span { color: var(--muted); font-variant-numeric: tabular-nums; }
 .dialog .recognition-preview-lines p {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -24,14 +24,14 @@
   margin: 7px 0;
   line-height: 1.5;
   font-size: 13px;
-  color: #293447;
+  color: var(--ink);
 }
-.dialog .recognition-preview-lines .recognition-preview-waiting { color: #657185; -webkit-line-clamp: 2; }
+.dialog .recognition-preview-lines .recognition-preview-waiting { color: var(--muted); -webkit-line-clamp: 2; }
 .recognition-preview small {
   display: block;
   margin-top: 5px;
   font-size: 11px;
   line-height: 1.4;
-  color: #657185;
+  color: var(--muted);
   overflow-wrap: anywhere;
 }

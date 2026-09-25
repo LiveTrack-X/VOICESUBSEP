@@ -10,15 +10,15 @@
   min-height: 38px;
   padding: 4px 16px;
   border-bottom: 1px solid var(--border);
-  background: #fff;
-  color: #6a7588;
+  background: var(--surface);
+  color: var(--muted);
   font-size: 11px;
 }
 .workspace-focus-button { min-height: 28px; padding: 4px 9px; font-size: 11px; }
 .workspace-focus-button[aria-pressed="true"] {
-  color: #6543d2;
-  background: #f3efff;
-  border-color: #d6c9fa;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-color: var(--border-strong);
 }
 .editor-upper { flex-direction: column; overflow: auto; }
 .editor-center { padding-top: 8px; padding-bottom: 8px; gap: 6px; overflow: visible; flex: 1 0 auto; }
@@ -35,6 +35,9 @@
   overflow: hidden;
 }
 .editor-center > .media-player > .player-controls { flex: 0 0 auto; }
+.editor-center > .media-kind-video:not(.preview-custom-height):not(.media-player-expanded):not(:fullscreen) > .video-stage {
+  height: var(--auto-preview-height, 144px);
+}
 .editor-center .video-empty { flex-direction: row; gap: 8px; }
 .editor-center .play-circle { width: 24px; height: 24px; }
 .editor-center .play-circle svg { width: 13px; }
@@ -58,7 +61,7 @@
 .notes-panel .notes-list { display: block; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .notes-panel .note-card { width: 100%; min-width: 0; }
 .notes-panel .note-body { max-width: 100%; }
-.preview-layout-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 4px 7px; min-width: 0; border-bottom: 1px solid var(--border); font-size: 10px; color: #66758a; }
+.preview-layout-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 4px 7px; min-width: 0; border-bottom: 1px solid var(--border); font-size: 10px; color: var(--muted); }
 .preview-layout-toolbar[hidden] { display: none; }
 .preview-layout-toolbar > span { flex: 1; }
 .preview-layout-toolbar button { min-height: 24px; padding: 3px 5px; font-size: 10px; white-space: normal; }
@@ -66,7 +69,7 @@
 .preview-height-control input { width: 100%; min-width: 0; height: 3px; padding: 0; }
 .editor-center > .preview-collapsed:not(.media-player-expanded):not(:fullscreen) > .video-stage { display: none; }
 .editor-center > .media-kind-empty:not(.media-player-expanded):not(:fullscreen) > .player-controls { display: none; }
-.media-playback-error { color: #9a3c23; font-size: 11px; margin: 0; padding: 8px; }
+.media-playback-error { color: var(--danger-text); font-size: 11px; margin: 0; padding: 8px; }
 .caption-editor .caption-toolbar { min-height: 38px; }
 .caption-editor .caption-columns { padding-block: 6px; }
 .caption-editor .edit-actions { padding-block: 4px; gap: 4px; }
@@ -106,7 +109,7 @@
   .subtitle-focus .editor-center { height: auto; width: 100%; }
   .subtitle-focus .editor-center { padding-top: 6px; }
   .subtitle-focus .editor-center > .media-player:not(.media-player-expanded):not(:fullscreen) { min-height: 0; flex: 0 0 auto; }
-  .editor-center > .media-kind-video:not(.preview-custom-height):not(.media-player-expanded):not(:fullscreen) > .video-stage { height: 96px; }
+  .editor-center > .media-kind-video:not(.preview-custom-height):not(.media-player-expanded):not(:fullscreen) > .video-stage { height: var(--auto-preview-height, 96px); }
   .editor-center > .media-kind-audio:not(.preview-custom-height):not(.media-player-expanded):not(:fullscreen) > .video-stage { height: 32px; }
   .subtitle-focus .media-player:not(.media-player-expanded):not(:fullscreen) > .player-controls { padding: 3px 10px 5px; }
   .subtitle-focus .media-player:not(.media-player-expanded):not(:fullscreen) > .player-controls > input { margin-bottom: 5px; }
@@ -131,13 +134,15 @@
   .subtitle-focus .transport { height: auto; min-height: 24px; flex-wrap: wrap; }
   .subtitle-focus .time-display { flex-basis: 100%; }
 }
-/* On desktop, editing is the main pane and the preview is a small inspector.
-   Keeping the caption list beside the preview avoids stacking both heights. */
+/* On desktop, picture size follows its aspect ratio and the available pane.
+   The caption pane retains >=480px and at least 55% of the shared width. */
 @media (min-width: 1200px) {
-  .editor-center { display: grid; grid-template-columns: minmax(210px, 26%) minmax(0, 1fr); grid-template-rows: max-content max-content minmax(0, 1fr); gap: 8px 12px; }
+  .editor-center { display: grid; grid-template-columns: var(--preview-pane-width, minmax(210px, 36%)) minmax(0, 1fr); grid-template-rows: max-content minmax(0, 1fr); gap: 8px 12px; }
   .editor-center > .media-player { grid-column: 1; grid-row: 1; align-self: start; }
   .editor-center > .subtitle-language-bar { grid-column: 1; grid-row: 2; align-self: start; padding: 8px; }
-  .editor-center > .cut-panel { grid-column: 1; grid-row: 3; align-self: start; padding: 8px; }
+  .editor-center > .cut-panel { grid-column: 1; grid-row: 2; align-self: start; padding: 8px; }
+  .editor-center:has(> .subtitle-language-bar) { grid-template-rows: max-content max-content minmax(0, 1fr); }
+  .editor-center:has(> .subtitle-language-bar) > .cut-panel { grid-row: 3; }
   .editor-center > .caption-editor { grid-column: 2; grid-row: 1 / -1; min-width: 0; }
   .editor-center .caption-list { height: 324px; flex: 1 1 324px; }
   .editor-center .media-player:not(.media-player-expanded):not(:fullscreen) .transport { height: auto; min-height: 24px; flex-wrap: wrap; gap: 5px; }
@@ -166,7 +171,7 @@
   .editor-center { padding-top: 6px; }
 }
 .workspace-tools button{font-size:11px;gap:5px;padding:5px 7px;white-space:nowrap}
-.workspace-tools .recovery-warning{color:#a15a10;background:#fff4db}
+.workspace-tools .recovery-warning{color:var(--warning-text);background:var(--warning-bg)}
 .workspace-view-bar{flex-wrap:wrap;gap:6px}
 @media(max-width:1200px){.workspace-view-label{display:none}.workspace-tools{margin-left:0}}
 @media(max-width:650px){.workspace-tools{width:100%;justify-content:space-between}.workspace-tools button{font-size:10px;padding:4px}.workspace-tools svg{display:none}}

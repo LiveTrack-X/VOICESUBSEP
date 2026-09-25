@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 import math
-import queue
+from collections import deque
 import threading
 import time
 from datetime import datetime, timezone
@@ -42,8 +42,10 @@ class JobManager:
         self._cancellations: dict[str, threading.Event] = {}
         self._provider_keys: dict[str, Callable[[], str]] = {}
         self._diarization_keys: dict[str, Callable[[], str]] = {}
-        self._queue: queue.Queue[str | None] = queue.Queue()
         self._mutex = threading.RLock()
+        self._condition = threading.Condition(self._mutex)
+        self._pending: deque[str] = deque()
+        self._active_job_id: str | None = None
         self._stopping = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -76,13 +78,14 @@ class JobManager:
 
     def stop(self) -> None:
         self._stopping.set()
-        with self._mutex:
+        with self._condition:
             for job_id, record in self._jobs.items():
                 if record["status"] not in TERMINAL:
                     self._cancellations[job_id].set()
                     if record["status"] == "queued":
                         self._update(record, status="cancelled", stage="cancelled")
-        self._queue.put(None)
+            self._pending.clear()
+            self._condition.notify_all()
         if self._thread is not None:
             self._thread.join(timeout=5)
         # A still-running native model call retains the lock until its worker exits.
@@ -126,7 +129,8 @@ class JobManager:
                 self._provider_keys[job_id] = provider_key
             if diarization_key is not None:
                 self._diarization_keys[job_id] = diarization_key
-            self._queue.put(job_id)
+            self._pending.append(job_id)
+            self._condition.notify()
             return job_id
 
     def get(self, job_id: str) -> dict[str, Any]:
@@ -134,9 +138,55 @@ class JobManager:
             record = self._jobs.get(job_id)
             if record is None:
                 raise KeyError(job_id)
-            return copy.deepcopy({key: record[key] for key in (
+            response = {key: record[key] for key in (
                 "id", "status", "stage", "progress", "error", "result", "createdAt", "updatedAt",
-                "recognitionPreview") if key in record})
+                "recognitionPreview") if key in record}
+            response["cancelRequested"] = record["status"] == "running" and bool(self._cancellations.get(job_id) and self._cancellations[job_id].is_set())
+            if record["status"] == "queued":
+                pending = [identifier for identifier in self._pending if self._jobs.get(identifier, {}).get("status") == "queued"]
+                blocker = self._jobs.get(self._active_job_id or "")
+                blocking_job = None
+                if blocker and blocker["status"] == "running":
+                    request = blocker.get("request", {})
+                    try:
+                        media_name = self.storage.get_media(request.get("mediaId", ""))[0].get("name", "")
+                    except (OSError, ValueError, TypeError):
+                        media_name = ""
+                    blocking_job = {"id": blocker["id"], "projectName": request.get("projectName", ""),
+                                    "mediaName": media_name, "stage": blocker.get("stage", ""),
+                                    "progress": blocker.get("progress", 0),
+                                    "cancelRequested": self._cancellations[blocker["id"]].is_set()}
+                response["queue"] = {"position": pending.index(job_id) + 1 if job_id in pending else 0,
+                                     "waitingCount": len(pending), "blockingJob": blocking_job,
+                                     "workerAvailable": bool(self._thread and self._thread.is_alive() and not self._stopping.is_set())}
+            return copy.deepcopy(response)
+
+    def prioritize(self, job_id: str, *, cancel_running: bool = False, expected_running_job_id: str | None = None):
+        """Move one queued job first; optionally cancel exactly the reviewed blocker.
+
+        Native inference stays in its worker thread. Its cancellation callback must
+        acknowledge the request before another job can occupy that worker.
+        """
+        with self._condition:
+            record = self._jobs.get(job_id)
+            if record is None:
+                raise KeyError(job_id)
+            if not self._thread or not self._thread.is_alive() or self._stopping.is_set():
+                raise RuntimeError("The inference worker is not available.")
+            if record["status"] != "queued" or job_id not in self._pending:
+                raise ValueError("This analysis is no longer queued. Refresh its status.")
+            if cancel_running:
+                blocker = self._jobs.get(self._active_job_id or "")
+                if not expected_running_job_id or not blocker or blocker["status"] != "running" or blocker["id"] != expected_running_job_id:
+                    raise ValueError("The running analysis changed. Refresh and confirm again.")
+                # Persist before setting the event/reordering, so a storage error
+                # cannot cancel an unreported different job or silently reorder.
+                self._update(blocker, stage="cancellation requested")
+                self._cancellations[blocker["id"]].set()
+            self._pending.remove(job_id)
+            self._pending.appendleft(job_id)
+            self._condition.notify()
+            return self.get(job_id)
 
     def history(self) -> list[dict]:
         with self._mutex:
@@ -160,7 +210,7 @@ class JobManager:
             del self._jobs[job_id]
             self._provider_keys.pop(job_id, None)
             self._diarization_keys.pop(job_id, None)
-            # Cancelled queue entries remain harmless tombstones until drained.
+            self._cancellations.pop(job_id, None)
 
     def cancel(self, job_id: str) -> dict[str, Any]:
         with self._mutex:
@@ -172,23 +222,31 @@ class JobManager:
             self._cancellations[job_id].set()
             if record["status"] == "queued":
                 self._update(record, status="cancelled", stage="cancelled")
+                if job_id in self._pending:
+                    self._pending.remove(job_id)
+                self._provider_keys.pop(job_id, None)
+                self._diarization_keys.pop(job_id, None)
             else:
                 self._update(record, stage="cancellation requested")
             return self.get(job_id)
 
-    def _run(self, job_id: str) -> None:
+    def _claim(self, job_id: str) -> bool:
+        """Caller owns _mutex: selecting and reserving the worker is atomic."""
+        record = self._jobs.get(job_id)
+        if record is None or record["status"] != "queued" or self._cancellations[job_id].is_set():
+            self._provider_keys.pop(job_id, None)
+            self._diarization_keys.pop(job_id, None)
+            return False
+        self._update(record, status="running", stage="preparing", progress=0.01)
+        self._active_job_id = job_id
+        return True
+
+    def _run(self, job_id: str, *, claimed: bool = False) -> None:
         with self._mutex:
-            if job_id not in self._jobs:
-                self._provider_keys.pop(job_id, None)
-                self._diarization_keys.pop(job_id, None)
+            if not claimed and not self._claim(job_id):
                 return
             record = self._jobs[job_id]
             event = self._cancellations[job_id]
-            if record["status"] != "queued" or event.is_set():
-                self._provider_keys.pop(job_id, None)
-                self._diarization_keys.pop(job_id, None)
-                return
-            self._update(record, status="running", stage="preparing", progress=0.01)
             request = dict(record["request"])
 
         last_progress_save = time.monotonic()
@@ -221,6 +279,10 @@ class JobManager:
                     last_progress_save = now
 
         try:
+            if event.is_set():
+                with self._mutex:
+                    self._update(record, status="cancelled", stage="cancelled")
+                return
             _, media_path = self.storage.get_media(request["mediaId"])
             options = dict(audio_track=request["audioTrack"], mode=request["mode"],
                 speaker_count=request["speakerCount"], whisper_model=request["whisperModel"],
@@ -273,16 +335,19 @@ class JobManager:
             with self._mutex:
                 self._provider_keys.pop(job_id, None)
                 self._diarization_keys.pop(job_id, None)
+                if self._active_job_id == job_id:
+                    self._active_job_id = None
 
     def _work(self) -> None:
         try:
             while True:
-                job_id = self._queue.get()
-                try:
-                    if job_id is None:
+                with self._condition:
+                    self._condition.wait_for(lambda: self._pending or self._stopping.is_set())
+                    if self._stopping.is_set():
                         break
-                    self._run(job_id)
-                finally:
-                    self._queue.task_done()
+                    job_id = self._pending.popleft()
+                    claimed = self._claim(job_id)
+                if claimed:
+                    self._run(job_id, claimed=True)
         finally:
             self.storage.release()

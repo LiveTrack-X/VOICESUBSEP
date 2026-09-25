@@ -248,7 +248,10 @@ def _transcribe(path: Path, *, model_name: str, language: str, device: str,
         progress("대사 전사", 0.17)
         segments, _ = model.transcribe(
             str(path), language=None if language == "auto" else language,
-            multilingual=language == "auto",
+            # AUTO means the recording's main language. Per-segment detection
+            # can switch languages on short/noisy speech; use Whisper's initial
+            # detection once, while retaining all text returned by the model.
+            task="transcribe", multilingual=False,
             word_timestamps=True, vad_filter=False, condition_on_previous_text=False,
             beam_size=5,
             **({"clip_timestamps": clip_timestamps} if clip_timestamps else {}),

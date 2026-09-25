@@ -327,9 +327,9 @@ def test_native_whisper_generator_is_closed_and_unloaded_on_cancel(monkeypatch, 
     assert events == ["close", "unload"]
 
 
-@pytest.mark.parametrize("language,expected_language,multilingual", [("auto", None, True), ("ko", "ko", False)])
+@pytest.mark.parametrize("language,expected_language", [("auto", None), ("ko", "ko"), ("en", "en")])
 def test_whisper_language_policy_and_clips_preserve_original_word_times(
-    monkeypatch, tmp_path, language, expected_language, multilingual
+    monkeypatch, tmp_path, language, expected_language
 ):
     clips = [0.0, 6.25, 6.25, 19.0, 19.0, 30.0]
     observed = []
@@ -358,13 +358,16 @@ def test_whisper_language_policy_and_clips_preserve_original_word_times(
     )
     assert len(observed) == 1
     assert observed[0]["language"] == expected_language
-    assert observed[0]["multilingual"] is multilingual
+    assert observed[0]["multilingual"] is False
+    assert observed[0]["task"] == "transcribe"
     assert observed[0]["clip_timestamps"] == [0.0, 6.25, 6.25, 19.0, 19.0, 30.0]
     assert observed[0]["word_timestamps"] is True and observed[0]["vad_filter"] is False
     assert observed[0]["condition_on_previous_text"] is False
     assert [(item["start"], item["end"]) for item in records] == [(11.42, 12.08), (24.7, 25.2)]
     assert [(word["start"], word["end"]) for item in records for word in item["words"]] == [
         (11.42, 12.08), (24.7, 25.2)]
+    # A main-language choice is a decoder setting, never a text-language filter.
+    assert [item["text"] for item in records] == [" first", " second"]
 
 
 def test_subprocess_is_reaped_after_cancellation(monkeypatch):

@@ -1,0 +1,6 @@
+.analysis-queue{display:grid;gap:8px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-soft);margin:10px 0;min-width:0}
+.analysis-queue p{margin:0;overflow-wrap:anywhere}
+.analysis-queue-blocker{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
+.analysis-queue-blocker span{color:var(--muted)}
+.analysis-queue-actions{display:flex;flex-wrap:wrap;gap:8px}
+.analysis-queue-confirm{display:grid;gap:8px;border:1px solid var(--border);background:var(--surface);padding:12px;border-radius:8px}

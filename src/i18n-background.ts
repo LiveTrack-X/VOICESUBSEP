@@ -1,0 +1,18 @@
+export const backgroundMessages:Record<string,readonly[string,string,string,string]>={
+  "분석 작업 다시 열기":["Reopen analysis job","解析ジョブを再表示","重新打开分析任务","Reabrir análisis"],
+  "상태 확인 멈춤":["Status checks paused","状態確認を一時停止","已暂停状态检查","Consulta de estado pausada"],
+  "분석 상태 확인 중":["Checking analysis status","解析状態を確認中","正在检查分析状态","Comprobando estado"],
+  "결과 확인":["View result","結果を確認","查看结果","Ver resultado"],
+  "분석 상태 표시 닫기":["Dismiss analysis status","解析状態の表示を閉じる","关闭分析状态显示","Ocultar estado del análisis"],
+  "작업 기록은 유지됩니다.":["The job history is retained.","ジョブの履歴は保持されます。","任务记录会保留。","Se conserva el historial del trabajo."],
+  "분석 작업 상태":["Analysis job status","解析ジョブの状態","分析任务状态","Estado del análisis"],
+  "창을 닫아도 작업과 결과는 유지됩니다. 하단 분석 상태를 눌러 다시 열 수 있습니다.":["Closing this window keeps the job and results. Click the analysis status at the bottom to reopen it.","この画面を閉じてもジョブと結果は保持されます。下部の解析状態を押すと再表示できます。","关闭窗口后任务和结果仍会保留。点击底部分析状态即可重新打开。","Al cerrar se conservan el trabajo y los resultados. Pulsa el estado inferior para reabrirlo."],
+  "이 작업을 서버에서 찾을 수 없습니다. 작업 이력을 확인하세요.":["This job was not found on the server. Check the job history.","このジョブがサーバーに見つかりません。ジョブ履歴を確認してください。","服务器上找不到此任务，请检查任务记录。","No se encontró el trabajo en el servidor. Revisa el historial."],
+  "서버 연결을 확인하지 못해 자동 조회를 멈췄습니다. 연결 후 다시 확인하세요.":["Automatic checks stopped because the server could not be reached. Reconnect and check again.","サーバーに接続できないため自動確認を停止しました。接続後に再確認してください。","无法连接服务器，已停止自动查询。连接后请重试。","Se detuvieron las consultas al no poder conectar con el servidor. Reconecta y vuelve a comprobar."],
+  "상태 다시 확인":["Check status again","状態を再確認","重新检查状态","Volver a comprobar estado"],
+  "현재 연결된 원본이 이 분석 작업의 원본과 다릅니다.":["The connected file is not the source of this analysis job.","接続したファイルはこの解析ジョブの元ファイルと異なります。","当前连接的文件并非此分析任务的原始文件。","El archivo conectado no es el original de este análisis."],
+  "이 작업의 프로젝트와 원본 미디어를 먼저 다시 연결하세요. 파일 없이도 진행 상태와 결과 JSON은 확인할 수 있습니다.":["Reconnect this job's project and source media before applying. Progress and result JSON are available without the file.","適用する前にこのジョブのプロジェクトと元メディアを再接続してください。ファイルがなくても進行状態と結果JSONは確認できます。","应用前请重新连接此任务的项目和原始媒体。没有文件也可查看进度和结果JSON。","Reconecta el proyecto y el archivo original antes de aplicar. Puedes ver el progreso y el JSON sin el archivo."],
+  "원본 확인 중…":["Verifying source…","元ファイルを確認中…","正在验证原始文件…","Verificando archivo original…"],
+  "원본 확인 완료":["Source verified","元ファイルを確認しました","原始文件已验证","Archivo original verificado"],
+  "연결된 원본 확인":["Verify connected source","接続した元ファイルを確認","验证连接的原始文件","Verificar archivo conectado"],
+};

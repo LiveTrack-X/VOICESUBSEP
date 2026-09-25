@@ -1,14 +1,18 @@
 .transcript-document-panel { min-width: 0; }
-.transcript-controls, .transcript-export-actions, .transcript-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
+.transcript-controls, .transcript-export-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
 .transcript-controls label { display: flex; align-items: center; gap: 6px; font-size: 12px; }
 .transcript-controls input[type="checkbox"] { width: 15px; height: 15px; min-height: 0; }
 .transcript-export-actions button { font-size: 11px; min-width: 0; white-space: normal; }
-.transcript-page { border: 1px solid #e0e4ed; background: white; padding: 18px; max-height: 50dvh; overflow: auto; min-width: 0; font-size: 13px; }
+.transcript-page { border: 1px solid var(--border); background: var(--surface, white); color: var(--ink); padding: 18px; min-width: 0; font-size: 13px; }
 .transcript-page h3 { margin-top: 0; overflow-wrap: anywhere; }
-.transcript-people { color: #69768a; font-size: 11px; overflow-wrap: anywhere; }
-.transcript-turn { margin: 0 0 17px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
-.transcript-time { color: #6f7c8e; font-size: 10px; }
+.transcript-people { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; line-height: 1.9; }
+.transcript-scroll { height: clamp(160px, calc(100dvh - 460px), 520px); min-height: 0; overflow: auto; overflow-anchor: none; min-width: 0; scrollbar-gutter: stable; }
+.transcript-turn { margin: 0; padding: 0 4px 17px 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
+.transcript-speaker { color: var(--speaker-name-light); border-left: 3px solid var(--speaker-marker); padding-left: 5px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+html[data-theme="dark"] .transcript-speaker { color: var(--speaker-name-dark); }
+.transcript-time { color: var(--muted); font-size: 10px; }
 .transcript-seek { display: inline-flex; min-height: 20px; padding: 2px 4px; margin-right: 5px; vertical-align: middle; }
-.transcript-pagination { justify-content: center; font-size: 12px; }
-.transcript-notice { color: #99661f; background: #fff8e9; padding: 8px; font-size: 12px; }
-@media (max-width: 680px) { .transcript-page { padding: 12px; } }
+@media (max-width: 680px) {
+  .transcript-page { padding: 12px; }
+  .transcript-scroll { height: clamp(140px, calc(100dvh - 550px), 440px); }
+}

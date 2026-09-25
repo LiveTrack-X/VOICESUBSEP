@@ -19,6 +19,7 @@ import {
   type NoteTag,
   type Project,
 } from "../domain";
+import "./notes-panel.css";
 
 export type NotesPanelProps = {
   project: Project;
@@ -77,7 +78,6 @@ export function NotesPanel({
     const item = card.getBoundingClientRect();
     const box = container.getBoundingClientRect();
     container.scrollTop += item.top - box.top - Math.max(0, (container.clientHeight - card.clientHeight) / 2);
-    container.scrollLeft += item.left - box.left - Math.max(0, (container.clientWidth - card.clientWidth) / 2);
     // The collapsed notes strip now lives below the main editor at every size.
     // Bring an explicitly requested timeline note into the outer scroll viewport too.
     card.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -169,7 +169,7 @@ export function NotesPanel({
   }
 
   return (
-    <aside className={`notes-panel panel${expandedView ? " notes-expanded" : ""}`} aria-label={t("편집 메모")}>
+    <aside className={`notes-panel panel${expandedView ? " notes-expanded" : ""}${notes.length ? "" : " notes-empty-panel"}`} aria-label={t("편집 메모")}>
       <div className="panel-heading">
         <div className="notes-heading">
           <MessageSquareText size={18} aria-hidden="true" />
@@ -206,10 +206,9 @@ export function NotesPanel({
       </p>
       <div className="notes-list" ref={list}>
         {notes.length === 0 ? (
-          <div className="empty-state notes-empty">
-            <MessageSquareText size={32} strokeWidth={1.5} aria-hidden="true" />
-            <strong>{t('놓치고 싶지 않은 순간을 기록하세요')}</strong>
-            <p>{t('컷 편집, 강조할 장면, 확인할 대사를')}<br />{t('재생 시간과 함께 남길 수 있어요.')}</p>
+          <div className="notes-empty">
+            <MessageSquareText size={18} strokeWidth={1.5} aria-hidden="true" />
+            <strong title={t('놓치고 싶지 않은 순간을 기록하세요')}>{t('놓치고 싶지 않은 순간을 기록하세요')}</strong>
             <button type="button" className="subtle-button" onClick={addNote}>
               <Plus size={15} aria-hidden="true" />{t('첫 메모 남기기')}</button>
           </div>
@@ -275,7 +274,7 @@ export function NotesPanel({
                 aria-label={t("메모 {number} 내용", { number: index + 1 })}
                 placeholder={t("이 장면에서 할 편집을 적어보세요…")}
                 value={note.text}
-                rows={3}
+                rows={2}
                 maxLength={10_000}
                 onChange={(event) =>
                   change(note.id, { text: event.target.value })

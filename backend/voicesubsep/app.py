@@ -91,6 +91,23 @@ class TrackSpeaker(BaseModel):
     color: str = Field(pattern=r"^#[a-fA-F0-9]{6}$")
 
 
+class CacheCleanupRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    mediaIds: list[Annotated[str, Field(pattern=ID_PATTERN)]] = Field(min_length=1, max_length=1000)
+
+
+class PrioritizeJobRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    cancelRunning: bool = False
+    expectedRunningJobId: str | None = Field(default=None, pattern=ID_PATTERN)
+
+    @model_validator(mode="after")
+    def require_reviewed_blocker(self):
+        if self.cancelRunning and self.expectedRunningJobId is None:
+            raise ValueError("Confirm the currently running analysis before requesting cancellation.")
+        return self
+
+
 class JobRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
     mediaId: str = Field(pattern=ID_PATTERN)
@@ -204,7 +221,7 @@ def create_app(
     if limit <= 0:
         raise ValueError("VOICESUBSEP_MAX_UPLOAD_BYTES must be positive.")
     storage = Storage(root)
-    diagnostics = Diagnostics(storage, "0.3.0")
+    diagnostics = Diagnostics(storage, "0.3.1")
     provider_credentials = ProviderCredentials()
     jobs = JobManager(storage, analyzer, diagnostics=diagnostics, provider_credentials=provider_credentials)
     live = LiveManager(storage, live_engine_factory)
@@ -241,7 +258,7 @@ def create_app(
             provider_credentials.clear()
             await run_in_threadpool(jobs.stop)
 
-    application = FastAPI(title="VOICESUBSEP", version="0.3.0", lifespan=lifespan)
+    application = FastAPI(title="VOICESUBSEP", version="0.3.1", lifespan=lifespan)
     application.state.storage = storage
     application.state.jobs = jobs
     application.state.live = live
@@ -322,6 +339,10 @@ def create_app(
     @application.get("/api/cache")
     def cache_usage():
         return {**cache.summary(), "maxUploadBytes": limit}
+
+    @application.post("/api/cache/cleanup")
+    def cleanup_cache(request: CacheCleanupRequest):
+        return cache.cleanup(request.mediaIds)
 
     @application.delete("/api/media/{media_id}")
     def remove_cached_media(media_id: Identifier):
@@ -508,6 +529,17 @@ def create_app(
             return jobs.cancel(job_id)
         except KeyError:
             raise HTTPException(404, "Analysis job was not found.")
+
+    @application.post("/api/jobs/{job_id}/prioritize")
+    def prioritize_job(job_id: Identifier, request: PrioritizeJobRequest):
+        try:
+            return jobs.prioritize(job_id, cancel_running=request.cancelRunning, expected_running_job_id=request.expectedRunningJobId)
+        except KeyError:
+            raise HTTPException(404, "Analysis job was not found.")
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(503, str(exc)) from exc
 
     @application.post("/api/renders", status_code=202)
     def create_render(request: RenderRequest):

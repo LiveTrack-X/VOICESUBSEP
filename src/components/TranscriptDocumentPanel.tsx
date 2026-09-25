@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { Download, Play } from "lucide-react";
 import { download } from "../api";
 import { safeFilename, type Project } from "../domain";
@@ -6,6 +6,8 @@ import { useI18n } from "../i18n";
 import { downloadDocumentBytes, downloadDocumentXlsx, reportTime } from "../documentExports";
 import { saveDocumentPdf, supportsDirectPdf } from "../documentPdf";
 import { buildTranscriptDocument, DOCX_MIME, exportTranscriptDocx, exportTranscriptHtml, exportTranscriptTxt, exportTranscriptXlsx } from "../transcriptDocument";
+import { readableSpeakerColor } from "../speakerColor";
+import { useTranscriptScroll } from "../useTranscriptScroll";
 import "./transcript-document.css";
 
 export type TranscriptDocumentPanelProps = {
@@ -14,17 +16,20 @@ export type TranscriptDocumentPanelProps = {
   onPrint?: (html: string) => void;
   onExportingChange?: (exporting: boolean) => void;
 };
-const PAGE_SIZE = 100;
+const speakerStyle = (color: string | null): CSSProperties => ({
+  "--speaker-marker": color ?? "#667085",
+  "--speaker-name-light": readableSpeakerColor(color),
+  "--speaker-name-dark": readableSpeakerColor(color, "#181e2a"),
+} as CSSProperties);
 
 export function TranscriptDocumentPanel({ project, onSeek, onPrint, onExportingChange }: TranscriptDocumentPanelProps) {
   const { t, locale } = useI18n();
   const [timestamps, setTimestamps] = useState(false);
-  const [page, setPage] = useState(0);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false), [notice, setNotice] = useState("");
   const transcript = useMemo(() => buildTranscriptDocument(project, t), [project, t]);
-  const pages = Math.max(1, Math.ceil(transcript.turns.length / PAGE_SIZE)), currentPage = Math.min(page, pages - 1);
-  const turns = transcript.turns.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  const { scrollRef, range, onScroll } = useTranscriptScroll(transcript.turns, timestamps, project.id);
+  const turns = transcript.turns.slice(range.start, range.end);
 
   async function save(format: "docx" | "txt" | "html" | "pdf" | "xlsx") {
     if (exporting) return;
@@ -61,17 +66,19 @@ export function TranscriptDocumentPanel({ project, onSeek, onPrint, onExportingC
     </div>
     {error && <p className="inline-error" role="alert">{error}</p>}
     {notice && <p role="status">{notice}</p>}
-    <div className="transcript-page" aria-label={t("발언 내용")}>
+    <div className="transcript-page">
       <h3>{transcript.title}</h3>
-      <p className="transcript-people">{t("참가자")}: {transcript.participants.join(", ") || "—"}</p>
+      <p className="transcript-people">{t("참가자")}: {transcript.people.length ? transcript.people.map((person, index) => <span key={person.id ?? "unassigned"}>{index > 0 && ", "}<strong className="transcript-speaker" style={speakerStyle(person.color)}>{person.name}</strong></span>) : "—"}</p>
+      <div ref={scrollRef} className="transcript-scroll" role="list" tabIndex={0} aria-label={t("발언 내용")} onScroll={onScroll}>
       {!turns.length && <p>{t("분석한 대사가 없습니다. 녹음 또는 미디어를 먼저 분석하세요.")}</p>}
-      {turns.map(turn => <p key={turn.ids[0]} className="transcript-turn">
+      {range.before > 0 && <div aria-hidden="true" style={{ height: range.before }}/>}
+      {turns.map((turn, index) => <p key={turn.ids[0]} className="transcript-turn" data-transcript-index={range.start + index} role="listitem" aria-posinset={range.start + index + 1} aria-setsize={transcript.turns.length}>
         {onSeek && <button className="transcript-seek" onClick={() => onSeek(turn.start)} aria-label={t("이 발언으로 이동")} title={reportTime(turn.start)}><Play size={12}/></button>}
         {timestamps && <span className="transcript-time">[{reportTime(turn.start)} – {reportTime(turn.end)}] </span>}
-        <strong>{turn.speaker}: </strong><span>{turn.text}</span>
+        <strong className="transcript-speaker" style={speakerStyle(turn.color)}>{turn.speaker}: </strong><span>{turn.text}</span>
       </p>)}
+      {range.after > 0 && <div aria-hidden="true" style={{ height: range.after }}/>}</div>
     </div>
-    {pages > 1 && <div className="transcript-pagination"><button disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t("이전")}</button><span>{currentPage + 1} / {pages}</span><button disabled={currentPage + 1 === pages} onClick={() => setPage(currentPage + 1)}>{t("다음")}</button></div>}
-    <p className="muted">{t("화면은 100개 발언씩 표시하며, 내보내기는 전체 발언을 포함합니다.")}</p>
+    <p className="muted">{t("대사 수")}: {transcript.captionCount}</p>
   </section>;
 }

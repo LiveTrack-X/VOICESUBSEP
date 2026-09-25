@@ -13,6 +13,10 @@ def signature(path: Path) -> list[int]:
     return [stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns]
 
 
+class CacheEntryProtected(PermissionError):
+    """A live or retained job owns this source (distinct from disk permissions)."""
+
+
 class MediaCache:
     def __init__(self, storage: Storage, protected):
         self.storage, self.protected = storage, protected
@@ -74,12 +78,40 @@ class MediaCache:
     def remove(self, media_id: str):
         with self.storage.media_lock:
             if media_id in self.protected():
-                raise PermissionError("This source is retained by a job or preview. Remove finished job history first.")
+                raise CacheEntryProtected("This source is retained by a job or preview. Remove finished job history first.")
             folder = self.storage.media / media_id
-            if not valid_id(media_id) or folder.is_symlink() or getattr(folder, "is_junction", lambda: False)():
+            if (not valid_id(media_id) or folder.is_symlink() or getattr(folder, "is_junction", lambda: False)()
+                    or self.storage.media.is_symlink() or getattr(self.storage.media, "is_junction", lambda: False)()):
                 raise ValueError("Invalid cache entry.")
-            self.storage.get_media(media_id)
+            metadata, source = self.storage.get_media(media_id)
+            if metadata.get("id") != media_id:
+                raise ValueError("Invalid cache entry.")
             target = self.storage.contained(folder)
             if target.parent != self.storage.media.resolve():
                 raise ValueError("Invalid cache directory.")
+            size = source.stat().st_size
             shutil.rmtree(target)
+            return size
+
+    def cleanup(self, media_ids: list[str]):
+        """Delete only the reviewed snapshot, rechecking reservations at deletion.
+
+        No age/quota heuristic may remove finished-job inputs or job results.
+        A media upload arriving after confirmation is not part of this request.
+        """
+        if not isinstance(media_ids, list) or not 1 <= len(media_ids) <= 1000 or any(
+                not isinstance(value, str) or not valid_id(value) for value in media_ids):
+            raise ValueError("Invalid cache cleanup request.")
+        removed = skipped = failed = removed_bytes = 0
+        with self.storage.media_lock:
+            for media_id in dict.fromkeys(media_ids):
+                try:
+                    removed_bytes += self.remove(media_id)
+                    removed += 1
+                except (CacheEntryProtected, FileNotFoundError, ValueError):
+                    # A job can have reserved this source since the UI snapshot.
+                    skipped += 1
+                except OSError:
+                    failed += 1
+        return {"removedCount": removed, "removedBytes": removed_bytes,
+                "skippedCount": skipped, "failedCount": failed}

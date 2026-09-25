@@ -1,0 +1,89 @@
+/* Notes are a compact auxiliary strip, never an empty second main editor. */
+.notes-panel.notes-expanded {
+  height: auto;
+  min-height: 0;
+  max-height: 180px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  background: var(--surface);
+  color: var(--ink);
+}
+.notes-panel.notes-expanded > .notes-content {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 144px;
+  overflow: hidden;
+}
+.notes-panel > .panel-heading {
+  flex-shrink: 0;
+  min-width: 0;
+}
+.notes-panel .notes-content > .notes-hint {
+  flex-shrink: 0;
+  margin: 3px 12px 5px;
+  min-width: 0;
+  line-height: 1.3;
+  color: var(--muted);
+}
+.notes-panel .notes-hint > span { min-width: 0; overflow-wrap: anywhere; }
+.notes-panel .notes-content > .notes-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 10px 6px;
+  overscroll-behavior: contain;
+}
+.notes-panel .notes-list > .note-card {
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 6px;
+  padding: 7px;
+  background: var(--surface);
+}
+.notes-panel .note-card > .note-body {
+  display: block;
+  min-height: 44px;
+  max-height: 112px;
+  margin-top: 4px;
+  padding-block: 3px;
+  line-height: 1.5;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  resize: vertical;
+  color: var(--ink);
+}
+.notes-panel.notes-empty-panel.notes-expanded { max-height: 100px; }
+.notes-panel.notes-empty-panel > .notes-content { flex: 0 0 auto; max-height: 64px; }
+.notes-panel.notes-empty-panel .notes-content > .notes-list { flex: 0 0 auto; overflow: visible; padding: 0 12px 6px; }
+.notes-panel .notes-list > .notes-empty {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  height: auto;
+  min-height: 30px;
+  max-height: none;
+  min-width: 0;
+  padding: 0;
+}
+.notes-panel .notes-empty > svg { flex-shrink: 0; color: var(--muted); }
+.notes-panel .notes-empty > strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+.notes-panel .notes-empty > button { flex-shrink: 0; min-height: 28px; padding: 3px 6px; font-size: 11px; }
+@media (max-width: 1000px) {
+  .notes-panel.notes-expanded { max-height: 210px; }
+  .notes-panel.notes-expanded > .notes-content { max-height: 174px; }
+  .notes-panel.notes-empty-panel.notes-expanded { max-height: 100px; }
+  .notes-panel.notes-empty-panel > .notes-content { max-height: 64px; }
+}

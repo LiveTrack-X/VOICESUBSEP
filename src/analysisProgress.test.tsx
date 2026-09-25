@@ -48,6 +48,16 @@ describe("recognition draft display", () => {
     expect(recognitionPreviewLines(job({recognitionPreview:{lines:null,updatedAt:"bad"} as unknown as Job["recognitionPreview"]}))).toEqual([]);
     expect(recognitionPreviewLines(job({recognitionPreview:{lines:[{}," \n "],updatedAt:"bad"} as unknown as Job["recognitionPreview"]}))).toEqual([]);
   });
+
+  it("labels preview timestamps as clock time and treats equivalent UTC offsets identically", () => {
+    const preview = { lines: ["draft"], updatedAt: "2026-09-25T09:33:50Z" };
+    const utc = render(job({ recognitionPreview: preview }));
+    const localOffset = render(job({ recognitionPreview: { ...preview, updatedAt: "2026-09-25T18:33:50+09:00" } }));
+    expect(utc).toBe(localOffset);
+    expect(utc).toContain("마지막 결과 갱신 시각:");
+    expect(utc).not.toContain("마지막 인식 수신");
+    expect(utc).not.toContain("요청 후 경과");
+  });
 });
 
 describe("analysis elapsed time is not simulated progress", () => {

@@ -1,9 +1,10 @@
 import { parseProject, type Project } from "./domain";
 import { zipStore } from "./subtitle-export";
 import { exportWorkbook, reportTime } from "./documentExports";
+import { normalizeSpeakerColor, readableSpeakerColor } from "./speakerColor";
 
-export type TranscriptTurn = { ids: string[]; speakerId: string | null; speaker: string; start: number; end: number; text: string; overlap: boolean };
-export type TranscriptDocument = { title: string; participants: string[]; turns: TranscriptTurn[]; captionCount: number };
+export type TranscriptTurn = { ids: string[]; speakerId: string | null; speaker: string; color: string | null; start: number; end: number; text: string; overlap: boolean };
+export type TranscriptDocument = { title: string; participants: string[]; people: {id: string | null; name: string; color: string | null}[]; turns: TranscriptTurn[]; captionCount: number };
 type Label = (key: string) => string;
 export type TranscriptOptions = { timestamps?: boolean; locale?: string; coalesce?: boolean };
 export const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -13,7 +14,7 @@ const xml = (value: string) => value.replace(/[^\u0009\u000a\u000d\u0020-\ud7ff\
 /** Literal transcript: no network, summarization, role inference, or source mutations. */
 export function buildTranscriptDocument(project: Project, label: Label, options: TranscriptOptions = {}): TranscriptDocument {
   const valid = parseProject(JSON.stringify(project));
-  const speakers = new Map(valid.speakers.map(speaker => [speaker.id, speaker.name]));
+  const speakers = new Map(valid.speakers.map(speaker => [speaker.id, speaker]));
   // Equal start times retain their source order, including simultaneous speech.
   const captions = valid.captions.map((caption, index) => ({ caption, index })).sort((a, b) => a.caption.start - b.caption.start || a.index - b.index);
   const turns: TranscriptTurn[] = [];
@@ -30,14 +31,15 @@ export function buildTranscriptDocument(project: Project, label: Label, options:
         !previous.overlap && !overlap && caption.start >= previous.end && caption.start - previous.end <= 1.2) {
       previous.ids.push(caption.id); previous.end = caption.end; previous.text += `\n${text}`;
     } else {
-      turns.push({ ids: [caption.id], speakerId: caption.speakerId, speaker: speakers.get(caption.speakerId ?? "") ?? label("미배정"),
+      const person = speakers.get(caption.speakerId ?? "");
+      turns.push({ ids: [caption.id], speakerId: caption.speakerId, speaker: person?.name ?? label("미배정"), color: normalizeSpeakerColor(person?.color),
         start: caption.start, end: caption.end, text, overlap });
     }
   }
   const active = new Set(turns.map(turn => turn.speakerId));
-  const participants = valid.speakers.filter(speaker => active.has(speaker.id)).map(speaker => speaker.name);
-  if (active.has(null)) participants.push(label("미배정"));
-  return { title: valid.name, participants, turns, captionCount };
+  const people: TranscriptDocument["people"] = valid.speakers.filter(speaker => active.has(speaker.id)).map(speaker => ({id: speaker.id, name: speaker.name, color: normalizeSpeakerColor(speaker.color)}));
+  if (active.has(null)) people.push({id: null, name: label("미배정"), color: null});
+  return { title: valid.name, participants: people.map(person => person.name), people, turns, captionCount };
 }
 
 function metadata(document: TranscriptDocument, label: Label): string[] {
@@ -58,11 +60,11 @@ export function exportTranscriptXlsx(project: Project, label: Label): Uint8Array
   return exportWorkbook([
     { name: label("발언록"), filter: true, widths: [26, 22, 18, 18, 14, 14, 90, 24], rows: [
       [label("자막 ID"), label("인물"), label("시작"), label("끝"), label("시작(초)"), label("끝(초)"), label("대사"), label("검수")],
-      ...document.turns.map(turn => [turn.ids[0]!, turn.speaker, reportTime(turn.start), reportTime(turn.end), turn.start, turn.end, turn.text, label(captions.get(turn.ids[0]!)?.reviewed ? "확인 완료" : "검수 필요")]),
+      ...document.turns.map(turn => [turn.ids[0]!, {text: turn.speaker, color: readableSpeakerColor(turn.color), markerColor: turn.color ?? undefined}, reportTime(turn.start), reportTime(turn.end), turn.start, turn.end, turn.text, label(captions.get(turn.ids[0]!)?.reviewed ? "확인 완료" : "검수 필요")]),
     ] },
     { name: label("안내"), filter: false, widths: [25, 90], rows: [
       [label("항목"), label("내용")], [label("프로젝트"), document.title],
-      [label("참가자"), document.participants.join(", ")],
+      ...document.people.map(person => [label("참가자"), {text: person.name, color: readableSpeakerColor(person.color), markerColor: person.color ?? undefined}]),
       [label("대사 수"), document.captionCount],
       [label("안내"), label("자막 원문을 시간순으로 정리한 발언록입니다. 자동 요약이나 문장 재작성은 하지 않습니다.")],
     ] },
@@ -73,23 +75,25 @@ export function exportTranscriptXlsx(project: Project, label: Label): Uint8Array
 export function exportTranscriptHtml(project: Project, label: Label, options: TranscriptOptions = {}): string {
   const document = buildTranscriptDocument(project, label, options);
   const locale = ["ko", "en", "ja", "zh", "es"].includes(options.locale ?? "") ? options.locale! : "ko";
-  const meta = metadata(document, label);
-  return `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>${xml(document.title)} · ${xml(label("발언록"))}</title><style>.vs-report{max-width:900px;margin:0 auto;padding:32px;font:15px/1.7 system-ui,"Malgun Gothic",sans-serif;color:#263246}.vs-report h1{overflow-wrap:anywhere}.vs-report p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 16px}.vs-report .meta,.vs-report .notice{font-size:12px;color:#637084}.vs-report .stamp{color:#637084;font-size:12px}@page{size:A4;margin:18mm}@media print{.vs-report{padding:0;font-size:11pt}}</style></head><body><main class="vs-report"><h1>${xml(document.title)}</h1><h2>${xml(label("발언록"))}</h2>${meta.slice(2).map(line => `<p class="meta">${xml(line)}</p>`).join("")}<h2>${xml(label("발언 내용"))}</h2>${document.turns.map(turn => `<p>${options.timestamps ? `<span class="stamp">[${reportTime(turn.start)} – ${reportTime(turn.end)}]</span> ` : ""}<strong>${xml(turn.speaker)}: </strong>${xml(turn.text)}</p>`).join("")}</main></body></html>`;
+  const name = (text: string, color: string | null) => `<strong class="speaker" style="color:${readableSpeakerColor(color)};border-left-color:${color ?? "#667085"}">${xml(text)}</strong>`;
+  return `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>${xml(document.title)} · ${xml(label("발언록"))}</title><style>.vs-report{max-width:900px;margin:0 auto;padding:32px;font:15px/1.7 system-ui,"Malgun Gothic",sans-serif;color:#263246;background:#fff}.vs-report h1{overflow-wrap:anywhere}.vs-report p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 16px}.vs-report .meta,.vs-report .notice{font-size:12px;color:#637084}.vs-report .stamp{color:#637084;font-size:12px}.vs-report .speaker{border-left:3px solid;padding-left:5px;box-decoration-break:clone;-webkit-box-decoration-break:clone;print-color-adjust:exact;-webkit-print-color-adjust:exact}@page{size:A4;margin:18mm}@media print{.vs-report{padding:0;font-size:11pt}}</style></head><body><main class="vs-report"><h1>${xml(document.title)}</h1><h2>${xml(label("발언록"))}</h2><p class="meta">${xml(label("참가자"))}: ${document.people.map(person => name(person.name, person.color)).join(", ") || "—"}</p><p class="meta">${xml(metadata(document, label)[3])}</p><h2>${xml(label("발언 내용"))}</h2>${document.turns.map(turn => `<p>${options.timestamps ? `<span class="stamp">[${reportTime(turn.start)} – ${reportTime(turn.end)}]</span> ` : ""}${name(`${turn.speaker}: `, turn.color)}${xml(turn.text)}</p>`).join("")}</main></body></html>`;
 }
 
 function wordText(text: string): string {
   // Word needs explicit break/tab elements; literal newlines in w:t collapse.
   return text.split(/(\r\n|\r|\n|\t)/).map(part => part === "\t" ? "<w:tab/>" : /^(\r\n|\r|\n)$/.test(part) ? "<w:br/>" : `<w:t xml:space="preserve">${xml(part)}</w:t>`).join("");
 }
-const run = (text: string, bold = false) => `<w:r>${bold ? "<w:rPr><w:b/></w:rPr>" : ""}${wordText(text)}</w:r>`;
+const run = (text: string, bold = false, color?: string) => `<w:r>${bold || color ? `<w:rPr>${bold ? "<w:b/>" : ""}${color ? `<w:color w:val="${normalizeSpeakerColor(color)!.slice(1).toUpperCase()}"/>` : ""}</w:rPr>` : ""}${wordText(text)}</w:r>`;
+const speakerRun = (text: string, color: string | null) => run("▌ ", false, color ?? "#667085") + run(text, true, readableSpeakerColor(color));
 const paragraph = (content: string, style?: string) => `<w:p><w:pPr>${style ? `<w:pStyle w:val="${style}"/>` : ""}<w:spacing w:after="160"/></w:pPr>${content}</w:p>`;
 
 /** A real WordprocessingML ZIP, with no macros, links, or external assets. */
 export function exportTranscriptDocx(project: Project, label: Label, options: TranscriptOptions = {}): Uint8Array {
   const document = buildTranscriptDocument(project, label, options), meta = metadata(document, label);
   const body = paragraph(run(document.title), "Title") + paragraph(run(label("발언록")), "Heading1") +
-    meta.slice(2).map(line => paragraph(run(line))).join("") + paragraph(run(label("발언 내용")), "Heading1") +
-    document.turns.map(turn => paragraph(run(prefix(turn, options.timestamps), true) + run(turn.text))).join("");
+    paragraph(run(`${label("참가자")}: `) + (document.people.map((person, index) => run(index ? ", " : "") + speakerRun(person.name, person.color)).join("") || run("—"))) +
+    paragraph(run(meta[3])) + paragraph(run(label("발언 내용")), "Heading1") +
+    document.turns.map(turn => paragraph((options.timestamps ? run(`[${reportTime(turn.start)} – ${reportTime(turn.end)}] `) : "") + speakerRun(`${turn.speaker}: `, turn.color) + run(turn.text))).join("");
   return zipStore([
     { name: "[Content_Types].xml", text: `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>` },
     { name: "_rels/.rels", text: `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="document" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="core" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>` },

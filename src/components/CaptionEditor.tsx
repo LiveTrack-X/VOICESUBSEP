@@ -15,12 +15,16 @@ import {
   Rows3,
 } from "lucide-react";
 import { formatTime, parseTime, resolveCaptionStyle, type Caption, type Project } from "../domain";
-import { contrastColor } from "../colors";
+import { readableSpeakerColor } from "../speakerColor";
+import { THEME_PALETTES, useTheme } from "../theme";
 import { CaptionStyleDialog } from "./CaptionStyleDialog";
 import { addCaption, splitCaption, mergeCaptions, bulkEditCaptions, replaceCaptionText,
-  replacementCount, nextCaptionToReview, captionPage, CAPTION_PAGE_SIZE, MAX_CAPTION_TEXT,
+  replacementCount, nextCaptionToReview, MAX_CAPTION_TEXT,
   type BulkCaptionAction } from "../editorOperations";
+import { useCaptionVirtualList } from "../useCaptionVirtualList";
+import { selectableSpeakers } from "../speakerOperations";
 import "./caption-editor-density.css";
+import "./caption-virtual-list.css";
 
 const DENSITY_STORAGE_KEY = "voicesubsep-caption-density-v1";
 type CaptionDensity = "compact" | "comfortable";
@@ -66,12 +70,13 @@ export function CaptionEditor({
   time: number;
 }) {
   const { t } = useI18n();
+  const { theme } = useTheme();
   const [reviewOnly, setReviewOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [speakerFilter, setSpeakerFilter] = useState("all");
   const [styleCaptionId, setStyleCaptionId] = useState<string | null>(null);
   const [density, setDensity] = useState<CaptionDensity>(loadCaptionDensity);
-  const [page, setPage] = useState(0);
+  const [focusedCaptionId, setFocusedCaptionId] = useState<string|null>(null);
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [rowReveal, setRowReveal] = useState(reveal);
   const [bulkSpeaker, setBulkSpeaker] = useState("");
@@ -81,23 +86,22 @@ export function CaptionEditor({
   const [bulkNotice, setBulkNotice] = useState("");
   const styleCaption = project.captions.find((c) => c.id === styleCaptionId);
   const styleSpeaker = project.speakers.find((s) => s.id === styleCaption?.speakerId);
-  const listRef = useRef<HTMLDivElement>(null);
-  const rows = useRef(new Map<string, HTMLDivElement>());
   const revealed = useRef<typeof reveal>(null);
+  const speakerOptions = useMemo(()=>selectableSpeakers(project),[project.speakers,project.speakerCount,project.captions]);
   const speakerById = useMemo(() => new Map(project.speakers.map((speaker) => [speaker.id, speaker])), [project.speakers]);
   const sorted = useMemo(() => [...project.captions].sort((a, b) => a.start - b.start || a.end - b.end), [project.captions]);
-  const visible = useMemo(() => sorted.filter((caption) =>
+  const visible = useMemo(() => sorted.filter((caption) => caption.id===focusedCaptionId || (
     (!reviewOnly || (!caption.reviewed && caption.reasons.length > 0)) &&
     (speakerFilter === "all" || (caption.speakerId ?? "none") === speakerFilter) &&
-    `${caption.text} ${speakerById.get(caption.speakerId ?? "")?.name ?? t("미배정")}`.toLowerCase().includes(search.toLowerCase()),
-  ), [sorted, reviewOnly, speakerFilter, search, speakerById, t]);
-  const pageCount = Math.max(1, Math.ceil(visible.length / CAPTION_PAGE_SIZE));
-  const safePage = Math.min(page, pageCount - 1);
-  const pageCaptions = visible.slice(safePage * CAPTION_PAGE_SIZE, (safePage + 1) * CAPTION_PAGE_SIZE);
+    `${caption.text} ${speakerById.get(caption.speakerId ?? "")?.name ?? t("미배정")}`.toLowerCase().includes(search.toLowerCase())
+  )), [sorted, reviewOnly, speakerFilter, search, speakerById, t, focusedCaptionId]);
+  const visibleIds = useMemo(()=>visible.map(caption=>caption.id),[visible]);
+  const virtual = useCaptionVirtualList(visibleIds,project.id,density,focusedCaptionId,setFocusedCaptionId);
+  const {listRef,rows}=virtual;
   const checkedIds = useMemo(() => new Set(visible.filter((caption) => checked.has(caption.id)).map((caption) => caption.id)), [visible, checked]);
   const replaceIds = replaceScope === "selected" ? checkedIds : new Set(visible.map((caption) => caption.id));
   const replaceCount = replacementCount(visible, replaceIds, find);
-  function resetFilterView() { setPage(0); setChecked(new Set()); setRowReveal(null); setBulkNotice(""); }
+  function resetFilterView() { virtual.reset(); setFocusedCaptionId(null); setChecked(new Set()); setRowReveal(null); setBulkNotice(""); }
   function run(change: (project: Project) => Project) {
     try { update(change); return true; }
     catch (error) { onError(t((error as Error).message)); return false; }
@@ -125,6 +129,14 @@ export function CaptionEditor({
   }
   useLayoutEffect(() => { setRowReveal(reveal); }, [reveal]);
   useLayoutEffect(() => {
+    // A once-used extra identity can disappear from the available choices after
+    // reassignment. Do not leave a hidden filter or bulk target selected.
+    if(speakerFilter!=="all"&&speakerFilter!=="none"&&!speakerOptions.some(speaker=>speaker.id===speakerFilter)) {
+      setSpeakerFilter("all");resetFilterView();
+    }
+    if(bulkSpeaker&&!speakerOptions.some(speaker=>speaker.id===bulkSpeaker))setBulkSpeaker("");
+  },[speakerOptions,speakerFilter,bulkSpeaker]);
+  useLayoutEffect(() => {
     if (!rowReveal || revealed.current === rowReveal) return;
     const row = rows.current.get(rowReveal.id);
     const list = listRef.current;
@@ -140,8 +152,8 @@ export function CaptionEditor({
       setChecked(new Set());
       return;
     }
-    if (captionPage(index) !== safePage) {
-      setPage(captionPage(index));
+    if (!row) {
+      virtual.revealIndex(index);
       return;
     }
     if (list && row) {
@@ -150,8 +162,8 @@ export function CaptionEditor({
       list.scrollTop += offset - Math.max(0, (list.clientHeight - row.clientHeight) / 2);
     }
     revealed.current = rowReveal;
-  }, [rowReveal, visible, safePage, project.captions]);
-  const current = pageCaptions.find((c) => c.id === selected);
+  }, [rowReveal, visible, virtual.layout, virtual.indexes.join(","), project.captions]);
+  const current = visible.find((c) => c.id === selected);
   const following = current && sorted[sorted.indexOf(current) + 1];
   const next = following && visible.includes(following) ? following : undefined;
   function edit(id: string, change: Partial<Caption>) {
@@ -246,7 +258,7 @@ export function CaptionEditor({
           >
             <option value="all">{t('모든 인물')}</option>
             <option value="none">{t('미배정')}</option>
-            {project.speakers.map((s) => (
+            {speakerOptions.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
               </option>
@@ -295,11 +307,10 @@ export function CaptionEditor({
       <details className="caption-bulk-tools">
         <summary>{t("여러 자막 편집 · 찾기/바꾸기")}{checkedIds.size > 0 && ` · ${t("선택 {count}개", { count: checkedIds.size })}`}</summary>
         <div className="caption-bulk-actions">
-          <button onClick={() => setChecked(new Set(pageCaptions.map((caption) => caption.id)))} disabled={!pageCaptions.length}>{t("이 페이지 선택")}</button>
           <button onClick={() => setChecked(new Set(visible.map((caption) => caption.id)))} disabled={!visible.length}>{t("필터 결과 모두 선택")}</button>
           <button onClick={() => setChecked(new Set())} disabled={!checkedIds.size}>{t("선택 해제")}</button>
           <label>{t("일괄 인물")}<select aria-label={t("일괄 인물")} value={bulkSpeaker} onChange={(event) => setBulkSpeaker(event.target.value)}>
-            <option value="">{t("미배정")}</option>{project.speakers.map((speaker) => <option value={speaker.id} key={speaker.id}>{speaker.name}</option>)}
+            <option value="">{t("미배정")}</option>{speakerOptions.map((speaker) => <option value={speaker.id} key={speaker.id}>{speaker.name}</option>)}
           </select></label>
           <button disabled={!checkedIds.size} onClick={() => bulk({ kind: "speaker", speakerId: bulkSpeaker || null })}>{t("인물 적용")}</button>
           <button disabled={!checkedIds.size} onClick={() => bulk({ kind: "review", reviewed: true })}>{t("선택 검수 완료")}</button>
@@ -326,7 +337,7 @@ export function CaptionEditor({
         <span>{t('자막')}</span>
         <span>{t('검수')}</span>
       </div>
-      <div className="caption-list" ref={listRef}>
+      <div className="caption-list" ref={listRef} onFocusCapture={virtual.onFocusCapture} onBlurCapture={virtual.onBlurCapture}>
         {visible.length === 0 ? (
           <div className="empty-state">
             <FileText size={42} strokeWidth={1.5} />
@@ -342,13 +353,14 @@ export function CaptionEditor({
             </p>
           </div>
         ) : (
-          pageCaptions.map((c) => (
+          <div className="caption-virtual-space" style={{height:virtual.layout.total}} role="list" aria-label={t("자막 편집")}>
+          {virtual.indexes.map((index) => {const c=visible[index]!;return (
             <div
               key={c.id}
-              ref={(row) => {
-                if (row) rows.current.set(c.id, row);
-                else rows.current.delete(c.id);
-              }}
+              ref={virtual.rowRef(c.id)}
+              data-caption-id={c.id}
+              role="listitem" aria-posinset={index+1} aria-setsize={visible.length}
+              style={{transform:`translateY(${virtual.layout.offsets[index]}px)`}}
               className={`caption-row ${selected === c.id ? "selected" : ""} ${c.start <= time && c.end > time ? "current" : ""}`}
               onClick={() => setSelected(c.id)}
             >
@@ -381,12 +393,8 @@ export function CaptionEditor({
                 className="caption-speaker"
                 aria-label={t("화자 {id}", { id: c.id })}
                 style={{
-                  color:
-                    project.speakers.find((s) => s.id === c.speakerId)?.color ??
-                    "#7c8798",
-                  backgroundColor: contrastColor(
-                    project.speakers.find((s) => s.id === c.speakerId)?.color ?? "#7c8798",
-                  ),
+                  color: readableSpeakerColor(speakerById.get(c.speakerId ?? "")?.color,THEME_PALETTES[theme].surface),
+                  backgroundColor: "var(--surface)",
                 }}
                 value={c.speakerId ?? ""}
                 onChange={(e) =>
@@ -399,7 +407,7 @@ export function CaptionEditor({
                 }
               >
                 <option value="">{t('미배정')}</option>
-                {project.speakers.map((s) => (
+                {speakerOptions.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name || t("이름 없음")}
                   </option>
@@ -442,17 +450,10 @@ export function CaptionEditor({
               </button>
               </div>
             </div>
-          ))
+          );})}
+          </div>
         )}
       </div>
-      {pageCount > 1 && <nav className="caption-pagination" aria-label={t("자막 페이지")}>
-        <button disabled={safePage === 0} onClick={() => { setPage(safePage - 1); if (listRef.current) listRef.current.scrollTop = 0; }}>{t("이전 페이지")}</button>
-        <label>{t("페이지")}<select aria-label={t("자막 페이지 선택")} value={safePage} onChange={(event) => { setPage(Number(event.target.value)); if (listRef.current) listRef.current.scrollTop = 0; }}>
-          {Array.from({ length: pageCount }, (_, index) => <option value={index} key={index}>{index + 1} / {pageCount}</option>)}
-        </select></label>
-        <span>{t("한 페이지에 최대 {count}개", { count: CAPTION_PAGE_SIZE })}</span>
-        <button disabled={safePage >= pageCount - 1} onClick={() => { setPage(safePage + 1); if (listRef.current) listRef.current.scrollTop = 0; }}>{t("다음 페이지")}</button>
-      </nav>}
       {styleCaption && (
         <CaptionStyleDialog
           key={`${project.id}-${styleCaption.id}`}

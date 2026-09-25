@@ -54,6 +54,25 @@ def test_changed_cached_bytes_never_inherit_old_hash(tmp_path):
         assert upload(c)["id"] != first["id"]
 
 
+def test_bulk_cache_endpoint_preserves_completed_results_and_rejects_invalid_snapshot(tmp_path):
+    def analyzer(*args, **kwargs):
+        return {"captions": [], "speakers": [], "duration": 4, "warnings": []}
+    with client(tmp_path, analyzer=analyzer) as c:
+        retained = upload(c, b"retained")
+        unused = upload(c, b"unused")
+        job = c.post("/api/jobs", json={"mediaId": retained["id"], "audioTrack": 1, "speakerCount": 2}).json()["id"]
+        assert wait(c, f"/api/jobs/{job}")["status"] == "completed"
+        before = c.get(f"/api/jobs/{job}").json()
+        assert c.post("/api/cache/cleanup", json={"mediaIds": [unused["id"], "../jobs"]}).status_code == 422
+        assert c.get(f"/api/media/{unused['id']}").status_code == 200
+        result = c.post("/api/cache/cleanup", json={"mediaIds": [retained["id"], unused["id"]]})
+        assert result.status_code == 200
+        assert result.json() == {"removedCount": 1, "removedBytes": 6, "skippedCount": 1, "failedCount": 0}
+        assert c.get(f"/api/jobs/{job}").json() == before
+        assert c.get(f"/api/media/{retained['id']}").status_code == 200
+        assert c.get(f"/api/media/{unused['id']}").status_code == 404
+
+
 def test_legacy_cache_without_hash_is_verified_and_reused(tmp_path):
     with client(tmp_path) as c:
         first = upload(c)

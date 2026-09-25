@@ -2,11 +2,13 @@ import { parseProject, type Caption, type Project } from "./domain";
 import { emptyDocuments, interviewTag, type MinutesItem } from "./documents";
 import { zipStore } from "./subtitle-export";
 import { createWordDocument, type WordParagraph } from "./wordDocument";
+import { normalizeSpeakerColor } from "./speakerColor";
 
 export type DocumentMode = "interview" | "minutes";
 type Label = (key: string) => string;
 type ExportOptions = { generatedAt?: Date; locale?: string };
-type Cell = string | number;
+export type WorkbookCell = string | number | { text: string; color: string; markerColor?: string };
+type Cell = WorkbookCell;
 export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const kinds = { summary: "요약", discussion: "논의", decision: "결정", action: "할 일" } as const;
 const tags = { question: "질문", answer: "답변", other: "기타" } as const;
@@ -182,14 +184,20 @@ export function sanitizeWorksheetNames(names: readonly string[]): string[] {
 }
 
 const columnName = (index: number): string => index < 26 ? String.fromCharCode(65 + index) : columnName(Math.floor(index / 26) - 1) + columnName(index % 26);
-function worksheet(rows: Cell[][], widths: number[], filter: boolean): string {
+function cellStyleKey(cell: Exclude<Cell, string | number>): string {
+  const color = normalizeSpeakerColor(cell.color), marker = cell.markerColor === undefined ? "" : normalizeSpeakerColor(cell.markerColor);
+  if (!color || marker === null) throw new Error("Invalid workbook text color.");
+  return `${color}|${marker}`;
+}
+function worksheet(rows: Cell[][], widths: number[], filter: boolean, styles: ReadonlyMap<string, number>): string {
   const last = `${columnName(Math.max(0, ...rows.map(row => row.length)) - 1)}${rows.length}`;
   const content = rows.map((row, index) => `<row r="${index + 1}">${row.map((value, column) => {
-    const attributes = `r="${columnName(column)}${index + 1}" s="${index === 0 ? 1 : 0}"`;
+    const styled = typeof value === "object";
+    const attributes = `r="${columnName(column)}${index + 1}" s="${index === 0 ? 1 : styled ? styles.get(cellStyleKey(value)) : 0}"`;
     if (typeof value === "number") return `<c ${attributes}><v>${value}</v></c>`;
     // inlineStr prevents formula evaluation, including leading = + - @; protect
     // literal Excel escape sequences such as _x000A_ from being decoded as controls.
-    const text = value.replace(/_x[0-9a-f]{4}_/gi, match => `_x005F_${match.slice(1)}`);
+    const text = (styled ? value.text : value).replace(/_x[0-9a-f]{4}_/gi, match => `_x005F_${match.slice(1)}`);
     if (text.length > 32767) throw new Error("Excel cell text exceeds 32,767 characters.");
     return `<c ${attributes} t="inlineStr"><is><t xml:space="preserve">${xml(text)}</t></is></c>`;
   }).join("")}</row>`).join("");
@@ -228,13 +236,21 @@ export function exportDocumentXlsx(project: Project, mode: DocumentMode, label: 
 
 export function exportWorkbook(sheets: { name: string; rows: Cell[][]; widths: number[]; filter: boolean }[]): Uint8Array {
   const names = sanitizeWorksheetNames(sheets.map(sheet => sheet.name));
+  const styles = new Map<string, number>();
+  for (const sheet of sheets) for (const row of sheet.rows) for (const cell of row) if (typeof cell === "object") {
+    const key = cellStyleKey(cell); if (!styles.has(key)) styles.set(key, styles.size + 2);
+  }
+  const colors = [...styles.keys()].map(key => key.split("|"));
+  const colorFonts = colors.map(([color]) => `<font><b/><color rgb="FF${color.slice(1).toUpperCase()}"/><sz val="11"/><name val="Calibri"/></font>`).join("");
+  const colorBorders = colors.map(([, marker]) => `<border>${marker ? `<left style="medium"><color rgb="FF${marker.slice(1).toUpperCase()}"/></left>` : "<left/>"}<right/><top/><bottom/><diagonal/></border>`).join("");
+  const colorStyles = colors.map((_, index) => `<xf numFmtId="0" fontId="${index + 2}" fillId="0" borderId="${index + 1}" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>`).join("");
   const files = [
     { name: "[Content_Types].xml", text: `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_, index) => `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>` },
     { name: "_rels/.rels", text: '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
     { name: "xl/workbook.xml", text: `<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView/></bookViews><sheets>${names.map((name, index) => `<sheet name="${xml(name)}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`).join("")}</sheets></workbook>` },
     { name: "xl/_rels/workbook.xml.rels", text: `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_, index) => `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`).join("")}<Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>` },
-    { name: "xl/styles.xml", text: '<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF6544A0"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>' },
-    ...sheets.map((sheet, index) => ({ name: `xl/worksheets/sheet${index + 1}.xml`, text: worksheet(sheet.rows, sheet.widths, sheet.filter) })),
+    { name: "xl/styles.xml", text: `<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="${2 + colors.length}"><font><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font>${colorFonts}</fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF6544A0"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="${1 + colors.length}"><border><left/><right/><top/><bottom/><diagonal/></border>${colorBorders}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${2 + colors.length}"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>${colorStyles}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>` },
+    ...sheets.map((sheet, index) => ({ name: `xl/worksheets/sheet${index + 1}.xml`, text: worksheet(sheet.rows, sheet.widths, sheet.filter, styles) })),
   ];
   return zipStore(files);
 }

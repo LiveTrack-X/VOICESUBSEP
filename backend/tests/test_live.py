@@ -244,6 +244,7 @@ def test_native_persistent_speaker_cache_and_whisper_boundary_ownership(tmp_path
     engine.cancelled = lambda: False; engine.request = {"language": "auto", "speakerCount": 2}
     engine.cache = None; engine.records = []; engine.intervals = []; engine.last_interval = {}
     engine.frame_cursor = 0; engine.chunk_cursor = 0; engine.first = True; engine.committed = 0
+    engine.detected_language = None
     path = tmp_path / "synthetic.pcm"; path.write_bytes(b"\x00\x10" * 128000)
     early, processed = engine.advance(path, 80000)
     assert processed == 4. and [c["text"] for c in early["captions"]] == ["A"]
@@ -254,6 +255,70 @@ def test_native_persistent_speaker_cache_and_whisper_boundary_ownership(tmp_path
     assert boundary["start"] == 3.8 and boundary["end"] == 4.2
     assert seen[0] is None and all(value is cache for value in seen[1:])
     assert engine.whisper.calls == 2
+
+
+def _language_test_engine(tmp_path, results, language="auto"):
+    """Isolate ASR language policy after sufficient diarization lookahead."""
+    class Whisper:
+        def __init__(self): self.options = []
+        def transcribe(self, _audio, **options):
+            text, detected, probability = results[len(self.options)]
+            self.options.append(options)
+            words = [] if text is None else [SimpleNamespace(start=1., end=1.5, word=text, probability=.9)]
+            return iter([SimpleNamespace(words=words)]), SimpleNamespace(
+                language=detected, language_probability=probability)
+    engine = NativeLiveEngine.__new__(NativeLiveEngine)
+    engine.np = np; engine.whisper = Whisper()
+    # No new diarization chunk is due in this unit fixture. Its lookahead is
+    # already available; the integration fixture above covers persistent caches.
+    engine.processor = SimpleNamespace(num_samples_first_audio_chunk=1 << 30,
+                                      feature_extractor=SimpleNamespace(hop_length=160))
+    engine.cancelled = lambda: False; engine.request = {"language": language, "speakerCount": 2}
+    engine.records = []; engine.intervals = []; engine.frame_cursor = 2000
+    engine.chunk_cursor = 0; engine.first = True; engine.committed = 0; engine.detected_language = None
+    path = tmp_path / "language-policy.pcm"
+    path.write_bytes(b"\x00\x10" * (13 * 16000))
+    return engine, path
+
+
+def test_live_auto_keeps_first_confident_language_without_filtering_other_text(tmp_path):
+    engine, path = _language_test_engine(tmp_path, [
+        ("한국어", "ko", .9), (" I don't know.", "en", .99), (" 日本語", "ja", .99)])
+    for seconds in (5, 9, 13):
+        engine.advance(path, seconds * 16000)
+    assert [options["language"] for options in engine.whisper.options] == [None, "ko", "ko"]
+    assert all(options["multilingual"] is False and options["task"] == "transcribe"
+               for options in engine.whisper.options)
+    assert [record["text"] for record in engine.records] == ["한국어", " I don't know.", " 日本語"]
+    assert engine.detected_language == "ko"
+    fresh, path = _language_test_engine(tmp_path, [("Hello", "en", .9)])
+    fresh.advance(path, 5 * 16000)
+    assert fresh.whisper.options[0]["language"] is None
+    assert fresh.detected_language == "en"
+
+
+@pytest.mark.parametrize("text,probability", [
+    ("uncertain", .49), ("uncertain", float("nan")), ("uncertain", None),
+    ("uncertain", True), (None, .99), ("   ", .99)])
+def test_live_auto_retries_uncertain_or_empty_detection_without_language_fallback(tmp_path, text, probability):
+    engine, path = _language_test_engine(tmp_path, [
+        (text, "en", probability), ("こんにちは", "ja", .8), ("Hello", "en", .99)])
+    engine.advance(path, 5 * 16000)
+    assert engine.detected_language is None
+    engine.advance(path, 9 * 16000)
+    engine.advance(path, 13 * 16000)
+    assert [options["language"] for options in engine.whisper.options] == [None, None, "ja"]
+    assert engine.detected_language == "ja"
+
+
+def test_live_explicit_language_is_not_replaced_by_auto_detection(tmp_path):
+    engine, path = _language_test_engine(tmp_path, [("Hello", "en", .99)] * 2, language="ko")
+    engine.advance(path, 5 * 16000)
+    engine.advance(path, 9 * 16000)
+    assert [options["language"] for options in engine.whisper.options] == ["ko", "ko"]
+    assert all(options["multilingual"] is False and options["task"] == "transcribe"
+               for options in engine.whisper.options)
+    assert engine.detected_language is None
 
 
 def test_shutdown_finishes_native_close_before_releasing_storage(tmp_path):

@@ -57,6 +57,13 @@ export type Job = {
   recognitionPreview?: { lines: string[]; updatedAt: string };
   error?: string;
   result?: AnalysisResult;
+  cancelRequested?: boolean;
+  queue?: {
+    position: number;
+    waitingCount: number;
+    workerAvailable: boolean;
+    blockingJob: { id: string; projectName: string; mediaName: string; stage: string; progress: number; cancelRequested: boolean } | null;
+  };
 };
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number) { super(message); this.name = "ApiError"; }

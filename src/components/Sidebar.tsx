@@ -23,6 +23,7 @@ export function Sidebar({
   hasMedia: boolean;
 }) {
   const { t, locale, setLocale } = useI18n();
+  const languageLabel = locale === "en" ? t("앱 화면 언어") : `${t("앱 화면 언어")} / Language`;
   const [styleSpeakerId, setStyleSpeakerId] = useState<string | null>(null);
   const [settingsExpanded, setSettingsExpanded] = useState(false);
   const [mergeTarget, setMergeTarget] = useState<string | null>(null);
@@ -37,7 +38,7 @@ export function Sidebar({
         {settingsExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}{t("프로젝트 설정·인물")}
       </button>
       <h2>{t('프로젝트')}</h2>
-      <div className="sidebar-section"><label htmlFor="ui-language">{t("앱 화면 언어")}</label><select id="ui-language" aria-label={t("앱 화면 언어")} value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>{LOCALES.map((code) => <option key={code} value={code}>{localeNames[code]}</option>)}</select><p className="setting-hint">{t("음성 인식 언어와 별도로 설정합니다.")}</p></div>
+      <div className="sidebar-section"><label htmlFor="ui-language">{languageLabel}</label><select id="ui-language" aria-label={languageLabel} value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>{LOCALES.map((code) => <option key={code} value={code}>{localeNames[code]}</option>)}</select><p className="setting-hint">{t("음성 인식 언어와 별도로 설정합니다.")}</p></div>
       <div className="sidebar-section media-section">
         <label>{t('미디어 소스')}</label>
         <button className="media-drop" onClick={onMedia} disabled={busy}>

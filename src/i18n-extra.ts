@@ -16,8 +16,16 @@ import { cloudMessages } from "./i18n-cloud";
 import { transcriptMessages } from "./i18n-transcript";
 import { audioMixerMessages } from "./i18n-audio-mixer";
 import { advancedMessages } from "./i18n-advanced";
+import { themeMessages } from "./i18n-theme";
+import { cacheMessages } from "./i18n-cache";
+import { backgroundMessages } from "./i18n-background";
+import { queueMessages } from "./i18n-queue";
 
 export const extraMessages: Record<string, readonly [string, string, string, string]> = {
+  ...queueMessages,
+  ...backgroundMessages,
+  ...cacheMessages,
+  ...themeMessages,
   ...advancedMessages,
   ...audioMixerMessages,
   ...transcriptMessages,

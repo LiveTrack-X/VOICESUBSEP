@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createProject, parseProject, type Caption, type Project } from "./domain";
 import { evidenceFor, evidenceIsCurrent, type MinutesItem } from "./documents";
 import { createProjectSession, editProjectSession, undoProjectSession } from "./projectSession";
-import { assignAllCaptionsToSpeaker, editableSpeakers } from "./speakerOperations";
+import { assignAllCaptionsToSpeaker, editableSpeakers, selectableSpeakers } from "./speakerOperations";
 
 function fixture(): Project {
   const project = createProject(2);
@@ -20,6 +20,22 @@ function fixture(): Project {
 }
 
 describe("analysis count and current subtitle identities", () => {
+  it("hides unused C/D choices for a two-person project while retaining their saved records", () => {
+    const project = { ...createProject(4), speakerCount: 2 };
+    const before = structuredClone(project);
+    expect(selectableSpeakers(project)).toEqual(project.speakers.slice(0, 2));
+    expect(project).toEqual(before);
+    // Unassigned imports still have choices for manual speaker correction.
+    project.captions = [{ id: "unassigned", start: 0, end: 1, text: "Hello", speakerId: null, reasons: ["unassigned"], reviewed: false }];
+    expect(selectableSpeakers(project)).toEqual(project.speakers.slice(0, 2));
+  });
+
+  it("keeps every assigned speaker selectable despite a lower next-analysis count", () => {
+    const project = { ...createProject(4), speakerCount: 1 };
+    project.captions = [{ id: "extra", start: 0, end: 1, text: "Hello", speakerId: project.speakers[3]!.id, reasons: [], reviewed: false }];
+    expect(selectableSpeakers(project)).toEqual([project.speakers[0], project.speakers[3]]);
+  });
+
   it("shows only the requested preparation identities for an empty project without deleting saved names", () => {
     const project = createProject(4);
     const onePerson = { ...project, speakerCount: 1 };
