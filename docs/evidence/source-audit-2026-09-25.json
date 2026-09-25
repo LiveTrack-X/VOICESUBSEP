@@ -22,6 +22,18 @@
       "command": "npm run build",
       "status": "passed",
       "warning": "minified main JS chunk 708.07 kB exceeds 500 kB advisory"
+    },
+    "qwenMinimalEnvironmentFollowup": {
+      "passed": 57,
+      "blockedImports": [
+        "transformers",
+        "huggingface_hub",
+        "torch",
+        "soynlp",
+        "nagisa"
+      ],
+      "scope": "model/transport mocks; no additional dependencies or skips",
+      "reason": "first GitHub run exposed 9 mock-test dependency isolation failures"
     }
   },
   "actualOperations": {

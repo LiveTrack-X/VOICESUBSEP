@@ -1,7 +1,7 @@
 """Native Qwen adapter contracts with synthetic PCM and fake models only."""
 from contextlib import nullcontext
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 import wave
 import sys
 
@@ -100,6 +100,13 @@ class Inputs(dict):
 
 @pytest.fixture
 def runtime(monkeypatch, tmp_path):
+    # This is an adapter unit test, not a Transformers integration test. Fake
+    # the small generation-control import as well as the heavy model loader,
+    # so the ordinary backend[test] CI environment needs no speech packages.
+    transformers = ModuleType('transformers')
+    transformers.StoppingCriteria = object
+    transformers.StoppingCriteriaList = list
+    monkeypatch.setitem(sys.modules, 'transformers', transformers)
     state = SimpleNamespace(events=[], transcript='Hello!', language='English', align=[mark('Hello', .08, .48)],
                             generated=np.array([[1, 2, 3, 8, 9]]), fail_align=False, generate_hook=None)
 

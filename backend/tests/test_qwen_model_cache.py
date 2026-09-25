@@ -3,6 +3,8 @@ from dataclasses import replace
 import json
 from pathlib import Path
 import struct
+import sys
+from types import ModuleType
 
 import pytest
 
@@ -71,9 +73,11 @@ def test_first_selected_inference_downloads_missing_files_once(fixture_cache, mo
 
 
 def test_download_uses_only_pinned_allowlist_single_worker_ordinary_local_files(monkeypatch, tmp_path):
-    import huggingface_hub
     calls = []
-    monkeypatch.setattr(huggingface_hub, 'snapshot_download', lambda *args, **kwargs: calls.append((args, kwargs)))
+    # Inject the optional boundary without importing/installing the Hub SDK.
+    huggingface_hub = ModuleType('huggingface_hub')
+    huggingface_hub.snapshot_download = lambda *args, **kwargs: calls.append((args, kwargs))
+    monkeypatch.setitem(sys.modules, 'huggingface_hub', huggingface_hub)
     spec = cache.QWEN_ALIGNER
     cache._download(spec, tmp_path, ['config.json'], force_download=False)
     assert calls == [((spec.repo,), {'revision': spec.revision, 'local_dir': str(tmp_path),
