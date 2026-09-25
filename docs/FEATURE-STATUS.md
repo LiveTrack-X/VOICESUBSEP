@@ -1,10 +1,19 @@
 # Feature status / 요청 기능 현황
 
-Scope of the **published 0.3.4 Windows preview**, reviewed on 2026-09-25. Source/CI, package and public-file checks passed. Local installation is tracked independently in the [release record](releases/v0.3.4.md). Implemented means a usable code path, not a guarantee of device or recognition quality.
+Scope of the **0.3.5 Windows release**, reviewed on 2026-09-26. Source, package, publication and public-file evidence are recorded in the [release record](releases/v0.3.5.md); local installation is tracked separately. Implemented means a usable code path, not a guarantee of device or recognition quality.
 
-2026-09-25 기준 **공개된 0.3.4 Windows 프리뷰** 범위입니다. 소스·CI·패키지·공개 파일 검증을 통과했으며 로컬 설치는 [릴리즈 기록](releases/v0.3.4.md)에서 별도로 확인합니다. 구현은 사용 경로가 있다는 뜻이며 장치·인식 품질 보증이 아닙니다.
+2026-09-26 기준 **0.3.5 Windows 릴리즈** 범위입니다. 소스·패키지·게시·공개 파일 증거는 [릴리즈 기록](releases/v0.3.5.md)에 남기며 로컬 설치는 별도로 구분합니다. 구현은 사용 경로가 있다는 뜻이며 장치·인식 품질 보증이 아닙니다.
 
 Version labels preserve historical changes: [0.3.3](releases/v0.3.3.md), [0.3.2](releases/v0.3.2.md), [0.3.1](releases/v0.3.1.md). / 버전 표시는 각 시점의 변경을 구분하며 과거 기록을 보존합니다.
+
+## 0.3.5 changes / 0.3.5 변경
+
+| Change / 변경 | Source status / 소스 상태 | Actual scope / 실제 범위 |
+| --- | --- | --- |
+| Speaker-assignment review / 미배정 화자 검토 | Implemented; synthetic browser checked / 구현·합성 브라우저 확인 | [Reason evidence, conservative boundary candidates, source playback, selected apply/undo and stale/manual-edit protection](SPEAKER-ASSIGNMENT-STRATEGY.md). Voice-reference matching and overlap recovery remain proposals; no real-audio accuracy or unassigned-rate improvement is claimed / 원인 근거·보수적 경계 후보·원음 재생·선택 적용/실행 취소·오래된 후보/수동 편집 보호. 기준 음성 비교·겹침 복원은 후속 제안이며 실음성 정확도·미배정률 개선을 주장하지 않음 |
+| VST window states and focus / VST 창 상태·앞으로 가져오기 | Implemented; synthetic UI and backend tests / 구현·합성 UI·백엔드 검사 | Separates requesting, opening and visible states; allows explicit focus of the plugin window. Clear's native initialization remains about 8.09 seconds in paired local measurements; the native GUI was not verified / 요청·열림·실제 창 표시 구분과 명시적 앞으로 가져오기. Clear 네이티브 초기화는 비교 측정 약 8.09초로 여전히 느리며 실제 GUI는 확인하지 않음 |
+| Repository and creator links / 저장소·제작자 링크 | Implemented / 구현 | Header logo links to the VOICESUBSEP repository; footer credit links to the LiveTrack profile / 상단 로고는 VOICESUBSEP 저장소, 하단 제작자 표기는 LiveTrack 프로필로 연결 |
+| Large-project autosave / 대형 프로젝트 자동 저장 | Implemented; recovery test / 구현·복구 검사 | When a project exceeds the 8 MiB project limit, optional speaker evidence is reduced before saving and the user is told; caption text and timing remain / 프로젝트가 8MiB 제한을 넘으면 저장 전 선택형 화자 근거를 줄이고 사용자에게 알림. 자막 문장·시간은 유지 |
 
 ## 0.3.4 changes / 0.3.4 변경
 
@@ -21,8 +30,7 @@ Version labels preserve historical changes: [0.3.3](releases/v0.3.3.md), [0.3.2]
 | Dense timeline clarity / 밀집 타임라인 선명도 | Implemented and browser checked / 구현·브라우저 확인 | Visible-area DPR-aware canvas at high zoom, scroll-preserving click/context selection; synthetic 8× and DPR 1.25 checked / 보이는 구간만 화면 배율에 맞춰 그리기·스크롤 보존 클릭/메뉴, 합성 8배·DPR 1.25 확인 |
 | Repeated progress controls / 진행창 조작 중복 | Fixed and Electron checked / 수정·Electron 확인 | Distinct queue/details keys prevent duplicate controls and confirmation resets during polling; new jobs still reset state / 대기열/상세 키 분리로 갱신 중 조작 누적·확인 상태 초기화 방지, 다른 작업 전환 초기화 유지 |
 | VST click ignored / VST 클릭 무반응 | Reproduced path fixed / 재현 경로 수정 | Preview context changes release the old lock and reject stale replies; clicked-slot status/errors are visible. Mocked API/browser regression is not proof of every installed native-window failure / 비교 입력 변경 때 옛 잠금·응답 정리, 클릭 슬롯 상태/오류 즉시 표시. 모의 API·화면 검증이며 모든 설치본 창 실패 원인 확정 아님 |
-| Creator links / 제작자 링크 | Implemented / 구현 | Header logo and Created by LiveTrack footer link to the creator GitHub profile / 상단 로고·하단 제작자 표기에서 GitHub 프로필 연결 |
-| New speaker-assignment strategy / 새 화자 배정 전략 | **Proposal only / 제안만** | [Reason evidence, boundary candidates and voice references](SPEAKER-ASSIGNMENT-STRATEGY.md) are not implemented; no accuracy or unassigned-rate improvement claimed / 미배정 원인 근거·경계 후보·확인 음성 전략 미구현, 정확도·미배정률 개선 주장 없음 |
+| Creator links / 제작자 링크 | Implemented / 구현 | Header logo and footer credit both linked to the creator GitHub profile / 상단 로고와 하단 제작자 표기 모두 제작자의 GitHub 프로필로 연결 |
 
 Verification / 검증: **843 frontend + 84 Node tests**, **1,023 backend passed / 1 skipped**, web build, 42-module frozen-source match, offline runtime/shutdown, final-package integrity, source/tag CI and anonymous public-file checks passed. Local 0.3.4 installation and relaunch passed with 60 checked profile files unchanged. No fresh inference was run. [Structured evidence / 검증 기록](evidence/v0.3.4-validation.json).
 

@@ -1,110 +1,64 @@
+<p align="center"><img src="public/app-icon.png" width="88" alt="VOICESUBSEP logo" /></p>
+
 # VOICESUBSEP
 
-**Speaker-aware subtitles, editing notes, interviews, and manual meeting notes, with local processing by default.** Local Whisper transcribes speech; local NVIDIA Nemotron identifies speaker activity. Advanced settings offer opt-in Groq, xAI or Gemini speech recognition and Deepgram diarization. You review the text and speaker assignments while listening to the original media.
+**Turn interviews, meetings and video into editable, speaker-aware subtitles.** VOICESUBSEP runs local speech recognition and speaker analysis by default, then gives you a timeline editor to check every result against the original media.
 
-**로컬 처리가 기본인 인물별 자막·편집 메모·인터뷰·수동 회의록 편집기입니다.** 로컬 Whisper가 내용을 전사하고 로컬 NVIDIA Nemotron이 화자 활동을 분석합니다. Groq·xAI·Gemini 음성 인식과 Deepgram 화자 구분은 고급 설정에서 직접 선택할 때만 사용합니다. 원본을 들으며 자막과 인물 배정을 검수합니다.
+**인터뷰·회의·영상의 음성을 화자별 자막으로 만들고 직접 검수하세요.** VOICESUBSEP은 기본적으로 내 컴퓨터에서 음성 인식과 화자 분석을 실행하고, 원본을 들으며 결과를 고치는 타임라인 편집기를 제공합니다.
 
-[0.3.4 release record / 릴리즈 기록](docs/releases/v0.3.4.md) · [User guide / 사용자 가이드](docs/USER-GUIDE.md) · [Documentation / 문서 목차](docs/INDEX.md)
+[![Download VOICESUBSEP for Windows](https://img.shields.io/badge/Download-Windows%20x64-6846e8?style=for-the-badge)](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.5-Online-Setup-x64.exe)
 
-**v0.3.4 Windows preview is published.** Download the [small online setup EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.4/VOICESUBSEP-0.3.4-Online-Setup-x64.exe). Source/CI, final-package checks and anonymous public downloads passed. Local installation is tracked separately in the [release record](docs/releases/v0.3.4.md).
+[Windows 다운로드](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.5-Online-Setup-x64.exe) · [모든 릴리즈](https://github.com/LiveTrack-X/VOICESUBSEP/releases) · [사용자 가이드](docs/USER-GUIDE.md) · [기능 현황과 제한](docs/FEATURE-STATUS.md)
 
-**v0.3.4 Windows 프리뷰를 공개했습니다.** [작은 온라인 설치 EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.4/VOICESUBSEP-0.3.4-Online-Setup-x64.exe)로 시작하세요. 소스·CI·최종 패키지와 공개 다운로드를 검증했습니다. 로컬 설치 여부는 [릴리즈 기록](docs/releases/v0.3.4.md)에서 별도로 확인합니다.
+## Made for careful subtitle work / 꼼꼼한 자막 작업을 위해
 
-**New in 0.3.4:** resize project/preview panels, caption columns and notes; automatic video fit; verified original-media reconnection and clearer connection status; timeline item menus and sharp high-zoom drawing; stable progress controls; VST stale-preview lock fixes; protection for connected media during cache cleanup.
+1. **Analyze / 분석:** Open a video or audio file. Local Whisper transcribes speech; local NVIDIA Nemotron estimates who spoke when. / 영상·음성 파일을 열면 로컬 Whisper가 대사를 전사하고 로컬 NVIDIA Nemotron이 화자 구간을 추정합니다.
+2. **Review / 검수:** Play the original, follow captions on the timeline, rename speakers and edit text or timing. The unassigned-speaker review shows evidence and cautious suggestions; you choose which changes to apply. / 원본을 재생하며 타임라인 자막의 문장·시간·인물 이름을 고칩니다. 미배정 검토는 근거와 보수적 후보를 보여주며, 적용할 항목은 사용자가 선택합니다.
+3. **Finish / 마무리:** Add time-linked editing notes, mark cuts, prepare interview transcripts or manual meeting notes, then export the formats your workflow needs. / 시간 메모와 컷을 정리하고 인터뷰 발언록이나 직접 작성한 회의록을 만든 뒤 필요한 형식으로 내보냅니다.
 
-**0.3.4의 새 기능:** 프로젝트·미리보기 패널, 자막 열과 메모 크기 조절, 영상 자동 맞춤, 검증된 원본 자동 연결·연결 상태 표시, 타임라인 항목 메뉴·확대 선명도, 진행창 중복 방지, VST 비교 잠금 수정, 연결 중인 미디어의 캐시 정리 보호입니다.
+### What you can do / 주요 기능
 
-**0.3.5 source first scope:** the [speaker-assignment strategy](docs/SPEAKER-ASSIGNMENT-STRATEGY.md) now has cause/evidence collection, conservative boundary proposals, source-audio review and explicit selected-caption application with stale/manual-edit protection and undo. Proposals do not assign speakers automatically; older results without evidence remain unknown. This is source implementation, **not a published/installed 0.3.5 claim**. Voice-reference matching and overlap recovery remain future work; real-audio accuracy and review-time gains have not been measured.
+- **Local-first transcription and diarization.** Choose speech language and local models. Optional cloud providers are separate and only receive audio after you select them and confirm. / **로컬 음성 인식·화자 분석.** 음성 언어와 로컬 모델을 선택합니다. 클라우드 공급자는 별도 선택과 전송 확인 후에만 음성을 받습니다.
+- **A timeline-connected subtitle editor.** Adjust speaker, words and time; search or jump by text/time; review unassigned captions; resize the workspace; save editing notes and cut ranges. / **타임라인 연동 자막 편집기.** 화자·문장·시간 수정, 검색·시간 이동, 미배정 검토, 화면 크기 조절, 편집 메모와 컷 구간 저장을 지원합니다.
+- **Interview and meeting workflows.** Arrange a speaker transcript by time, add interview answers and meeting notes yourself, and export documents or subtitles. Meeting summaries are not generated automatically. / **인터뷰·회의 작업.** 화자별 발언을 시간순으로 정리하고 인터뷰 답변과 회의 메모를 직접 작성해 문서·자막으로 내보냅니다. 회의 요약을 자동 작성하지는 않습니다.
+- **Optional audio processing.** Preview local RNNoise or separately installed VST3 effects before deciding what to use. / **선택형 오디오 처리.** 로컬 RNNoise 또는 별도 설치한 VST3 효과를 미리 듣고 적용 여부를 정합니다.
 
-**0.3.5 소스의 첫 구현 범위:** [미배정 개선 전략](docs/SPEAKER-ASSIGNMENT-STRATEGY.md)의 원인·근거 보존, 보수적 경계 후보, 원음 듣기·선택 적용, 오래된 후보·수동 수정 보호와 실행 취소를 구현했습니다. 자동 확정하지 않으며 근거 없는 이전 결과는 상세 없음으로 남깁니다. 이는 소스 구현이며 **0.3.5 게시·설치 완료를 뜻하지 않습니다**. 인물별 확인 음성 비교·겹침 복원은 후속 단계이고 실음성 정확도·검수 시간 개선은 아직 측정하지 않았습니다.
+## Get started / 시작하기
 
-**Earlier 0.3.3 / 이전 0.3.3:** optional RNNoise, native VST editor/state saving, F1 personal shortcuts, centered caption follow, cut controls, timeline name editing, compact analysis results, speech-activity checks and document search/playback. See its preserved [release record / 릴리즈 기록](docs/releases/v0.3.3.md).
+Download the [Windows x64 online setup](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.5-Online-Setup-x64.exe) from the latest release. The helper downloads and verifies the multi-gigabyte app package; speech-model weights are downloaded separately when needed. Keep at least **16 GiB free** for setup, working data and models. A compatible NVIDIA driver is needed for NVIDIA GPU acceleration; CPU-only processing is available but can take longer.
 
-**Earlier 0.3.2:** isolated analysis stop/priority, original-file identity checks, renewed review after edits, remembered capture inputs, guarded VST residual-delay correction, experimental YTT and removal of the fixed source-upload cap. Its [release and evidence](docs/releases/v0.3.2.md) remain unchanged. / **이전 0.3.2:** 분석 격리 중단·우선순위, 원본 식별, 수정 후 재검수, 녹음 입력 기억, 조건부 VST 잔여 지연 보정, 실험적 YTT·원본 업로드 고정 상한 제거를 포함하며 [당시 기록](docs/releases/v0.3.2.md)은 보존합니다.
+[최신 릴리즈의 Windows x64 온라인 설치기](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.5-Online-Setup-x64.exe)를 받으세요. 설치기가 수 GB 실행 패키지를 내려받아 검증합니다. 음성 모델 가중치는 필요할 때 별도로 받습니다. 설치·작업 파일·모델을 위해 **16GiB 이상 여유 공간**을 권장합니다. NVIDIA GPU 가속에는 호환 드라이버가 필요하며 CPU로도 처리할 수 있지만 시간이 더 걸릴 수 있습니다.
 
-Read [dependency notices and distribution obligations / 의존성 고지·재배포 의무](docs/BUNDLED-NOTICES.md) before redistributing. Public source access does not grant a permissive app license. / 재배포 전 고지를 확인하세요. 소스 공개가 앱에 자유로운 재배포 라이선스를 부여하지는 않습니다.
+Windows 10/11 x64 is supported. The setup requires an internet connection and .NET Framework 4.8 or later. The Windows executables are not Authenticode-signed. **The source ZIP is for developers; it is not the installer.** / Windows 10/11 x64에서 사용할 수 있습니다. 설치에는 인터넷 연결과 .NET Framework 4.8 이상이 필요합니다. Windows 실행 파일은 Authenticode 서명을 사용하지 않습니다. **소스 ZIP은 개발자용이며 설치 파일이 아닙니다.**
 
-**0.3.2 YTT export:** the source now exports speaker-name colors and subtitle styles to CC files on the original or cut-edited timeline. YouTube upload/playback is unverified; advanced animation/karaoke is outside the initial scope. / **0.3.2 YTT 출력:** 인물 이름 색·자막 스타일을 원본 또는 컷 적용 시간의 CC 파일로 출력하는 소스를 추가했습니다. YouTube 업로드·재생은 미검증이며 고급 애니메이션·노래방 효과는 첫 범위에서 제외합니다. [Guide / 안내](docs/YOUTUBE-CAPTIONS.md).
+## What to expect / 알아둘 점
 
-## Install / 설치
+Speech recognition and speaker labels are drafts: listen to the original before publishing. Quiet speech, overlapping voices, music and noise can cause misses or wrong assignments. Speaker diarization does not separate mixed audio or restore inaudible words. The new speaker-review suggestions are not automatic corrections, and real-audio accuracy gains have not been measured.
 
-Download [VOICESUBSEP-0.3.4-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.4/VOICESUBSEP-0.3.4-Online-Setup-x64.exe) (166,912 bytes). The small EXE downloads the 2.39 GB runtime without GitHub login, verifies SHA256, assembles the payload, and opens the installation wizard. Whisper/Nemotron weights are separate; Silero VAD ONNX and the small RNNoise model are included. The source-code ZIP is not an installer.
+음성 인식과 화자 표시는 초안입니다. 공개하기 전에 원본을 확인하세요. 작은 목소리·겹친 대화·음악·잡음은 누락이나 오배정을 만들 수 있습니다. 화자 분석은 섞인 음성을 분리하거나 들리지 않는 말을 복원하지 않습니다. 새 미배정 검토 후보는 자동 수정이 아니며 실제 음성의 정확도 개선은 아직 측정하지 않았습니다.
 
-공개 설치 파일과 검증 내역은 [0.3.4 기록](docs/releases/v0.3.4.md)을 확인하세요. 작은 온라인 EXE가 로그인 없이 설치 파일을 받아 검증·재조립합니다. Whisper/Nemotron 가중치는 별도이며 Silero VAD ONNX·소형 RNNoise 모델은 실행환경에 포함합니다. 소스 ZIP은 설치기가 아닙니다.
+Project files save edits and references, **not the original media**. Keep the source file and a separate project backup. / 프로젝트 파일에는 편집 내용과 참조 정보가 저장되며 **원본 미디어는 포함되지 않습니다.** 원본과 별도 프로젝트 백업을 함께 보관하세요.
 
-| Requirement / 항목 | Details / 내용 |
-| --- | --- |
-| System / 운영체제 | Windows 10/11 x64, .NET Framework 4.8 for the online setup / 온라인 설치기에 .NET Framework 4.8 필요 |
-| Download / 다운로드 | Several GB; exact sizes in the release record, model weights separate / 수 GB, 정확한 크기는 릴리즈 기록·모델 가중치 별도 |
-| Storage / 저장 공간 | At least 16 GiB free recommended; 12 GiB cache-drive minimum checked, plus room for models/projects / 16GiB 이상 권장, 캐시 드라이브 최소 12GiB 검사, 모델·프로젝트 공간 추가 |
-| Included / 포함 | Python, FFmpeg, speech-analysis libraries, CUDA runtime libraries / Python·FFmpeg·음성 분석 라이브러리·CUDA 런타임 |
-| Separate / 별도 준비 | NVIDIA driver, Whisper/Nemotron weights and VST3 plugins / NVIDIA 드라이버·Whisper/Nemotron 가중치·VST3 플러그인 |
+## 0.3.5 / 변경 사항
 
-The desktop app supports explicit **check → download → install** updates from public GitHub releases. A bundled Ed25519 public key authenticates the release manifest; SHA256 verifies each part and the assembled installer payload. The private signing key stays outside the repository. **This is manifest authentication, not Windows Authenticode signing:** the Windows executables remain unsigned. Older builds without this updater need one manual installation. See [desktop update details](docs/DESKTOP.md#사용자가-선택하는-업데이트).
+Speaker-review evidence and conservative boundary suggestions, explicit selected-caption apply/undo, clearer native VST window states and focus controls, and direct repository links from the app header. See the [0.3.5 release record](docs/releases/v0.3.5.md) for package, verification and update status.
 
-설치형은 GitHub 공개 릴리즈에서 **확인 → 다운로드 → 설치**를 각각 선택하는 업데이트를 지원합니다. 앱에 포함한 Ed25519 공개키로 배포 명세의 서명을 확인하고 조각·재조립 파일을 SHA256로 검증합니다. 개인키는 저장소 밖에 보관합니다. **배포 명세 인증이며 Windows Authenticode 코드 서명은 아닙니다.** 실행 파일은 무서명이며, 이 업데이트 기능이 없는 이전 설치본은 한 번 수동 설치해야 합니다.
+미배정 원인 근거와 보수적 경계 후보, 항목별 적용·실행 취소, VST 전용 창 상태와 앞으로 가져오기, 상단 로고의 저장소 링크를 추가했습니다. 패키지·검증·업데이트 상태는 [0.3.5 릴리즈 기록](docs/releases/v0.3.5.md)에서 확인하세요.
 
-The online helper defaults to **80 Mbps**, with 40 Mbps/unlimited options. In-app update files are downloaded serially at **80 Mbps**. These are download limits, not OS QoS or a guaranteed 10 Mbps reservation; they do not limit every model download. / 온라인 설치기는 기본 **80Mbps**, 40Mbps·제한 없음 선택입니다. 인앱 업데이트는 파일을 순차적으로 **80Mbps**로 받습니다. OS QoS·10Mbps 예약이나 모든 모델 다운로드에 적용되는 제한은 아닙니다.
+## Learn more / 더 알아보기
 
-## Features / 기능
+- [User guide / 사용자 가이드](docs/USER-GUIDE.md)
+- [Feature status and remaining work / 기능 현황과 남은 작업](docs/FEATURE-STATUS.md)
+- [All documentation / 문서 목차](docs/INDEX.md)
+- [Speaker-assignment strategy / 화자 배정 개선 전략](docs/SPEAKER-ASSIGNMENT-STRATEGY.md)
+- [Dependency notices and redistribution terms / 의존성 고지와 재배포 조건](docs/BUNDLED-NOTICES.md)
+- [GitHub repository / GitHub 저장소](https://github.com/LiveTrack-X/VOICESUBSEP)
 
-**Earlier 0.3.1 added continuous scrolling, theme controls and clearer long-job handling.** The rows marked “0.3.1” identify the earlier feature revision. See the [0.3.1 release record](docs/releases/v0.3.1.md) for publication, installation and verification scope.
+## Run from source / 소스에서 실행
 
-**이전 0.3.1은 연속 스크롤·테마 선택·긴 분석 작업 관리를 개선했습니다.** 아래 `0.3.1` 표시는 그때의 변경이며 게시·설치·검증 범위는 [0.3.1 릴리즈 기록](docs/releases/v0.3.1.md)을 참고하세요.
+Requires Node.js 22.12+, npm, uv and FFmpeg/FFprobe on `PATH`. Setup creates a Python 3.12 environment. Model weights are separate. This is for development; installer users do not need these tools.
 
-| English | 한국어 |
-| --- | --- |
-| 0.3.3: F1 shortcut search/customization; Space play/pause protects text input and IME. Caption follow centers the current cue, including paused seeking, and pauses for editing/manual reading | 0.3.3: F1 단축키 검색·개인 지정, 입력·IME를 보호하는 Space 재생. 일시정지 이동도 현재 자막 중앙 표시, 편집·직접 읽기 중 따라가기 일시중지 |
-| 0.3.3: IN/OUT timecodes and bounded cut audition, timeline speaker-name editing, collapsed analysis details and stable preview-height controls | 0.3.3: IN/OUT 시간·구간 미리듣기, 타임라인 인물 이름 수정, 분석 상세 접기·안정적인 영상 높이 조절 |
-| 0.3.3: document text/speaker search and time lookup; play/pause while the document stays open. Exports still include the full transcript | 0.3.3: 문서 내용·인물 검색·시간 찾기, 창을 유지한 발언 재생·일시정지. 출력은 전체 발언록 유지 |
-| 0.3.3: optional RNNoise before VST, native VST editor/state saving, and improved Electron microphone permission feedback | 0.3.3: 선택형 RNNoise→VST 전처리, VST 전용 창·상태 저장, Electron 마이크 권한 안내 개선 |
-| Three clear entry points: Subtitles & video, Interviews & minutes, and Live captions and recording; the project is shared across these workflows | 자막·영상 편집 / 인터뷰·회의록 / 실시간 자막·녹음 진입점 구분, 같은 프로젝트의 작업 내용 유지 |
-| Local large-v3 / large-v3-turbo transcription, AUTO or explicit speech language, Nemotron diarization, isolated OBS track-to-speaker mapping | 로컬 large-v3 / large-v3-turbo 전사, AUTO·직접 음성 언어 선택, Nemotron 화자 구분, OBS 분리 트랙→인물 연결 |
-| Speaker names, colors and subtitle styles; timeline playback, notes, waveform and boundary adjustment | 인물 이름·색·자막 스타일, 타임라인 재생·메모·파형·경계 조절 |
-| 0.3.1: continuous caption/transcript scrolling replaces 100-row pages; bulk editing, literal find/replace and timeline reveal remain available | 0.3.1: 100행 페이지 대신 자막·발언록 연속 스크롤, 일괄 편집·문자열 치환·타임라인 이동 유지 |
-| 0.3.1: explicit Light/Dark theme, clearly labeled interface Language, automatic aspect-preserving preview fit and a compact empty notes panel | 0.3.1: 라이트/다크 직접 선택, 화면 언어에 Language 표시, 비율을 유지한 미리보기 자동 맞춤·빈 메모 축소 |
-| 0.3.1: speaker selectors hide unused preparation entries outside the expected count; assigned speakers are preserved. Transcript DOCX/HTML/PDF/XLSX carry speaker colors | 0.3.1: 예상 인원 밖의 미사용 준비 인물을 선택기에서 숨기고 실제 배정 인물은 유지, 발언록 DOCX/HTML/PDF/XLSX에 인물 색 반영 |
-| Non-destructive cuts; MP4/WAV/MP3/M4A rendering; source frame rate, 30 or 60 fps | 원본을 보존하는 컷, MP4/WAV/MP3/M4A 렌더, 원본 프레임률·30·60fps |
-| Local FFmpeg mixer: up to 16 file/OBS tracks, individual/solo 10-second previews, sample peaks, gain/offset/mute/limiter, cuts and export history | 최대 16개 파일·OBS 트랙, 개별·솔로 10초 미리듣기·샘플 피크·음량·시간 이동·음소거·리미터·컷·출력 이력 |
-| SRT, styled ASS, speaker SRT ZIP, editing notes and project JSON export | SRT·스타일 ASS·인물별 SRT ZIP·편집 메모·프로젝트 JSON 출력 |
-| Original transcripts, interview Q&A and manual meeting notes as DOCX/TXT/HTML/XLSX; reports preserve source evidence and review state | 원문 발언록·인터뷰 문답·수동 회의 메모를 DOCX/TXT/HTML/XLSX로 출력하고 근거·검수 상태 보존 |
-| Direct desktop PDF save via a native save dialog; browser fallback uses print/save-as-PDF | 설치형은 저장 창을 거쳐 직접 PDF 생성, 브라우저는 인쇄/PDF 저장 사용 |
-| Korean, English, Japanese, Simplified Chinese and Spanish UI; original speech transcripts and manual evidence-linked meeting notes | 한·영·일·중국어 간체·스페인어 UI, 원문 발언록과 근거를 연결한 수동 회의록 |
-| Microphone/system/both recording; optional persistent local Whisper + Nemotron live captions and a read-only OBS overlay URL | 마이크·시스템·둘 다 녹음, 선택형 로컬 Whisper+Nemotron 라이브 자막·읽기 전용 OBS 주소 |
-| Up to four installed VST3 effects before analysis, reported-latency compensation, A/B preview, settings and error logs | 설치된 VST3 최대 4개 분석 전처리, 보고 지연 보정·A/B 비교·설정·오류 로그 |
-
-Detailed workflows: [editing and recovery](docs/EDITING-WORKFLOWS.md), [audio mixer](docs/AUDIO-MIXER.md), [cuts and languages](docs/CUTS-AND-LANGUAGES.md), [VST](docs/VST-CHAIN.md), [settings and logs](docs/SETTINGS-AND-LOGS.md).
-
-자세한 흐름은 [편집·복구](docs/EDITING-WORKFLOWS.md), [오디오 믹서](docs/AUDIO-MIXER.md), [컷·언어](docs/CUTS-AND-LANGUAGES.md), [VST](docs/VST-CHAIN.md), [설정·로그](docs/SETTINGS-AND-LOGS.md)에 있습니다.
-
-## Limits and local data / 한계와 로컬 데이터
-
-- **0.3.1 local Whisper AUTO keeps the initially detected main language** for a file. Live AUTO retains the first confident language with usable speech; uncertain/empty windows retry detection without a forced fallback language. Select the speech language directly when one language predominates. This removes automatic per-segment language switching, not genuine foreign-language text; it does not guarantee that hallucinations disappear. Cloud-provider language policies are separate.
-- **0.3.1 로컬 Whisper의 AUTO는 파일 초반에 감지한 주 언어를 유지합니다.** 라이브는 첫 유효 발화에서 충분한 확률로 감지한 언어를 유지하고 불확실·빈 결과이면 다음 구간에서 재시도합니다. 한국어 등 특정 언어로 강제 대체하지 않습니다. 한 언어 위주라면 음성 언어를 직접 선택하세요. 구간마다 언어를 바꾸는 동작을 없애는 수정이며 실제 외국어 문장을 지우거나 환각 제거를 보장하지 않습니다. 클라우드 공급자의 언어 정책은 별도입니다.
-- **0.3.3 preprocessing is optional and file-analysis/preview only.** RNNoise starts off; enabling it starts at a 70% processed mix. Preprocessing affects ASR audio by default, with optional diarization scope; it does not change original media, final renders or live capture. Denoising and speech-activity checks can miss quiet speech or laughter, so review the source. / **0.3.3 전처리는 선택형이며 파일 분석·미리듣기에만 적용합니다.** RNNoise는 기본 꺼짐이고 켜면 처리음 70%로 시작합니다. 전처리 기본 범위는 음성 인식이며 화자 분석 포함을 선택할 수 있고, 원본·최종 렌더·라이브 소리는 바꾸지 않습니다. 작은 발화·웃음은 놓칠 수 있으므로 원본을 검수하세요.
-- **Diarization is not voice separation.** Mixed overlapping voices may remain unassigned or incomplete. `4+` means at least four expected speakers; detected speakers 5–8 are retained, not merged into four. Automatic numbers need human naming.
-- **화자 구분은 음원 분리가 아닙니다.** 섞인 동시 발화는 미배정·누락될 수 있습니다. `4명 이상`은 최소 4명이며 검출된 5~8명을 4명으로 합치지 않습니다. 자동 번호의 실제 이름은 직접 지정합니다.
-- Live captions reuse loaded local Whisper and Nemotron models throughout one session. Whisper commits roughly four-second segments; the first result needs about five seconds of audio plus inference time. First complete one local analysis of a short file with the same Whisper model and Nemotron to download/cache any missing weights. Live mode uses those complete caches only and never downloads them. Speaker labels remain drafts, especially during adaptation and overlapping speech. Live sessions are limited to two hours. Arbitrary WASAPI playback endpoints, ASIO routing and automatic clock-drift correction are not included.
-- 라이브 자막은 한 세션에서 로컬 Whisper·Nemotron을 계속 유지합니다. 약 4초 구간 단위이며 첫 결과는 음성 약 5초 수집에 추론 시간을 더한 뒤 나옵니다. 먼저 짧은 파일의 `음성 분석`에서 **같은 Whisper 모델과 로컬 Nemotron 분석을 한 번 완료**해 가중치를 준비합니다. 라이브는 완성된 캐시만 쓰며 모델을 받지 않습니다. 초기 적응·동시 발화의 화자는 검수할 초안이며 라이브 세션은 최대 2시간입니다. 개별 WASAPI 출력·ASIO 라우팅·자동 드리프트 보정은 지원하지 않습니다.
-- Mixer offsets do not move captions. Previews measure sample peaks only within the selected window; other sections and lossy-codec peaks can differ. A stereo mix is not an editable multitrack session. / 믹서 시간 이동은 자막을 옮기지 않습니다. 미리듣기 피크는 선택 구간의 샘플만 측정하며 다른 구간·압축 코덱에서는 달라질 수 있습니다. 결과는 스테레오 파일입니다.
-- Project JSON contains edits, not the original media. Keep both and reconnect the same source when reopening. Autosave is local to the app/browser profile; save a separate JSON backup.
-- 프로젝트 JSON에는 편집 내용만 들어가며 원본 미디어는 없습니다. 둘 다 보관하고 재열기 때 같은 원본을 연결하세요. 자동 저장은 앱/브라우저 프로필에 남으므로 별도 JSON도 저장하세요.
-- Local processing is the default. Choosing a cloud provider and confirming the request sends the selected audio to that provider and may incur API charges. Keys are held only in the running backend session, not projects or settings backups. See [advanced providers](docs/ADVANCED-PROVIDERS.md).
-- 기본은 로컬 처리입니다. 클라우드 공급자를 선택하고 전송을 확인하면 선택한 음성을 해당 공급자에게 보내며 API 비용이 발생할 수 있습니다. 키는 실행 중인 백엔드 세션에만 보관하고 프로젝트·설정 백업에 저장하지 않습니다. [고급 공급자 설정](docs/ADVANCED-PROVIDERS.md)과 [Deepgram 범위](docs/DEEPGRAM-DIARIZATION.md)를 확인하세요.
-- File analysis may download missing local speech models; live mode requires them prepared in advance. Commercial VST3 plugins such as CLEAR/RX are separate. Subtitle translation and automatic AI summaries have been removed; export the original transcript for an external LLM if desired. Ollama is not used.
-- 파일 분석은 없는 로컬 음성 모델을 받을 수 있으며 라이브 모델은 미리 준비해야 합니다. CLEAR/RX 등 상용 VST3는 별도입니다. 자막 번역·AI 자동 요약은 제거했으며 필요하면 원문 발언록을 외부 LLM에 직접 사용할 수 있습니다. Ollama는 사용하지 않습니다.
-- Qwen3 ASR/forced alignment is a development-only source option. Its tokenizer license declarations conflict, so default desktop builds exclude it. Mock tests and tokenizer smoke do not establish real-model quality. See [Qwen runtime status](docs/QWEN-RUNTIME.md).
-- Qwen3 ASR·시간 정렬은 개발 환경의 소스 선택 기능입니다. 토크나이저 라이선스 표시 불일치로 기본 설치본에서 제외하며 모의 검사·토큰화 확인이 실제 모델 품질 검증을 뜻하지 않습니다. [Qwen 상태](docs/QWEN-RUNTIME.md)를 확인하세요.
-
-Use the app's job-history/storage dialog to remove unreferenced media copies. Referenced jobs/results are protected; source files you opened are not deleted. Recorded sessions and model caches have separate storage. See the [user guide](docs/USER-GUIDE.md).
-
-작업 이력·저장 공간에서 참조가 풀린 미디어 사본을 정리합니다. 작업·결과가 참조하는 사본은 보호하며 사용자가 연 원본은 삭제하지 않습니다. 녹음 보관함과 모델 캐시는 별도입니다. [사용자 가이드](docs/USER-GUIDE.md)를 참고하세요.
-
-## 소스에서 개발 환경 실행
-
-**Run from source.** Requires Node.js 22.12+, npm, uv, and FFmpeg/FFprobe on PATH. Setup creates a Python 3.12 environment and may download dependencies; model weights are separate. This is not required for the Windows installer.
-
-**개발 실행.** Node.js 22.12 이상·npm·uv와 PATH의 FFmpeg/FFprobe가 필요합니다. setup은 Python 3.12 환경을 준비하며 의존성을 다운로드할 수 있습니다. 모델 가중치는 별도입니다. 설치형 사용자는 이 과정이 필요하지 않습니다.
+Node.js 22.12 이상, npm, uv, `PATH`에 등록된 FFmpeg/FFprobe가 필요합니다. setup은 Python 3.12 환경을 준비합니다. 모델 가중치는 별도입니다. 개발 환경용이며 설치형 사용자는 아래 도구를 준비할 필요가 없습니다.
 
 ```powershell
 powershell -NoProfile -File .\scripts\setup.ps1 -Check
@@ -112,19 +66,4 @@ powershell -NoProfile -File .\scripts\setup.ps1
 npm start
 ```
 
-Open [127.0.0.1:5173](http://127.0.0.1:5173); stop with Ctrl+C. `npm run dev` starts only the UI. See [model setup](docs/MODEL-SETUP.md) and [desktop build contracts](docs/DESKTOP.md). Run one backend per data directory; do not use multiple Uvicorn workers or reload against that directory.
-
-[127.0.0.1:5173](http://127.0.0.1:5173)을 열고 Ctrl+C로 종료합니다. `npm run dev`는 화면만 실행합니다. [모델 환경](docs/MODEL-SETUP.md)과 [데스크톱 빌드 계약](docs/DESKTOP.md)을 참고하세요. 데이터 폴더마다 백엔드 하나만 실행하고 여러 Uvicorn worker·reload를 함께 사용하지 마세요.
-
-```powershell
-npm test
-npm run typecheck
-npm run build
-.\.venv\Scripts\python.exe -m pytest backend\tests -q
-npm run desktop:test
-npm run desktop:smoke
-```
-
-Automated checks do not establish transcription accuracy, device recording quality, or installer deployment. [Release evidence](docs/releases/v0.3.3.md) separates those scopes. Source data defaults to `data/` (`VOICESUBSEP_DATA_DIR`). **0.3.2 removes the fixed source-media upload cap and ignores the retired `VOICESUBSEP_MAX_UPLOAD_BYTES` setting.** Uploads still spool to disk and copy/hash in bounded blocks; available disk space, filesystem limits and media validity still matter. Project JSON, live recording and provider limits are separate and unchanged. Desktop data lives outside the install folder. Third-party [notices and redistribution obligations](docs/BUNDLED-NOTICES.md) remain separate from app functionality.
-
-자동 검사는 인식 정확도·장치 녹음 품질·설치 배포를 대신 입증하지 않습니다. [릴리즈 증거](docs/releases/v0.3.3.md)에서 범위를 구분합니다. 개발 데이터는 기본 `data/`(`VOICESUBSEP_DATA_DIR`)입니다. **0.3.2는 원본 미디어 업로드의 고정 용량 상한을 없애고 기존 `VOICESUBSEP_MAX_UPLOAD_BYTES`를 무시합니다.** 디스크 임시 저장과 작은 블록의 복사·해시 계산은 유지하며 실제 여유 공간·파일시스템·미디어 유효성 제약은 남습니다. 프로젝트 JSON·라이브 녹음·공급자별 제한은 별개로 유지합니다. 설치형 데이터는 설치 폴더 밖에 남으며 외부 의존성의 [고지·재배포 의무](docs/BUNDLED-NOTICES.md)는 앱 기능과 별도로 확인합니다.
+See [development and release documentation](docs/INDEX.md#development-and-release--개발배포). / 자세한 개발·배포 문서는 [문서 목차](docs/INDEX.md#development-and-release--개발배포)를 참고하세요.

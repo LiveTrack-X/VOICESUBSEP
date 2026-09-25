@@ -1,0 +1,273 @@
+{
+  "version": "0.3.5",
+  "verifiedAt": "2026-09-25T16:13:23.074Z",
+  "applicationSourceCommit": "e882a30c9b163553605bbc94c60e432f8b101910",
+  "tests": {
+    "vitest": 893,
+    "node": 84,
+    "backendPassed": 1077,
+    "backendSkipped": 1,
+    "onlineInstallerPassed": 15
+  },
+  "frozenSource": {
+    "passed": true,
+    "modules": 43
+  },
+  "runtime": {
+    "passed": true,
+    "expectedVersion": "0.3.5",
+    "apiVersion": "0.3.5",
+    "offline": true,
+    "newInferenceRun": false,
+    "executableSha256": "3b5816b584ad864eb5dc3e962670227fc5b097e371e6a012f88260183cf188e1",
+    "hashesStableAcrossExecution": true
+  },
+  "browser": {
+    "scope": "Synthetic data in isolated localhost UI; no installed user session or real ASR modified",
+    "speakerReview": {
+      "fixture": "tmp/speaker-review-qa-project.json",
+      "unassigned": 6,
+      "eligible": 1,
+      "protected": 2,
+      "overlap": 2,
+      "legacy": 1,
+      "reasonFilter": true,
+      "selectedApplyPreservesText": true,
+      "undoRestoresUnassigned": true,
+      "changedTextBlocksCandidate": true,
+      "legacyHasNoInventedEvidence": true,
+      "modalOpenDuringPlayback": true,
+      "audioDuration": 20,
+      "contextPlaybackStoppedAtSeconds": 2.9,
+      "consoleErrors": [],
+      "responsive": {
+        "desktop": "1280x720 footer visually reachable",
+        "narrow": "480x800 apply rectangle x294.5 y721.8 w150.7 h34.4 in viewport; no horizontal overflow"
+      }
+    },
+    "vstUI": {
+      "fixture": "tmp/vst-window-stage-qa.html",
+      "syntheticAPIOnly": true,
+      "loadingStage": true,
+      "visibleOpenClearsSpinner": true,
+      "focusPostBody": "{}",
+      "sameSessionFocus": true,
+      "closeStageAndUnlock": true,
+      "cancelAcceptedButStillRunningAllowsDetach": true,
+      "consoleErrors": []
+    },
+    "nativeGuiVerified": false
+  },
+  "performance": {
+    "workerNoPluginProbe034Seconds": 1.255,
+    "workerNoPluginProbe035Seconds": 0.58,
+    "singleRun": true,
+    "clearFreshProcessesPerVariant": 3,
+    "clearOldNativeMedianSeconds": 8.0908557,
+    "clearDirectNativeMedianSeconds": 8.0927,
+    "clearNativeSpeedupEstablished": false,
+    "actualGuiLatencyMeasured": false
+  },
+  "speakerAssignment": {
+    "implemented": "first scope: stored evidence, conservative boundary proposals, protected selected apply and undo",
+    "automaticAttributionChanged": false,
+    "oldResultsEnriched": false,
+    "voiceEmbeddingAdded": false,
+    "overlapRecoveryAdded": false,
+    "realSpeakerAccuracyImprovementEstablished": false
+  },
+  "sourceCI": {
+    "applicationCommit": {
+      "sha": "e882a30c9b163553605bbc94c60e432f8b101910",
+      "url": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/36156203124",
+      "result": "success"
+    },
+    "releaseCommitMain": {
+      "sha": "9206dd11b62705dc37aa9a0bf203a92d621cfd1e",
+      "url": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/36157919375",
+      "result": "success"
+    },
+    "releaseTag": {
+      "tag": "v0.3.5",
+      "url": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/36158048912",
+      "result": "success"
+    }
+  },
+  "publication": {
+    "status": "published_latest",
+    "checkedAt": "2026-09-25T16:13:23.074Z",
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.3.5",
+    "publishedAt": "2026-09-25T16:11:45Z",
+    "targetCommit": "9206dd11b62705dc37aa9a0bf203a92d621cfd1e",
+    "prerelease": false,
+    "assetCount": 10,
+    "allGitHubDigestsMatch": true,
+    "anonymousDownloadsVerified": [
+      "installer-manifest.json",
+      "installer-manifest.sig",
+      "SHA256SUMS.txt",
+      "VOICESUBSEP-0.3.5-Online-Setup-x64.exe"
+    ],
+    "latestDownloadAliasVerified": true,
+    "signatureValid": true,
+    "updaterEvents": [
+      {
+        "version": "0.3.4",
+        "event": "available",
+        "offeredVersion": "0.3.5"
+      },
+      {
+        "version": "0.3.5",
+        "event": "not-available",
+        "offeredVersion": "0.3.5"
+      }
+    ],
+    "downloadedExecutablesExecuted": false,
+    "fullPayloadDownloaded": false
+  },
+  "localInstallation": {
+    "status": "not_installed",
+    "reason": "The owner had an active analysis in the 0.3.4 app; publishing did not interrupt it.",
+    "applicationOrInstallerExecuted": false
+  },
+  "releaseCommit": "9206dd11b62705dc37aa9a0bf203a92d621cfd1e",
+  "releaseTag": "v0.3.5",
+  "packageAudit": {
+    "passed": true,
+    "sourceCommit": "e882a30c9b163553605bbc94c60e432f8b101910",
+    "asarSha256": "2dd244dcc67ad8f2dab075e9c20c0f864850d180fcc4b7e010df4e0f04e3ab4e",
+    "backendExeSha256": "3b5816b584ad864eb5dc3e962670227fc5b097e371e6a012f88260183cf188e1",
+    "backendExeMatchesVerified": true,
+    "privatePemBlock": false,
+    "rnnoiseAssetsMatchPinnedHashes": true,
+    "archiveCrc": {
+      "exitCode": 0,
+      "signal": null,
+      "everythingIsOk": true,
+      "files": 4472,
+      "folders": 711,
+      "uncompressedBytes": 5446317612,
+      "archiveBytes": 2392193431,
+      "trailingBytes": 2482777,
+      "log": "tmp/v0.3.5-archive-crc.log",
+      "warning": "There are data after the end of archive",
+      "warningExplanation": "NSIS payload appends a compressed updater blockmap and four-byte length; account for every trailing byte below.",
+      "embeddedBlockMap": {
+        "compressedBytes": 2482773,
+        "lengthTrailerBytes": 4,
+        "version": "2",
+        "fileEntries": 1,
+        "chunksVerified": 114106,
+        "checksumAlgorithm": "BLAKE2b-144",
+        "allChunkChecksumsPassed": true,
+        "trailingBytesFullyAccountedFor": true
+      }
+    }
+  },
+  "artifacts": {
+    "offlineInstaller": {
+      "name": "VOICESUBSEP-0.3.5-Offline-Setup-x64.exe",
+      "size": 1045611,
+      "sha256": "08cff0b0edf94dbd988e0439351b8ff4698512bf0797fa6bd44131fd6f54c7f6"
+    },
+    "payload": {
+      "name": "voicesubsep-0.3.5-x64.nsis.7z",
+      "size": 2394676208,
+      "sha256": "9cea2680dc1566b83124d42f3c9d8b8e71e8923426e89b76edf6714b82c103ba",
+      "parts": [
+        {
+          "name": "voicesubsep-0.3.5-x64.nsis.7z.part001",
+          "size": 1073741824,
+          "sha256": "841176b3a4881c5a72dfbf1b6a2a1306389220a1d7095deb7049cca2d20726e0"
+        },
+        {
+          "name": "voicesubsep-0.3.5-x64.nsis.7z.part002",
+          "size": 1073741824,
+          "sha256": "c781ffa76b211d9e4468a73616148dd7418a4dd826fc8685ff0b6c536b0e746b"
+        },
+        {
+          "name": "voicesubsep-0.3.5-x64.nsis.7z.part003",
+          "size": 247192560,
+          "sha256": "f6768b5056d0579de236f052c1b93d5fffdad84c1902dadb725debafb9645973"
+        }
+      ]
+    },
+    "onlineInstaller": {
+      "name": "VOICESUBSEP-0.3.5-Online-Setup-x64.exe",
+      "size": 166912,
+      "sha256": "1459100ed66a40d7f6723970d809bde6c5dd1774e9871b6fd4f1e8b3a5adca3a"
+    },
+    "githubAssets": [
+      {
+        "name": "VOICESUBSEP-0.3.5-Offline-Setup-x64.exe",
+        "size": 1045611,
+        "digest": "sha256:08cff0b0edf94dbd988e0439351b8ff4698512bf0797fa6bd44131fd6f54c7f6",
+        "id": 588707896,
+        "state": "uploaded"
+      },
+      {
+        "name": "voicesubsep-0.3.5-x64.nsis.7z.part001",
+        "size": 1073741824,
+        "digest": "sha256:841176b3a4881c5a72dfbf1b6a2a1306389220a1d7095deb7049cca2d20726e0",
+        "id": 588707971,
+        "state": "uploaded"
+      },
+      {
+        "name": "voicesubsep-0.3.5-x64.nsis.7z.part002",
+        "size": 1073741824,
+        "digest": "sha256:c781ffa76b211d9e4468a73616148dd7418a4dd826fc8685ff0b6c536b0e746b",
+        "id": 588716482,
+        "state": "uploaded"
+      },
+      {
+        "name": "voicesubsep-0.3.5-x64.nsis.7z.part003",
+        "size": 247192560,
+        "digest": "sha256:f6768b5056d0579de236f052c1b93d5fffdad84c1902dadb725debafb9645973",
+        "id": 588723379,
+        "state": "uploaded"
+      },
+      {
+        "name": "installer-manifest.json",
+        "size": 1008,
+        "digest": "sha256:e5fb7979bfbd9858de5fbb48f30fddb13d42f0915f9e6159062c6e551a5e57a5",
+        "id": 588725131,
+        "state": "uploaded"
+      },
+      {
+        "name": "installer-manifest.sig",
+        "size": 64,
+        "digest": "sha256:12ae5fb0fa7645b96acdc130d7017a9ad9d6a934bdf79440be69b933eb39dac1",
+        "id": 588725149,
+        "state": "uploaded"
+      },
+      {
+        "name": "SHA256SUMS.txt",
+        "size": 881,
+        "digest": "sha256:2f6b460aee7a4e8be325b3c53356ce111968fdcaf40bcbb835d83be6c8c81b47",
+        "id": 588725181,
+        "state": "uploaded"
+      },
+      {
+        "name": "Assemble-Installer.ps1",
+        "size": 8603,
+        "digest": "sha256:4e5128dc075044d9a4ead79034ad851bcfbfe20a901825d1a234e476e9f8fcdf",
+        "id": 588725217,
+        "state": "uploaded"
+      },
+      {
+        "name": "VOICESUBSEP-0.3.5-Online-Setup-x64.exe",
+        "size": 166912,
+        "digest": "sha256:1459100ed66a40d7f6723970d809bde6c5dd1774e9871b6fd4f1e8b3a5adca3a",
+        "id": 588725243,
+        "state": "uploaded"
+      },
+      {
+        "name": "Online-Setup-SHA256.txt",
+        "size": 105,
+        "digest": "sha256:8d8922533d5975eeddfb121f41d922f1453485b81e5b6b63cb8daa30fdce8b2d",
+        "id": 588725269,
+        "state": "uploaded"
+      }
+    ]
+  }
+}

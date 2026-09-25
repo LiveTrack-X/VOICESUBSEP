@@ -1,8 +1,12 @@
 # VOICESUBSEP User Guide / 사용자 가이드
 
-This guide includes the **0.3.4 Windows preview** features. Publication and installation are separate from implementation: check the [0.3.4 release record](releases/v0.3.4.md) before downloading, and [feature status](FEATURE-STATUS.md) for limits. Earlier [0.3.3](releases/v0.3.3.md), [0.3.2](releases/v0.3.2.md) and [0.3.1](releases/v0.3.1.md) release records remain unchanged. Versioned comparisons below explain compatibility.
+This guide covers the **0.3.5 Windows release**. Check the [0.3.5 release record](releases/v0.3.5.md) for current download and installation evidence, and [feature status](FEATURE-STATUS.md) for limits. Earlier [0.3.4](releases/v0.3.4.md), [0.3.3](releases/v0.3.3.md), [0.3.2](releases/v0.3.2.md) and [0.3.1](releases/v0.3.1.md) records remain available. Versioned comparisons below explain compatibility.
 
-이 가이드는 **0.3.4 Windows 프리뷰** 기능을 포함합니다. 구현과 게시·설치는 별개이므로 다운로드 전에 [0.3.4 릴리즈 기록](releases/v0.3.4.md)의 상태를 확인하고 한계는 [기능 현황](FEATURE-STATUS.md)을 참고하세요. 이전 [0.3.3](releases/v0.3.3.md)·[0.3.2](releases/v0.3.2.md)·[0.3.1](releases/v0.3.1.md) 릴리즈 기록은 보존하며 아래 버전별 비교는 호환 설명입니다.
+이 가이드는 **0.3.5 Windows 릴리즈**를 안내합니다. 현재 다운로드·설치 증거는 [0.3.5 릴리즈 기록](releases/v0.3.5.md), 기능 한계는 [기능 현황](FEATURE-STATUS.md)을 확인하세요. 이전 [0.3.4](releases/v0.3.4.md)·[0.3.3](releases/v0.3.3.md)·[0.3.2](releases/v0.3.2.md)·[0.3.1](releases/v0.3.1.md) 기록도 보존합니다. 아래 버전별 비교는 호환 설명입니다.
+
+**0.3.5 additions:** speaker-review and native VST window controls are available in this release. Check the [0.3.5 release record](releases/v0.3.5.md) for package and update evidence.
+
+**0.3.5 추가 기능:** 미배정 검토와 VST 창 조작 개선을 사용할 수 있습니다. 패키지·업데이트 검증은 [0.3.5 릴리즈 기록](releases/v0.3.5.md)에서 확인하세요.
 
 Whisper transcribes **what was said**; Nemotron identifies **who spoke when**. Review both against the source. Diarization does not separate mixed voices into audio stems or reconstruct inaudible speech.
 
@@ -135,6 +139,20 @@ The UI stays in stopping state until owned-process exit is confirmed; only then 
 ## 4. 자막·인물·타임라인 편집
 
 *Edit captions, speakers and the timeline*
+
+### 0.3.5: Review unassigned speakers / 미배정 보완 검토
+
+1. In the editor's tools, open **Review unassigned speakers / 미배정 보완 검토**. The button is available when the project has unassigned captions. Connect the original media to listen; opening this window starts neither analysis nor model downloads. / 편집 영역의 도구에서 **미배정 보완 검토**를 엽니다. 미배정 자막이 있을 때 사용할 수 있습니다. 원음을 들으려면 원본을 연결하세요. 창을 여는 것만으로 분석이나 모델 다운로드를 시작하지 않습니다.
+2. Filter by cause or enable **Available recommendations / 적용 가능한 추천**. Select a row to inspect its detected activity and supporting utterances, then use **Listen with 1.5 seconds before/after / 앞뒤 1.5초 함께 듣기**. The activity percentage measures time overlap, not the probability that the person is correct. Multiple causes can count the same caption. / 원인이나 **적용 가능한 추천**으로 거릅니다. 행을 눌러 검출 활동·근거 대사를 살펴보고 **앞뒤 1.5초 함께 듣기**로 확인합니다. 비율은 시간 중첩량이지 인물이 맞을 확률이 아니며 한 자막이 여러 원인에 집계될 수 있습니다.
+3. Tick only candidates you have checked and choose **Apply selected candidates / 선택한 후보 적용**. Only their speaker assignments change; text and timing remain. The result is marked **Manual edit**, not reviewed. Use the editor's **Undo** to revert the selected application together. There is no automatic bulk confirmation. / 확인한 후보의 체크박스만 선택한 뒤 **선택한 후보 적용**을 누릅니다. 선택한 자막의 인물만 바꾸고 원문·시간은 유지합니다. **수동 수정**으로 표시하며 검수 완료는 직접 선택합니다. 편집기의 **실행 취소**로 해당 적용을 한 번에 되돌릴 수 있습니다. 자동 일괄 확정은 하지 않습니다.
+
+Manually edited, reviewed or already assigned captions are protected. Changing the project or a caption after opening the review invalidates the displayed candidates: choose **Check again / 다시 확인**, then inspect the current evidence. Changing target/supporting text, timing or speaker can also invalidate the original evidence, so refreshing does not guarantee another candidate.
+
+수동 수정·검수 완료·이미 배정된 자막은 보호합니다. 검토 창을 연 뒤 프로젝트나 자막이 바뀌면 표시 중인 후보는 적용할 수 없습니다. **다시 확인**한 뒤 현재 근거를 검토하세요. 대상·근거 자막의 내용·시간·인물 변경은 원래 근거도 무효로 만들 수 있어 새로 고쳐도 추천이 다시 생긴다는 뜻은 아닙니다.
+
+**Older results:** without stored speaker activity, the UI shows **No cause details / 원인 상세 없음**. Candidate generation requires a new analysis using the new implementation; existing completed jobs are not upgraded or reanalyzed automatically. New analysis can replace applied captions, so save your edited project first. A new analysis may still produce no safe candidate. Large projects may omit optional evidence details to preserve save limits, while retaining caption text/timing/words; incomplete evidence cannot be applied. These checks do not establish real-speaker accuracy or a measured reduction in unassigned captions. See the [strategy and implementation boundaries](SPEAKER-ASSIGNMENT-STRATEGY.md).
+
+**이전 결과:** 화자 활동 근거를 저장하지 않은 결과는 **원인 상세 없음**으로 표시합니다. 후보 생성에는 새 구현으로 진행한 새 분석이 필요하며 기존 완료 작업을 자동 보강·재분석하지 않습니다. 새 분석 결과 적용은 기존 자막을 바꿀 수 있으므로 편집한 프로젝트를 먼저 저장하세요. 새로 분석해도 안전한 후보가 없을 수 있습니다. 큰 프로젝트는 저장 한도를 지키기 위해 선택적 근거 상세를 생략할 수 있지만 자막 원문·시간·단어는 유지하며 불완전한 근거는 적용하지 않습니다. 실제 화자 정확도나 미배정 감소율을 입증한 것은 아닙니다. [전략과 구현 범위](SPEAKER-ASSIGNMENT-STRATEGY.md)를 참고하세요.
 
 **0.3.2 review consistency:** text/speaker changes mark a caption **Manual edit** and clear reviewed status; start/end changes mark timing review. No-op and style-only changes preserve review. Recheck edited cues before marking them complete. Transcript timestamp links carry the exact caption ID, so two people starting at the same time select the intended cue.
 
@@ -284,6 +302,14 @@ Use up to four separately installed/activated Windows x64 VST3 effects. CLEAR/RX
 
 기본은 음성 인식에만 적용하며 Nemotron에도 적용할지 선택할 수 있습니다. 보고 지연을 처리마다 보정합니다. **0.3.2는 실제 입출력의 여러 구간을 비교해 남은 지연도 측정**하며, 충분히 높은 상관과 모호하지 않은 일치 결과가 모일 때만 추가 보정합니다. 불확실·음수·가변 지연은 추측해 이동하지 않습니다. 이번 처리 음원의 증거이지 플러그인의 모든 설정에 적용되는 지연 보증은 아니며, 잡음 제거로 사라진 말소리를 복원하지도 않습니다. 원본과 최종 렌더 오디오는 이 전처리로 바뀌지 않습니다. 0.3.2에는 전용 창이 없지만 0.3.3부터 창 열기·닫고 적용·슬롯당 256KiB 내부 상태 저장을 추가했습니다. 범용 GUI 배율은 없으며 제공되는 제조사 메뉴를 사용합니다. 제조사 프리셋 파일 가져오기·실시간 VST 처리는 여전히 범위 밖입니다. [VST 사용법](VST-CHAIN.md)을 참고하세요.
 
+**0.3.5 native window controls:** requesting, preparation, opening and **Window open** are distinct states. If the window is behind the app, use **Bring window to front / 창 앞으로 가져오기**, or check the taskbar. This is a one-time request for that plugin's window, not an always-on-top mode. **Close and apply / 닫고 적용** saves a successful result's parameters and plugin state (up to 256 KiB per slot); closing the native window normally also applies its result. **Cancel changes and close / 변경 취소·창 닫기** discards the changes. The window plays no audio: generate an original/processed preview after adjusting it.
+
+**0.3.5 전용 창 조작:** 요청·준비·창 여는 중·**플러그인 창 열림**을 구분합니다. 창이 앱 뒤에 있으면 **창 앞으로 가져오기**를 누르거나 작업 표시줄을 확인하세요. 해당 플러그인 창을 한 번 앞으로 가져오며 항상 위에 고정하지 않습니다. **닫고 적용**은 성공한 결과의 조절값과 내부 상태(슬롯당 최대 256KiB)를 저장하며, 전용 창을 정상적으로 닫아도 결과를 적용합니다. **변경 취소·창 닫기**는 변경을 버립니다. 창 자체에서는 오디오가 재생되지 않으므로 조절한 뒤 원본/처리음 비교를 생성하세요.
+
+Opening is limited to **45 seconds** from worker start; saving/closing is limited to **10 seconds** after the close request reaches the worker. A timeout stops that editor and does not apply unfinished state; these are failure bounds, not expected plugin startup times. If status checks lose contact, use **Check status again / 상태 다시 확인**. **Request close and disconnect / 창 닫기 요청·연결 해제** stops waiting and discards late results, but does not confirm that the server has finished closing the window. Real plugin GUI behavior remains vendor-dependent.
+
+작업 시작 후 **45초** 안에 창 열림을 확인하지 못하거나 닫기 요청이 작업에 전달된 뒤 **10초** 안에 저장·종료하지 못하면 해당 편집기를 종료하고 불완전한 상태를 적용하지 않습니다. 정상 플러그인의 예상 시작 시간이 아니라 실패 대기 한도입니다. 상태 확인 연결이 끊기면 **상태 다시 확인**을 사용하세요. **창 닫기 요청·연결 해제**는 기다림을 끝내고 늦은 결과를 버리지만 서버의 창 종료 완료를 확인한 것은 아닙니다. 실제 GUI 동작은 제조사별로 다를 수 있습니다.
+
 **RNNoise (0.3.3 and later):** enable the built-in CPU filter independently of VST, starting at 70% processed mix. The pinned 303 KB Xiph model is included; runtime downloading is unnecessary. RNNoise precedes VST, compensates its fixed 10 ms delay, and preserves the original sample count. ASR-only is the default; ASR + diarization is optional. Compare a short A/B preview because quieter speech may be lost. This does not modify final rendered media or live audio and does not guarantee improved transcription.
 
 **RNNoise (0.3.3부터):** VST 없이 내장 CPU 필터를 켤 수 있고 처리음 비율 70%로 시작합니다. 고정 303KB Xiph 모델을 포함하므로 실행 중 다운로드는 없습니다. RNNoise→VST 순서로 고정 10ms 지연을 보정하고 원본 샘플 수를 유지합니다. 기본은 음성 인식만이며 화자 구분에도 적용할 수 있습니다. 작은 목소리가 손상될 수 있으므로 짧은 A/B로 비교하세요. 최종 렌더·라이브 음원은 바꾸지 않으며 인식률 향상을 보장하지 않습니다.
@@ -333,9 +359,9 @@ There is **no automatic age/quota deletion**. Retained job history continues to 
 
 *App updates*
 
-The desktop updater uses the project's public GitHub releases. Open **App update**, explicitly **check**, then **download** a newer offered version. Save project JSON and finish live/analysis/render jobs before choosing **save and restart/install**. It does not automatically download or install on ordinary quit. Browser development mode has no installer update. Older builds with an unconfigured updater need a manually installed published version first. Check the [0.3.4 release record](releases/v0.3.4.md) for its publication status and actual upgrade evidence; a draft release is not an available update.
+The desktop updater uses the project's public GitHub releases. Open **App update**, explicitly **check**, then **download** a newer offered version. Save project JSON and finish live/analysis/render jobs before choosing **save and restart/install**. It does not automatically download or install on ordinary quit. Browser development mode has no installer update. Older builds with an unconfigured updater need a manually installed published version first. Check the [0.3.5 release record](releases/v0.3.5.md) for its publication status and actual upgrade evidence; a draft release is not an available update.
 
-설치형의 **앱 업데이트**는 프로젝트의 GitHub 공개 릴리즈를 사용합니다. **확인 → 다운로드 → 저장 후 다시 시작/설치**를 각각 누릅니다. 설치 전 프로젝트 JSON을 저장하고 라이브·분석·렌더를 끝내세요. 자동 다운로드·일반 종료 시 자동 설치는 하지 않습니다. 브라우저 개발 화면에는 설치 업데이트가 없으며, 업데이트 미설정인 이전 설치본은 게시된 버전을 먼저 수동 설치해야 합니다. 0.3.4의 게시 상태·실제 업그레이드 증거는 [릴리즈 기록](releases/v0.3.4.md)을 확인하세요. 초안 릴리즈는 받을 수 있는 업데이트가 아닙니다.
+설치형의 **앱 업데이트**는 프로젝트의 GitHub 공개 릴리즈를 사용합니다. **확인 → 다운로드 → 저장 후 다시 시작/설치**를 각각 누릅니다. 설치 전 프로젝트 JSON을 저장하고 라이브·분석·렌더를 끝내세요. 자동 다운로드·일반 종료 시 자동 설치는 하지 않습니다. 브라우저 개발 화면에는 설치 업데이트가 없으며, 업데이트 미설정인 이전 설치본은 게시된 버전을 먼저 수동 설치해야 합니다. 최신 게시 상태·실제 업그레이드 증거는 [0.3.5 릴리즈 기록](releases/v0.3.5.md)을 확인하세요. 초안 릴리즈는 받을 수 있는 업데이트가 아닙니다.
 
 The updater authenticates `installer-manifest.json` with its bundled **Ed25519 public key**, then checks each file and the assembled payload with SHA256, including another check before launching the installer. The private key is outside the repository. This authenticates the release manifest; **Windows EXEs remain Authenticode-unsigned**. Downloads run serially at **80 Mbps** and reuse complete verified files; an interrupted file restarts on retry. This differs from the online setup's partial Range resume. Neither feature reserves OS bandwidth or limits all model downloads. User data/model caches remain outside the install folder; keep a separate project backup.
 
