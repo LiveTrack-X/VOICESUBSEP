@@ -4,9 +4,9 @@ This guide targets the **0.3.0 Windows 10/11 x64 online installer**. Check the [
 
 Windows 10/11 x64용 **0.3.0 대상 안내**입니다. 실제 게시·다운로드 링크·해시·설치 검증은 [0.3.0 릴리즈 기록](releases/v0.3.0.md)을 확인하세요. 공개 다운로드에 GitHub 계정·토큰은 필요 없으며, 도우미는 해당 버전의 앱 데이터를 받아 설치할 뿐 재빌드하지 않습니다. 소스 공개가 자유로운 재배포 허용을 뜻하지 않으므로 [의존성 고지·재배포 범위](BUNDLED-NOTICES.md)를 확인하세요.
 
-**Online installer:** the target filename is `VOICESUBSEP-0.3.0-Online-Setup-x64.exe`. Use the release record's link **once publication is confirmed**; this guide does not assert that the asset is already available. Use its exact size and SHA256, rather than another version's checksums. Manual assembly remains an alternative.
+**Online installer:** [VOICESUBSEP-0.3.0-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.0/VOICESUBSEP-0.3.0-Online-Setup-x64.exe) (166,912 bytes). Public availability and its SHA256 were verified; see the [release record](releases/v0.3.0.md). Manual assembly remains an alternative.
 
-**온라인 설치기:** 대상 파일명은 `VOICESUBSEP-0.3.0-Online-Setup-x64.exe`입니다. **릴리즈 기록에서 게시를 확인한 뒤** 그 링크를 사용하세요. 이 안내 자체가 게시 완료를 뜻하지 않습니다. 크기·SHA256은 같은 버전의 값으로 확인하며 수동 조립 방식도 유지합니다.
+**온라인 설치기:** [VOICESUBSEP-0.3.0-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.0/VOICESUBSEP-0.3.0-Online-Setup-x64.exe) (166,912바이트). 공개 다운로드와 SHA256을 검증했으며 [릴리즈 기록](releases/v0.3.0.md)에 남겼습니다. 수동 조립 방식도 유지합니다.
 
 ## Requirements / 준비 사항
 

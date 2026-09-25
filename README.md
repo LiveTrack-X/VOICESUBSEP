@@ -6,15 +6,15 @@
 
 [0.3.0 release record / 릴리즈 기록](docs/releases/v0.3.0.md) · [User guide / 사용자 가이드](docs/USER-GUIDE.md) · [Documentation / 문서 목차](docs/INDEX.md)
 
-**0.3.0 target:** this README describes the implementation intended for 0.3.0. Publication, artifact hashes, installation and exercised tests are tracked in the [release record](docs/releases/v0.3.0.md). Source availability alone does not establish those outcomes. See [feature status](docs/FEATURE-STATUS.md) for scope and remaining limits.
+**v0.3.0 Windows preview is published.** Download the [small online setup EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.0/VOICESUBSEP-0.3.0-Online-Setup-x64.exe). See the [release record](docs/releases/v0.3.0.md) for checksums, local installation and tests, and [feature status](docs/FEATURE-STATUS.md) for implemented scope and limits.
 
-**0.3.0 대상 문서입니다.** 게시·파일 해시·설치·실행 검증 상태는 [릴리즈 기록](docs/releases/v0.3.0.md), 기능과 한계는 [기능 현황](docs/FEATURE-STATUS.md)을 기준으로 확인하세요. 이전 [0.2.0](docs/releases/v0.2.0.md)·[0.2.1](docs/releases/v0.2.1.md) 기록은 당시 검증 자료로 보존합니다.
+**v0.3.0 Windows 프리뷰를 공개했습니다.** [작은 온라인 설치 EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.0/VOICESUBSEP-0.3.0-Online-Setup-x64.exe) 하나로 시작하세요. 검증·설치·체크섬은 [릴리즈 기록](docs/releases/v0.3.0.md), 구현 범위와 한계는 [기능 현황](docs/FEATURE-STATUS.md)에 있습니다.
 
 Read [dependency notices and distribution obligations / 의존성 고지·재배포 의무](docs/BUNDLED-NOTICES.md) before redistributing. Public source access does not grant a permissive app license. / 재배포 전 고지를 확인하세요. 소스 공개가 앱에 자유로운 재배포 라이선스를 부여하지는 않습니다.
 
 ## Install / 설치
 
-Use the Windows assets linked from the [0.3.0 release record](docs/releases/v0.3.0.md) when published. The small `VOICESUBSEP-0.3.0-Online-Setup-x64.exe` downloads the installer and split data files without GitHub login, verifies SHA256, assembles the payload, and opens the installation wizard. The record lists exact files and sizes. The source-code ZIP is not an installer.
+Download [VOICESUBSEP-0.3.0-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.0/VOICESUBSEP-0.3.0-Online-Setup-x64.exe) (166,912 bytes). It downloads the 2.42 GB runtime without GitHub login, verifies SHA256, assembles the payload, and opens the installation wizard. Model weights are separate. The source-code ZIP is not an installer.
 
 게시된 설치 파일은 [0.3.0 릴리즈 기록](docs/releases/v0.3.0.md)에서 확인합니다. 작은 `VOICESUBSEP-0.3.0-Online-Setup-x64.exe`가 로그인 없이 설치 프로그램·데이터 조각을 받고 SHA256 검증·재조립 후 설치 마법사를 엽니다. 정확한 파일명·용량은 버전별 기록을 따르며 소스 코드 ZIP은 설치 파일이 아닙니다.
 

@@ -1,8 +1,8 @@
 # Feature status / 요청 기능 현황
 
-Scope of the **0.3.0 target implementation**, reviewed on 2026-09-25. Implemented means code and a usable path exist, not proof of device quality, paid-provider access or semantic accuracy. Publication, installation and exact verification results belong in the [0.3.0 release record](releases/v0.3.0.md). Earlier [0.2.0](releases/v0.2.0.md) and [0.2.1](releases/v0.2.1.md) records remain historical evidence.
+Scope of the **0.3.0 released implementation**, reviewed on 2026-09-25. Implemented means code and a usable path exist, not proof of device quality, paid-provider access or semantic accuracy. Publication, installation and exact verification results belong in the [0.3.0 release record](releases/v0.3.0.md). Earlier [0.2.0](releases/v0.2.0.md) and [0.2.1](releases/v0.2.1.md) records remain historical evidence.
 
-2026-09-25 기준 **0.3.0 대상 구현**을 요청과 대조했습니다. `구현`은 코드와 사용 경로가 있다는 뜻이며 장치 품질·유료 접근·인식 정확도 보증이 아닙니다. 실제 게시·설치·검증 수치는 [0.3.0 릴리즈 기록](releases/v0.3.0.md)으로 확인합니다.
+2026-09-25 기준 **0.3.0 배포 구현**을 요청과 대조했습니다. `구현`은 코드와 사용 경로가 있다는 뜻이며 장치 품질·유료 접근·인식 정확도 보증이 아닙니다. 실제 게시·설치·검증 수치는 [0.3.0 릴리즈 기록](releases/v0.3.0.md)으로 확인합니다.
 
 ## Editing / 자막 편집
 

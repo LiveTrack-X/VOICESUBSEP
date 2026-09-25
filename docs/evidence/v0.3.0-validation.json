@@ -6,7 +6,8 @@
     "backendPassed": 770,
     "backendSkipped": 1,
     "webPassed": 485,
-    "nodePassed": 70
+    "nodePassed": 70,
+    "onlineInstallerPassed": 15
   },
   "sourceLiveGpu": [
     {
@@ -86,5 +87,121 @@
     "completedHistoryReopenedAsProject": true,
     "silentMixerPreview": true,
     "physicalCapture": false
+  },
+  "releaseCommit": "d03c887fbc10a7d27856bb521f0f2fcf30437ca4",
+  "ci": {
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/36117554010",
+    "commit": "d03c887fbc10a7d27856bb521f0f2fcf30437ca4",
+    "result": "success",
+    "jobs": [
+      "backend",
+      "web",
+      "online-installer"
+    ]
+  },
+  "artifacts": {
+    "schemaVersion": 1,
+    "version": "0.3.0",
+    "installer": {
+      "name": "VOICESUBSEP-0.3.0-Offline-Setup-x64.exe",
+      "size": 1045696,
+      "sha256": "3240113ed460e7d2c458034d8b1ab2c6718b869a725da6ff3220c259b33fe950"
+    },
+    "payload": {
+      "name": "voicesubsep-0.3.0-x64.nsis.7z",
+      "size": 2419006888,
+      "sha256": "93c6855975184faf7af9d959cd9c47ff2d212120913ffa01307b00c807476d1c",
+      "parts": [
+        {
+          "name": "voicesubsep-0.3.0-x64.nsis.7z.part001",
+          "size": 1073741824,
+          "sha256": "b35d31226e87ef8efac5b19bdaf1ebeb80945be11c513d190857ab5e7ae077df"
+        },
+        {
+          "name": "voicesubsep-0.3.0-x64.nsis.7z.part002",
+          "size": 1073741824,
+          "sha256": "676c80381f51995068298e02c2afe5552fb88f1ab08c5403d25b35689cb75912"
+        },
+        {
+          "name": "voicesubsep-0.3.0-x64.nsis.7z.part003",
+          "size": 271523240,
+          "sha256": "b0d9f870e20091a9faa68174730fb2bd801f073db41a87f578cd352c7bf34719"
+        }
+      ]
+    },
+    "onlineInstaller": {
+      "name": "VOICESUBSEP-0.3.0-Online-Setup-x64.exe",
+      "size": 166912,
+      "sha256": "4980ea7253a6f98d29308901710c28201bd249804a4dc6a8842fcd5a37dc202e"
+    }
+  },
+  "packageAudit": {
+    "metadata": {
+      "version": "0.3.0",
+      "main": "desktop/main.cjs",
+      "desktopUpdateProvider": "github-split",
+      "desktopUpdateUrl": "https://api.github.com/repos/LiveTrack-X/VOICESUBSEP/releases"
+    },
+    "asarSha256": "d66cdada3178611222bb6bfa1e6b402d40251337f9a6a194a701e673014bd10f",
+    "backendExeSha256": "79474082583da1e74446f6671994f1f1d3fe8c929bcda8207f189849919b3ac7",
+    "backendExeIdentical": true,
+    "privatePemBlock": false,
+    "unexpectedPrivateOrSessionPaths": [],
+    "developmentPaths": [],
+    "signature": {
+      "bytes": 64,
+      "verifiedWithPackagedKey": true
+    }
+  },
+  "localInstall": {
+    "installerExitCode": 0,
+    "elapsedSeconds": 166.58576539999999,
+    "installedVersion": "0.3.0.0",
+    "profileFilesChecked": 23,
+    "profileFilesChanged": 0
+  },
+  "installedRuntime": {
+    "ready": {
+      "app": "voicesubsep",
+      "status": "ok"
+    },
+    "apiVersion": "0.3.0",
+    "installedVersion": "0.3.0.0",
+    "responding": true,
+    "windowTitle": "VOICESUBSEP · 인물별 자막 편집",
+    "hasWindow": true,
+    "asarSha256": "d66cdada3178611222bb6bfa1e6b402d40251337f9a6a194a701e673014bd10f",
+    "backendSha256": "79474082583da1e74446f6671994f1f1d3fe8c929bcda8207f189849919b3ac7",
+    "checkedAt": "2026-09-25T18:20:00.9543482+09:00"
+  },
+  "publication": {
+    "checkedAt": "2026-09-25T09:26:39.476Z",
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.3.0",
+    "publishedAt": "2026-09-25T09:26:35Z",
+    "targetCommit": "d03c887fbc10a7d27856bb521f0f2fcf30437ca4",
+    "prerelease": true,
+    "assetCount": 10,
+    "allGitHubDigestsMatch": true,
+    "anonymousDownloadsVerified": [
+      "installer-manifest.json",
+      "installer-manifest.sig",
+      "SHA256SUMS.txt",
+      "VOICESUBSEP-0.3.0-Online-Setup-x64.exe"
+    ],
+    "signatureValid": true,
+    "updaterEvents": [
+      {
+        "version": "0.2.9",
+        "event": "available",
+        "offeredVersion": "0.3.0"
+      },
+      {
+        "version": "0.3.0",
+        "event": "not-available",
+        "offeredVersion": "0.3.0"
+      }
+    ],
+    "downloadedExecutablesExecuted": false,
+    "fullPayloadDownloaded": false
   }
 }
