@@ -2,18 +2,18 @@ using System.Collections.Generic;
 
 namespace VoiceSubSepInstaller
 {
-    // Pinned to the original v0.3.4 assets; changes require rebuilding the bootstrap.
+    // Pinned to the v0.3.5 assets; changes require rebuilding the bootstrap.
     internal static class ReleaseConfig
     {
-        internal const string Version = "0.3.4";
-        internal const string ReleaseUrl = "https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.3.4";
-        private const string BaseUrl = "https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.4/";
-        internal static readonly Asset Installer = File("VOICESUBSEP-0.3.4-Offline-Setup-x64.exe", 1045608L, "070dd57c2af3349a892588ba2e2c5b575047ebff736968359b32791203c785bd");
-        internal static readonly Asset Payload = File("voicesubsep-0.3.4-x64.nsis.7z", 2394655120L, "4f78c6bf8f66046c1ba9399fc21881ac69ea05fb7291ff5173b88e524ac697d1");
+        internal const string Version = "0.3.5";
+        internal const string ReleaseUrl = "https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.3.5";
+        private const string BaseUrl = "https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.5/";
+        internal static readonly Asset Installer = File("VOICESUBSEP-0.3.5-Offline-Setup-x64.exe", 1045611L, "08cff0b0edf94dbd988e0439351b8ff4698512bf0797fa6bd44131fd6f54c7f6");
+        internal static readonly Asset Payload = File("voicesubsep-0.3.5-x64.nsis.7z", 2394676208L, "9cea2680dc1566b83124d42f3c9d8b8e71e8923426e89b76edf6714b82c103ba");
         internal static readonly IList<Asset> Parts = new List<Asset> {
-            File("voicesubsep-0.3.4-x64.nsis.7z.part001", 1073741824L, "fca424c6e62ef3dbb5f4115c586d5d2bd92f0646f88c38a6c055e1f667947a43"),
-            File("voicesubsep-0.3.4-x64.nsis.7z.part002", 1073741824L, "bb02256213d77fac416f473cfce36e0182fe3cd3bc5f13216e4bbcb69f4c0281"),
-            File("voicesubsep-0.3.4-x64.nsis.7z.part003", 247171472L, "d62c474d3b5309a239817b6c56ab564cafbe1d131c908589bed59b53501172a6")
+            File("voicesubsep-0.3.5-x64.nsis.7z.part001", 1073741824L, "841176b3a4881c5a72dfbf1b6a2a1306389220a1d7095deb7049cca2d20726e0"),
+            File("voicesubsep-0.3.5-x64.nsis.7z.part002", 1073741824L, "c781ffa76b211d9e4468a73616148dd7418a4dd826fc8685ff0b6c536b0e746b"),
+            File("voicesubsep-0.3.5-x64.nsis.7z.part003", 247192560L, "f6768b5056d0579de236f052c1b93d5fffdad84c1902dadb725debafb9645973")
         };
         private static Asset File(string name, long size, string hash)
         {
