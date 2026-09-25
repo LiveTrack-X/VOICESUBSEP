@@ -34,12 +34,18 @@ The online helper defaults to **80 Mbps**, with 40 Mbps/unlimited options. In-ap
 
 ## Features / 기능
 
+**0.3.1 source changes are being prepared for release; the download above remains 0.3.0.** The rows marked “0.3.1” describe the current source, not a published installer. See the [0.3.1 preparation record](docs/releases/v0.3.1.md).
+
+**0.3.1 소스 변경을 출시 준비 중이며 위 다운로드는 계속 0.3.0입니다.** 아래 `0.3.1` 표시는 현재 소스 구현이며 게시된 설치본을 뜻하지 않습니다. [0.3.1 준비 기록](docs/releases/v0.3.1.md)을 참고하세요.
+
 | English | 한국어 |
 | --- | --- |
 | Three clear entry points: Subtitles & video, Interviews & minutes, and Live captions and recording; the project is shared across these workflows | 자막·영상 편집 / 인터뷰·회의록 / 실시간 자막·녹음 진입점 구분, 같은 프로젝트의 작업 내용 유지 |
 | Local large-v3 / large-v3-turbo transcription, AUTO or explicit speech language, Nemotron diarization, isolated OBS track-to-speaker mapping | 로컬 large-v3 / large-v3-turbo 전사, AUTO·직접 음성 언어 선택, Nemotron 화자 구분, OBS 분리 트랙→인물 연결 |
 | Speaker names, colors and subtitle styles; timeline playback, notes, waveform and boundary adjustment | 인물 이름·색·자막 스타일, 타임라인 재생·메모·파형·경계 조절 |
-| 100-row pages, bulk edits, literal find/replace, autosave recovery and job history | 100행 페이지, 일괄 편집·문자열 치환, 자동 저장 복구·작업 이력 |
+| 0.3.1: continuous caption/transcript scrolling replaces 100-row pages; bulk editing, literal find/replace and timeline reveal remain available | 0.3.1: 100행 페이지 대신 자막·발언록 연속 스크롤, 일괄 편집·문자열 치환·타임라인 이동 유지 |
+| 0.3.1: explicit Light/Dark theme, clearly labeled interface Language, automatic aspect-preserving preview fit and a compact empty notes panel | 0.3.1: 라이트/다크 직접 선택, 화면 언어에 Language 표시, 비율을 유지한 미리보기 자동 맞춤·빈 메모 축소 |
+| 0.3.1: speaker selectors hide unused preparation entries outside the expected count; assigned speakers are preserved. Transcript DOCX/HTML/PDF/XLSX carry speaker colors | 0.3.1: 예상 인원 밖의 미사용 준비 인물을 선택기에서 숨기고 실제 배정 인물은 유지, 발언록 DOCX/HTML/PDF/XLSX에 인물 색 반영 |
 | Non-destructive cuts; MP4/WAV/MP3/M4A rendering; source frame rate, 30 or 60 fps | 원본을 보존하는 컷, MP4/WAV/MP3/M4A 렌더, 원본 프레임률·30·60fps |
 | Local FFmpeg mixer: up to 16 file/OBS tracks, individual/solo 10-second previews, sample peaks, gain/offset/mute/limiter, cuts and export history | 최대 16개 파일·OBS 트랙, 개별·솔로 10초 미리듣기·샘플 피크·음량·시간 이동·음소거·리미터·컷·출력 이력 |
 | SRT, styled ASS, speaker SRT ZIP, editing notes and project JSON export | SRT·스타일 ASS·인물별 SRT ZIP·편집 메모·프로젝트 JSON 출력 |
@@ -55,6 +61,8 @@ Detailed workflows: [editing and recovery](docs/EDITING-WORKFLOWS.md), [audio mi
 
 ## Limits and local data / 한계와 로컬 데이터
 
+- **0.3.1 local Whisper AUTO keeps the initially detected main language** for a file. Live AUTO retains the first confident language with usable speech; uncertain/empty windows retry detection without a forced fallback language. Select the speech language directly when one language predominates. This removes automatic per-segment language switching, not genuine foreign-language text; it does not guarantee that hallucinations disappear. Cloud-provider language policies are separate.
+- **0.3.1 로컬 Whisper의 AUTO는 파일 초반에 감지한 주 언어를 유지합니다.** 라이브는 첫 유효 발화에서 충분한 확률로 감지한 언어를 유지하고 불확실·빈 결과이면 다음 구간에서 재시도합니다. 한국어 등 특정 언어로 강제 대체하지 않습니다. 한 언어 위주라면 음성 언어를 직접 선택하세요. 구간마다 언어를 바꾸는 동작을 없애는 수정이며 실제 외국어 문장을 지우거나 환각 제거를 보장하지 않습니다. 클라우드 공급자의 언어 정책은 별도입니다.
 - **Diarization is not voice separation.** Mixed overlapping voices may remain unassigned or incomplete. `4+` means at least four expected speakers; detected speakers 5–8 are retained, not merged into four. Automatic numbers need human naming.
 - **화자 구분은 음원 분리가 아닙니다.** 섞인 동시 발화는 미배정·누락될 수 있습니다. `4명 이상`은 최소 4명이며 검출된 5~8명을 4명으로 합치지 않습니다. 자동 번호의 실제 이름은 직접 지정합니다.
 - Live captions reuse loaded local Whisper and Nemotron models throughout one session. Whisper commits roughly four-second segments; the first result needs about five seconds of audio plus inference time. First complete one local analysis of a short file with the same Whisper model and Nemotron to download/cache any missing weights. Live mode uses those complete caches only and never downloads them. Speaker labels remain drafts, especially during adaptation and overlapping speech. Live sessions are limited to two hours. Arbitrary WASAPI playback endpoints, ASIO routing and automatic clock-drift correction are not included.

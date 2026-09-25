@@ -1,14 +1,15 @@
 # Feature status / 요청 기능 현황
 
-Scope of the **0.3.0 released implementation**, reviewed on 2026-09-25. Implemented means code and a usable path exist, not proof of device quality, paid-provider access or semantic accuracy. Publication, installation and exact verification results belong in the [0.3.0 release record](releases/v0.3.0.md). Earlier [0.2.0](releases/v0.2.0.md) and [0.2.1](releases/v0.2.1.md) records remain historical evidence.
+Scope of the **0.3.0 released implementation plus explicitly marked 0.3.1 source changes**, reviewed on 2026-09-25. **0.3.1 is in preparation, not yet asserted as published or installed.** Implemented means code and a usable path exist, not proof of device quality, paid-provider access or semantic accuracy. Current download and historical verification results belong in the [0.3.0 release record](releases/v0.3.0.md); new changes are listed in the [0.3.1 preparation record](releases/v0.3.1.md). Earlier [0.2.0](releases/v0.2.0.md) and [0.2.1](releases/v0.2.1.md) records remain historical evidence.
 
-2026-09-25 기준 **0.3.0 배포 구현**을 요청과 대조했습니다. `구현`은 코드와 사용 경로가 있다는 뜻이며 장치 품질·유료 접근·인식 정확도 보증이 아닙니다. 실제 게시·설치·검증 수치는 [0.3.0 릴리즈 기록](releases/v0.3.0.md)으로 확인합니다.
+2026-09-25 기준 **0.3.0 배포 구현과 별도 표시한 0.3.1 소스 변경**을 요청과 대조했습니다. **0.3.1은 준비 중이며 게시·설치 성공을 뜻하지 않습니다.** `구현`은 코드와 사용 경로가 있다는 뜻이며 장치 품질·유료 접근·인식 정확도 보증이 아닙니다. 현재 다운로드·과거 검증은 [0.3.0 릴리즈 기록](releases/v0.3.0.md), 새 변경은 [0.3.1 준비 기록](releases/v0.3.1.md)에서 구분합니다.
 
 ## Editing / 자막 편집
 
 | Request / 요청 | Status / 상태 | Actual scope / 실제 범위 |
 | --- | --- | --- |
-| Subtitle editor as main pane / 자막 중심 화면 | Implemented / 구현 | Compact preview beside captions on wide windows; narrow default focus, adjustable preview, collapsed notes and adjustable timeline / 넓은 창은 미리보기 옆 자막, 좁은 창은 기본 집중 보기·미리보기 높이·메모 접기·타임라인 조절 |
+| Subtitle editor as main pane / 자막 중심 화면 | Implemented; 0.3.1 layout revision / 구현·0.3.1 배치 개선 | 0.3.1 preview fits available width/height with original aspect ratio; manual height/collapse/fullscreen remain. Notes below the editor collapse and use little room when empty; narrow layouts reserve caption space / 0.3.1은 원본 비율로 미리보기 폭·높이 자동 맞춤, 수동 높이·접기·전체 화면 유지. 편집기 아래 메모 접기·빈 공간 축소, 좁은 창 자막 공간 확보 |
+| Light/Dark and clear Language control / 라이트·다크·Language 표시 | 0.3.1 source / 0.3.1 소스 구현 | Explicit device-persisted theme, native controls follow theme; interface language visibly labeled separately from ASR language / 기기에 기억하는 테마 직접 선택·기본 선택 목록 반영, 화면 언어와 음성 언어 구분 |
 | Timeline click → caption and playback / 타임라인 클릭→자막·재생 | Implemented / 구현 | Seeks, selects and reveals caption; playback requires connected original media / 시간 이동·자막 선택·스크롤, 재생에는 원본 연결 필요 |
 | Names, colors, individual styles / 인물 이름·색·개별 스타일 | Implemented / 구현 | Speaker defaults and individual cue overrides; ASS preserves styles, plain SRT does not / 인물별 기본값·개별 자막 덮어쓰기, ASS 스타일 전달·SRT는 글자와 시간만 |
 | Fullscreen / 전체 화면 | Implemented with fallback / 대안 포함 구현 | Native request with in-app expanded fallback; embedded-browser native fullscreen is not guaranteed / 네이티브 요청 실패 시 앱 안 확대 |
@@ -17,9 +18,10 @@ Scope of the **0.3.0 released implementation**, reviewed on 2026-09-25. Implemen
 | Simple cuts and actual output / 간단 컷·파일 출력 | Implemented / 구현 | Non-destructive exclusions, kept-range preview, MP4/WAV/MP3/M4A rendering and output-time SRT/notes / 원본 보존 제외·미리보기·렌더·편집본 시간 자막과 메모 |
 | Audio track mixing / 여러 파일·트랙 합치기 | Implemented / 구현 | Up to 16 file/OBS tracks, gain/offset/mute/limiter, project cuts, WAV/MP3/M4A/MP4 and history. Individual/solo previews extract the selected stream for up to 10 seconds and show pre-limiter/playback sample peaks. No whole-file true-peak guarantee, drift correction or VST mix rendering / 최대 16트랙·음량·시간 이동·음소거·리미터·컷·출력·이력, 선택 OBS 스트림 개별/솔로 최대 10초·샘플 피크. 전체 true-peak·드리프트·VST 믹스 없음 |
 | Cutback-like automation / Cutback 수준 자동 편집 | Not implemented / 미구현 | No Premiere plug-in, clip rearrangement/transitions, automatic silence/filler removal or complete NLE / 프리미어 플러그인·클립 재배열·전환·자동 무음/군더더기 제거 없음 |
-| Undo, bulk editing, search/replace / 실행 취소·일괄 수정·치환 | Implemented / 구현 | Bounded undo, 100-row pages, literal replacement and review navigation / 제한된 실행 취소·100행 페이지·문자열 치환·검수 이동 |
+| Undo, bulk editing, search/replace / 실행 취소·일괄 수정·치환 | Implemented; 0.3.1 continuous list / 구현·0.3.1 연속 목록 | Bounded undo, literal replacement and review navigation. 0.3.1 removes 100-row pages; captions/transcripts scroll continuously while only nearby rows are drawn. Bulk filtered selection and full exports include off-screen content / 실행 취소·문자열 치환·검수 이동. 0.3.1은 100행 페이지 대신 연속 스크롤·주변 행 표시, 필터 전체 선택·출력에는 화면 밖 내용 포함 |
 | New project retains names / 새 프로젝트 이름 잔존 | Main reset fixed / 주요 경로 수정 | New/open/sample project changes reset session/undo. Old job results cannot silently apply to another project / 프로젝트 전환 시 세션·실행 취소 분리 |
 | Expected one speaker shows two / 예상 1명인데 두 인물 | Display fixed; explicit correction / 표시 수정·명시적 보정 | Sidebar uses assigned speakers; interview/report participants come from captions/evidence. Expected count does not silently merge distinct existing identities; explicit merge supports undo / 실제 배정·근거의 인물만 표시. 예상 수 변경으로 임의 통합하지 않고 명시적 통합·실행 취소 제공 |
+| Unused speaker choices / 미사용 인물 선택지 | 0.3.1 source / 0.3.1 소스 구현 | Assignment/filter/bulk selectors retain expected preparation entries plus every assigned identity; unused entries outside that count are hidden without deleting saved names/styles / 배정·필터·일괄 선택기는 예상 인원과 실제 배정 인물을 유지, 인원 밖 미사용 항목은 숨기고 저장 이름·스타일은 보존 |
 | App and internal icons / 앱·내부 아이콘 | Implemented / 구현 | Shared brand asset, favicon and Windows icon; OS icon cache can affect display / 브랜드·파비콘·Windows 아이콘 통일, OS 캐시 영향 가능 |
 
 Sources / 근거: [App](../src/App.tsx), [editor layout](../src/workspace-layout.css), [speaker operations](../src/speakerOperations.ts), [fullscreen](../src/components/useMediaFullscreen.ts), [rendering](../backend/voicesubsep/rendering.py), [mixer contract](AUDIO-MIXER.md), [project session](../src/projectSession.ts).
@@ -34,8 +36,9 @@ Sources / 근거: [App](../src/App.tsx), [editor layout](../src/workspace-layout
 | Speaker selection and 4+ / 화자 방식·4명 이상 | Implemented / 구현 | Nemotron/manual correction or isolated source-track mapping; expected 4+ preserves additional detected speakers / Nemotron·수동 수정·분리 트랙 매핑, 4명 이상 추가 인물 보존 |
 | Frequent short unassigned words / 짧은 단어 미배정 | Implemented adjustment / 보정 구현 | Boundary/nearby speaker assignment controls with review; ambiguous overlap may remain unassigned / 경계·인접 화자 보정과 검수, 모호한 겹침은 남을 수 있음 |
 | Overlapping speech / 동시 발화 | Partial / 부분 | Activity overlap detection and review, not acoustic source separation or recovery of missing words / 겹친 활동 표시·검수, 음원 분리·누락 대사 복원 아님 |
-| AUTO or explicit ASR language / AUTO·직접 언어 | Implemented / 구현 | Whisper/Groq language selection; xAI AUTO; Gemini AUTO or supported language hints. Qwen source alignment accepts its 11 supported languages / Whisper·Groq 지정, xAI AUTO, Gemini AUTO·언어 힌트, Qwen 소스 정렬 11개 언어 |
-| Latest 1–2 recognized lines / 인식 중 1–2줄 | Implemented / 구현 | Latest completed segments with elapsed time; not token streaming or confirmed speaker identity / 완료 구간 두 개·경과 시간, 토큰 스트리밍·화자 확정 아님 |
+| AUTO or explicit ASR language / AUTO·직접 언어 | Implemented; 0.3.1 local AUTO fix / 구현·0.3.1 로컬 AUTO 수정 | Local Whisper files retain initial language; live retains first confident detected language with committed speech and retries empty/uncertain windows. No forced Korean fallback or text deletion; direct selection recommended when main language is known. Groq/xAI/Gemini/Qwen policies unchanged / 로컬 파일 초반 감지 언어 유지·라이브 첫 유효 고확률 언어 유지, 불확실·빈 결과 재시도. 한국어 강제·텍스트 삭제 없음, 주 언어를 알면 직접 지정. 다른 엔진 정책 유지 |
+| Latest 1–2 recognized lines / 인식 중 1–2줄 | Implemented; 0.3.1 time-label clarification / 구현·0.3.1 시각 표시 명확화 | Latest completed segments and job elapsed time; last result update is explicitly a local clock time, not time since last result. Not token streaming or confirmed speaker identity / 완료 구간 두 개·작업 경과 시간, 마지막 갱신은 지난 시간이 아닌 현지 시각으로 명시. 토큰 스트리밍·화자 확정 아님 |
+| Analysis queue and priority / 분석 대기열·우선 실행 | 0.3.1 source / 0.3.1 소스 구현 | Position/waiting count and current job identity/stage/progress; move one job next or confirm stopping the reviewed current job before priority. Changed blockers require confirmation again. Cooperative cancellation waits for native inference to return; no instant GPU kill / 대기 순서·수·현재 작업과 단계·진행률, 다음으로 이동 또는 확인한 작업 중단 후 우선. 대상 변경 시 재확인, 네이티브 추론 반환까지 취소 대기·GPU 즉시 강제 종료 아님 |
 | Qwen3 ASR + forced aligner | Source adapter, mocked verification / 소스 구현·모의 검증 | Optional development runtime; no real-weight inference verification and excluded from frozen installers pending tokenizer distribution audit / 개발 환경 선택 기능, 실제 모델 추론 미검증·토크나이저 배포 감사로 설치본 미포함. [Details / 근거](QWEN-RUNTIME.md) |
 | Confucius4-R2T2, Audio8 | Research only / 조사만 | No selectable runtime adapters / 실행 어댑터 없음 |
 | CLEAR/RX and minimal VST chain / 최소 VST 체인 | Implemented / 구현 | Up to four installed Windows x64 VST3 effects, order/bypass/parameters, original/processed preview / 설치된 VST3 최대 4개·순서·우회·파라미터·비교 |
@@ -44,13 +47,15 @@ Sources / 근거: [App](../src/App.tsx), [editor layout](../src/workspace-layout
 
 Sources / 근거: [inference and alignment](../backend/voicesubsep/inference.py), [model cache](../backend/voicesubsep/model_cache.py), [VST contract](VST-CHAIN.md), [model options](GPU-MODELS.md), [model research](ALTERNATIVES-ANALYSIS.md).
 
+0.3.1 queue sources / 대기열 근거: [worker and cancellation](../backend/voicesubsep/jobs.py), [queue controls](../src/components/AnalysisQueueControls.tsx).
+
 ## Documents, languages and optional providers / 문서·언어·선택 API
 
 | Request / 요청 | Status / 상태 | Actual scope / 실제 범위 |
 | --- | --- | --- |
 | Korean/Japanese/English/Chinese/Spanish UI / 5개 화면 언어 | Implemented / 구현 | ko/en/ja/zh/es; raw system/provider errors may remain untranslated / 5개 언어, 외부 오류 원문은 남을 수 있음 |
 | Subtitle translation / 자막 번역 | Removed by user decision / 사용자 결정으로 제거 | No translation UI/API or Ollama dependency. Legacy project data remains readable without exposing translation controls / 번역 화면·실행 API·Ollama 제거, 기존 저장 자료는 비파괴 호환 |
-| Speaker: utterance document / 인물: 발언 문서 | Implemented / 구현 | Chronological original, optional timestamps, DOCX/TXT/HTML, dedicated cue-by-cue XLSX and PDF path; no text-generation request / 원문 시간순·시간 선택·Word/TXT/HTML·자막별 XLSX·PDF, 텍스트 생성 호출 없음 |
+| Speaker: utterance document / 인물: 발언 문서 | Implemented; 0.3.1 scroll/colors / 구현·0.3.1 스크롤·색 개선 | Chronological original, optional timestamps, DOCX/TXT/HTML/XLSX/PDF; no text generation. 0.3.1 continuous preview and colored names/markers in DOCX/HTML/PDF/XLSX, with readable contrast. TXT remains plain; all turns exported, not only visible ones / 원문 시간순·시간 선택·Word/TXT/HTML/XLSX/PDF, 텍스트 생성 없음. 0.3.1 연속 미리보기·문서 인물 색/표식·읽기 위한 대비 조정, TXT는 평문·전체 발언 출력 |
 | Interview mode / 인터뷰 | Implemented / 구현 | Manual interviewer/respondent roles and Q/A tagging, source links; no automatic question-answer pairing / 역할·문답 분류·근거 이동, 자동 문답 짝짓기 없음 |
 | Manual meeting notes / 수동 회의 메모 | Implemented / 구현 | User-written discussion/decision/action items with owner, due date, source evidence and review. Old notes remain editable / 직접 작성한 논의·결정·할 일·담당·기한·근거·검수, 기존 자료 편집 유지 |
 | Automatic AI summaries / AI 자동 요약 | Removed by user decision / 사용자 결정으로 제거 | No Ollama, AI draft generation or global synthesis. Export original documents for external LLM use if desired / Ollama·AI 초안·전체 통합 요약 제거, 필요하면 원문을 출력해 외부 LLM에 직접 사용 |
@@ -72,12 +77,16 @@ Sources / 근거: [transcript export](../src/transcriptDocument.ts), [documents 
 | WASAPI endpoint/ASIO/routing / 출력 장치별 선택·라우팅 | Planned / 설계만 | No arbitrary playback-device endpoint or ASIO channel routing / 재생 출력 장치별·ASIO 채널 라우팅 없음 |
 | Settings and error logs / 설정·오류 로그 | Implemented / 구현 | Language/analysis/VST backup and sanitized diagnostic export; API keys are memory-only / 설정·진단 출력, API 키는 메모리 전용 |
 | Autosave and recovery / 자동 저장·복구 | Implemented with limits / 제한 있음 | Current/previous/damaged JSON, job history; not unlimited versions or original-media backup / 현재·직전·손상 JSON·작업 이력, 원본 미디어 백업 아님 |
+| Background analysis status and reopen / 백그라운드 분석 상태·재열기 | 0.3.1 source / 0.3.1 소스 구현 | Dialog close preserves tracked footer state; page reload restores job reference or discovers active history. Result application stays explicit after same project/source verification; completion never auto-applies. Repeated connection errors pause polling, not the server job / 창 닫기 후 하단 상태, 새로고침 작업 참조 복원·진행 이력 확인. 같은 프로젝트/원본 확인 후 명시 적용·자동 덮어쓰기 없음. 연결 오류는 조회만 중지 |
+| Manual unused-cache bulk cleanup / 미사용 캐시 일괄 정리 | 0.3.1 source / 0.3.1 소스 구현 | User confirms a snapshot of up to 1,000 media IDs; reservations and deletion share a lock, new reservations are rechecked. Active and retained jobs protect inputs. Counts distinguish removal/skip/failure; originals/models/recordings/results are outside scope, no automatic age/quota deletion / 최대 1,000개 사본 확인 목록·예약/삭제 동일 락·삭제 직전 재검사. 실행/보관 이력 입력 보호, 삭제·건너뜀·실패 구분, 원본·모델·녹음·결과 제외·자동 삭제 없음 |
 | Public repo, bilingual docs, small EXE / 공개·한영 문서·작은 EXE | 0.3.0 delivery target / 0.3.0 배포 대상 | Public no-login setup, SHA256-pinned download/resume/assembly; exact publication/installation status in the release record / 로그인 없는 설치기·체크섬·이어받기·조립, 실제 게시·설치는 릴리즈 기록 확인 |
 | In-app update / 인앱 업데이트 | Implemented; acceptance tracked per release / 구현·실제 검증 별도 | Explicit check/download/install using public GitHub split assets, Ed25519-authenticated manifest plus SHA256, bundled public key/private key outside repo. Windows EXEs remain Authenticode-unsigned / 확인·다운로드·설치 직접 선택, Ed25519 명세 인증·SHA256, 공개키 포함·개인키 외부, Windows 코드 서명 아님 |
 | Bandwidth cap / 대역폭 제한 | Scoped download limits / 다운로드별 제한 | Online setup 80/40 Mbps/unlimited; in-app update serial 80 Mbps. No OS QoS reservation or all-model-download limit / 온라인 설치기 선택 제한·인앱 순차 80Mbps, OS 10Mbps 예약·전체 모델 다운로드 제한은 없음 |
 | SDAD adoption / SDAD 도입 | Not adopted / 미도입 | Documents/tests exist, but no SDAD adapter/state workflow; earlier question was not treated as completed adoption / 문서·테스트는 있으나 SDAD 체계 도입은 아님 |
 
 Sources / 근거: [live capture](../src/liveCapture.ts), [persistent live engine](../backend/voicesubsep/live_native.py), [live sessions and OBS](../backend/voicesubsep/live_api.py), [microphone devices](../src/microphoneDevices.ts), [settings](../src/settings.ts), [GitHub updater](../desktop/release-updater.cjs), [desktop/update contract](DESKTOP.md).
+
+0.3.1 persistence sources / 상태·정리 근거: [background job monitor](../src/backgroundJob.ts), [reopened result controls](../src/components/BackgroundJobStatus.tsx), [cache protection and cleanup](../backend/voicesubsep/media_cache.py), [cleanup snapshot UI](../src/components/JobHistoryDialog.tsx).
 
 ## Remaining priorities / 남은 우선순위
 

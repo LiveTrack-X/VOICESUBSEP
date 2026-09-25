@@ -1,8 +1,8 @@
 # VOICESUBSEP User Guide / 사용자 가이드
 
-This guide targets **0.3.0 on Windows 10/11 x64**. The [0.3.0 release record](releases/v0.3.0.md) is the authority for published files, installation and validation status; this guide describes how the implemented features work. See [feature status](FEATURE-STATUS.md) for limits.
+This guide covers **the published 0.3.0 Windows app and explicitly marked 0.3.1 source changes**. 0.3.1 is being prepared, not yet claimed as released or installed. The [0.3.0 release record](releases/v0.3.0.md) remains the authority for current downloads and historical validation; see the [0.3.1 preparation record](releases/v0.3.1.md) and [feature status](FEATURE-STATUS.md) for the new scope and limits.
 
-Windows 10/11 x64의 **0.3.0 대상 사용법**입니다. 게시 파일·설치·검증 상태는 [0.3.0 릴리즈 기록](releases/v0.3.0.md), 기능의 한계는 [기능 현황](FEATURE-STATUS.md)을 확인하세요. 과거 버전의 설치 성공을 새 버전의 성공으로 간주하지 않습니다.
+Windows 10/11 x64의 **배포된 0.3.0과 별도 표시한 0.3.1 소스 변경 사용법**입니다. 0.3.1은 준비 중이며 출시·설치 성공을 뜻하지 않습니다. 현재 다운로드·과거 검증은 [0.3.0 릴리즈 기록](releases/v0.3.0.md), 새 범위는 [0.3.1 준비 기록](releases/v0.3.1.md)·[기능 현황](FEATURE-STATUS.md)을 확인하세요. 이전 설치 성공을 새 버전의 증거로 간주하지 않습니다.
 
 Whisper transcribes **what was said**; Nemotron identifies **who spoke when**. Review both against the source. Diarization does not separate mixed voices into audio stems or reconstruct inaudible speech.
 
@@ -64,6 +64,10 @@ Save project JSON and the original media separately: JSON contains edits, styles
 
 Choose expected participants and conversation/review mode; open analysis, select the intended audio track, set AUTO or a known speech language, then choose large-v3/large-v3-turbo and GPU/CPU. Keep Whisper + Nemotron for speaker-aware results, or choose transcription only and assign speakers yourself. Review warnings before applying: applying replaces current captions, so save work first. Listen, rename speaker numbers, and inspect unassigned/overlap/boundary-adjusted captions.
 
+**0.3.1 local Whisper AUTO:** file analysis detects the main language near the beginning and keeps it, instead of detecting a different language for every segment. Live mode retains the first detected language with committed speech and a detection probability of at least 0.5; empty/uncertain windows try again. No Korean or other fallback language is forced. If the recording mainly uses a known language, select it directly before analysis. Neither choice removes genuine foreign-language text or guarantees hallucination-free output. Mixed-language recordings need review; cloud ASR policies are unchanged.
+
+**0.3.1 로컬 Whisper AUTO:** 파일 초반의 주 언어를 감지해 유지하며 매 구간 다른 언어로 전환하지 않습니다. 라이브는 실제 반영할 발화가 있고 언어 감지 확률이 0.5 이상일 때 처음 감지한 언어를 유지합니다. 빈 결과·낮은 확률이면 다음 구간에서 재시도하며 한국어 등 특정 언어로 대체하지 않습니다. 주 언어를 아는 자료는 분석 전에 직접 지정하세요. 실제 외국어 문장은 제거하지 않으며 환각이 전혀 없다는 보장은 아닙니다. 여러 언어가 섞인 자료는 원음과 검수해야 하며 클라우드 음성 인식의 언어 정책은 그대로입니다.
+
 `4+` means **at least four**, not a forced four-speaker result; detected speakers 5–8 are retained. All eight model channels being used may indicate additional mixed speakers. Short-word boundary correction offers off/0.2/0.5/0.8 seconds and affects the next analysis only; a wider allowance can misassign words. For isolated OBS tracks, map up to eight tracks to people and exclude the combined mix. This does not separate mixed voices.
 
 1. 예상 인원과 일반 대화 / 동시 발화 검수 모드를 선택합니다.
@@ -80,19 +84,38 @@ Choose expected participants and conversation/review mode; open analysis, select
 
 OBS 등에 인물별 마이크가 분리되어 있다면 최대 8개 트랙을 인물에 직접 연결해 순차 전사할 수 있습니다. 트랙마다 한 사람일 때 사용하고 전체 믹스 트랙은 제외합니다. 자세한 절차는 [분리 트랙 분석](EDITING-WORKFLOWS.md#obs-등에서-분리해-녹음한-트랙-분석)을 참고하세요.
 
+### 0.3.1: Waiting and execution order / 대기 원인과 실행 순서
+
+Analysis runs one job at a time. A waiting job can remain at 0% until the current job releases the worker. The analysis/status window shows **queue position / waiting count**, the current job's project/media name, stage and progress, or that the worker is unavailable. Queue position 1 means next after the current job; it is not an estimated completion time.
+
+분석은 한 번에 하나씩 실행합니다. 앞선 작업이 실행기를 반환하기 전까지 대기 작업은 0%일 수 있습니다. 분석·상태 창에서 **대기 순서 / 대기 수**, 현재 실행 중인 프로젝트·파일·단계·진행률 또는 실행기 미준비 상태를 확인합니다. 대기 1번은 앞 작업 다음이라는 뜻이며 완료 예정 시간은 아닙니다.
+
+| Action / 조작 | Behavior / 동작 |
+| --- | --- |
+| **Run this job next / 이 작업을 다음으로** | Moves the selected waiting job to the front without stopping the current job. Other waiting jobs retain their order. / 선택한 대기 작업만 맨 앞으로 옮깁니다. 현재 작업은 계속되고 다른 대기 작업의 순서는 유지합니다. |
+| **Stop current job, then prioritize this job / 현재 작업 중단 후 우선 실행** | Shows the specific current job for confirmation. If that job changes before confirmation, refresh and choose again; a different job is not silently cancelled. / 중단할 현재 작업을 확인한 뒤 요청합니다. 확인 사이 대상이 바뀌면 최신 상태에서 다시 선택하며 다른 작업을 임의로 취소하지 않습니다. |
+
+Stopping is cooperative: native GPU inference **cannot be force-killed instantly** by this action. The UI shows stopping while the current calculation returns and acknowledges cancellation; the next job waits for that release. A stopped job's unfinished draft is not a completed result. If the analyzer has already returned a complete result, that result can still be retained as completed despite a late stop request. Source files, existing applied captions and completed history are preserved. Restarting the server does not automatically resume waiting/interrupted analysis.
+
+중단은 실행 중 계산이 취소 요청을 확인하는 방식입니다. 이 버튼으로 네이티브 GPU 추론을 **즉시 강제 종료하지 않습니다**. 현재 계산이 반환해 취소를 확인할 때까지 중단 처리 중으로 표시하고 다음 작업도 기다립니다. 중단된 미완료 초안은 최종 결과가 아닙니다. 다만 분석기가 이미 완성된 결과를 반환했다면 늦은 중단 요청에도 완료 결과로 남을 수 있습니다. 원본·기존 적용 자막·완료 이력은 보존하며 서버 재시작으로 대기·중단 분석을 자동 재개하지 않습니다.
+
 ## 4. 자막·인물·타임라인 편집
 
 *Edit captions, speakers and the timeline*
 
-Click a timeline caption to seek and reveal its row. Edit text, timing, speaker, name/color/style and review status; add time-linked notes. Collapse/resize the timeline or use compact/focus mode. Captions are paged in groups of 100, with bulk speaker/review/delete and literal find/replace. Load a summarized waveform and drag caption boundaries. See [detailed editing workflows](EDITING-WORKFLOWS.md).
+Click a timeline caption to seek and reveal its row. Edit text, timing, speaker, name/color/style and review status; add time-linked notes. Collapse/resize the timeline or use compact/focus mode. **0.3.1 replaces 100-row pages with continuous scrolling** in captions and the original transcript. Only the nearby portion is drawn for long lists; the rest is available by scrolling and all content remains in the project/export. Bulk speaker/review/delete and literal find/replace remain available. **Select all filtered results** includes matches outside the visible area. Load a summarized waveform and drag caption boundaries.
 
-In the current development source, wide layouts place a compact preview beside the main caption editor. Use the height slider or hide the picture while retaining playback. Notes start collapsed; choosing a timeline note opens its card. Windows up to 1000 px wide start in subtitle focus view, with a separate saved preference from wider windows. Show all panels to access collapsible project settings. The timeline is temporarily folded in narrow/focus views. The desktop window can be narrowed to 480 px. These changes do not clear projects, names or notes.
+In **0.3.1**, wide layouts keep the caption editor beside the preview. Automatic preview sizing fits the media into available width and height while preserving aspect ratio; narrow layouts reserve room for captions. Letterboxing can remain when the source shape differs. The height slider and picture collapse remain available, as do playback and fullscreen. Notes sit below the editor, start collapsed and take little room when empty; adding or selecting a timeline note opens its editor. Windows up to 1000 px wide start in subtitle focus view with a separate preference from wider windows. Show all panels to access collapsible project settings; the timeline folds temporarily in narrow/focus views. These changes preserve project content.
 
 타임라인의 자막을 클릭하면 해당 시간과 자막으로 이동합니다. 인물 이름·색상·기본 자막 스타일을 정하고 필요한 자막은 개별 스타일로 바꿀 수 있습니다. 시작·끝 시간, 내용, 인물을 수정하고 검수 완료로 표시합니다. 메모도 시간과 연결해 타임라인에서 확인합니다.
 
-타임라인 접기·높이 조절, 촘촘한 자막 목록과 자막 집중 보기를 사용해 편집 공간을 확보할 수 있습니다. 긴 목록은 100행씩 표시하며, 일괄 인물 지정·검수·삭제와 문자열 찾기/바꾸기를 제공합니다. `파형 불러오기`로 선택 트랙의 요약 파형을 표시하고 자막 경계 손잡이를 조절할 수 있습니다. 상세 조작은 [편집 워크플로](EDITING-WORKFLOWS.md#많은-자막을-검수하기)에 있습니다.
+타임라인 접기·높이 조절, 촘촘한 목록과 자막 집중 보기로 편집 공간을 확보합니다. **0.3.1은 자막·발언록의 100행 페이지를 없애고 연속 스크롤로 표시합니다.** 긴 목록은 주변 행만 화면에 그리지만 나머지 내용도 계속 스크롤해 볼 수 있고 프로젝트·내보내기에는 전체가 남습니다. 일괄 인물 지정·검수·삭제와 문자열 찾기/바꾸기도 유지합니다. **필터 결과 모두 선택**은 지금 화면 밖의 일치 항목까지 포함하므로 개수를 확인하세요. `파형 불러오기`로 요약 파형을 표시하고 자막 경계 손잡이를 조절할 수 있습니다. [이전 편집 워크플로](EDITING-WORKFLOWS.md)의 100행 페이지 설명은 이전 동작입니다.
 
-현재 개발 소스는 넓은 화면에서 작은 미리보기 옆에 자막 편집기를 크게 둡니다. 미리보기 높이를 조절하거나 화면만 접고 재생 컨트롤을 유지할 수 있습니다. 메모는 기본으로 접히며 타임라인에서 선택하면 해당 카드가 열립니다. 너비 1000px 이하에서는 자막 집중 보기로 시작하고, 좁은 창과 넓은 창의 선호를 따로 기억합니다. `전체 패널 보기`에서 접을 수 있는 프로젝트 설정에 접근합니다. 좁은 창·집중 보기의 타임라인 접힘은 임시입니다. 설치형 창은 너비 480px까지 줄일 수 있으며 프로젝트·인물 이름·메모를 지우지 않습니다.
+**0.3.1**은 넓은 화면에서 미리보기 옆 자막 편집기를 유지합니다. 미리보기 자동 크기는 사용 가능한 폭·높이에 원본 비율을 유지해 맞추고, 좁은 화면에서는 자막 공간을 확보합니다. 원본 비율 때문에 여백이 남을 수 있습니다. 높이 수동 조절·영상 접기·재생·전체 화면은 계속 사용할 수 있습니다. 메모는 편집기 아래에 두고 기본 접힘·빈 상태를 작게 표시하며, 추가하거나 타임라인에서 선택하면 편집기가 열립니다. 너비 1000px 이하에서는 자막 집중 보기로 시작하고 좁은 창·넓은 창의 선호를 따로 기억합니다. `전체 패널 보기`에서 프로젝트 설정을 열 수 있고 좁은 창·집중 보기의 타임라인 접힘은 임시입니다. 프로젝트 내용은 그대로 보존합니다.
+
+**0.3.1 speaker choices:** row assignment, filters and bulk assignment retain the requested preparation identities plus every speaker already assigned to a caption. Unused preparation entries beyond the expected count are hidden, without deleting their saved names/styles or merging existing speakers. The names shown in the sidebar and transcript are based on actual use.
+
+**0.3.1 인물 선택:** 행별 배정·필터·일괄 배정은 예상 인원에 해당하는 준비 인물과 이미 자막에 배정된 모든 인물을 남깁니다. 예상 인원 밖의 미사용 준비 인물은 숨기되 저장된 이름·스타일을 지우거나 기존 인물을 합치지 않습니다. 사이드바·발언록의 인물 표시는 실제 사용을 기준으로 합니다.
 
 ## 5. 간단한 컷과 출력
 
@@ -125,6 +148,10 @@ In the mixer, use **Listen to this track**, **Solo**, or **Preview mix** before 
 
 The UI supports Korean, English, Japanese, Simplified Chinese and Spanish. Speech recognition independently supports AUTO or an explicit input language. Changing the interface language does not translate captions. Subtitle translation and automatic AI summaries have been removed; all subtitle previews and exports use the original edited transcript. Existing project translation data is preserved for compatibility.
 
+**0.3.1:** the header provides **Light/Dark** selection, saved on this device. Native lists and inputs follow the chosen theme. Project settings label the interface-language selector with **Language** so it remains identifiable after a language change. This changes interface text only; select the speech language separately in analysis. The saved theme is a device preference, not project content.
+
+**0.3.1:** 상단에서 **라이트/다크**를 직접 고르면 이 기기에 기억합니다. 기본 선택 목록·입력칸도 테마를 따릅니다. 프로젝트 설정의 화면 언어 선택에는 **Language**를 함께 표시해 언어를 바꾼 뒤에도 찾을 수 있습니다. 메뉴 언어만 바뀌며 분석할 음성 언어는 분석 창에서 따로 선택합니다. 테마는 프로젝트 내용과 별개의 기기 설정입니다.
+
 화면 언어는 한국어·영어·일본어·중국어 간체·스페인어입니다. 음성 인식은 별도로 AUTO 또는 직접 지정합니다. 화면 언어를 바꿔도 자막을 번역하지 않습니다. 자막 번역과 AI 자동 요약은 제거했으며 자막 미리보기·내보내기는 편집한 원문을 사용합니다. 이전 프로젝트에 들어 있는 번역 데이터는 호환을 위해 보존합니다.
 
 ## 7. 인터뷰와 회의록
@@ -134,6 +161,10 @@ The UI supports Korean, English, Japanese, Simplified Chinese and Spanish. Speec
 The default **Transcript** tab produces a chronological document like `Minjun: Let's start.` directly from the current captions. It does not need Ollama or a paid API. Save an editable Word `.docx`, UTF-8 `.txt`, Excel `.xlsx`, or HTML. The desktop source saves PDF directly; the browser offers PDF print preview. Timestamps are optional. Speaker names and original utterances come from your edited project; review recognition errors in the caption editor before exporting. Q&A tagging and manually written meeting notes are separate views. There is no automatic AI summary.
 
 기본 **발언록** 탭은 `청둥찌덕: 오늘 이야기할 내용은…`처럼 현재 자막을 인물별 발언 순서로 정리합니다. Ollama나 유료 API 없이 바로 만들며, Word `.docx`·UTF-8 `.txt`·Excel `.xlsx`·HTML 저장을 지원합니다. 설치형 소스는 PDF 직접 저장, 브라우저는 PDF용 인쇄 미리보기를 제공합니다. 시간 표시는 선택입니다. 프로젝트의 인물 이름과 원문을 사용하므로 인식 오류는 자막 편집기에서 고친 뒤 출력하세요. 문답 분류와 수동 회의록은 별도 화면이며 AI 자동 요약은 제공하지 않습니다.
+
+**0.3.1 transcript colors and scrolling:** scroll the full transcript without page buttons. Speaker markers keep the selected color, while name text is adjusted for contrast on the current background; utterance text stays readable in the normal text color. DOCX, HTML/PDF and XLSX transcript exports carry colored speaker names/markers on a light document background. TXT and SRT cannot store these styles. App dark mode does not make exported documents dark, and a PDF printer's monochrome setting can discard color. Exports include all transcript turns, not only the visible portion.
+
+**0.3.1 발언록 색·스크롤:** 페이지 버튼 없이 전체를 계속 스크롤합니다. 인물 표식은 지정한 색을 유지하고 이름 글자는 배경에서 읽기 좋게 대비를 조정하며, 발언 본문은 일반 글자색을 사용합니다. 발언록 DOCX·HTML/PDF·XLSX에도 밝은 문서 배경 기준의 인물 이름색·표식을 반영합니다. TXT·SRT는 스타일을 저장할 수 없습니다. 앱 다크 모드가 출력 문서를 어둡게 만들지는 않으며 PDF 인쇄의 흑백 설정은 색을 제거할 수 있습니다. 화면에 보이는 일부가 아니라 전체 발언을 내보냅니다.
 
 Assign interviewer/respondent/participant roles and question/answer/other caption tags. Timestamps return to the source. Write summaries/discussions/decisions/actions manually with evidence captions. Review owners, dates, proposals versus decisions, jokes and reversals; saved draft items are never automatically confirmed. Changed evidence text, timing or speaker requires review. Store documents in project JSON and export Markdown.
 
@@ -200,13 +231,33 @@ Use up to four separately installed/activated Windows x64 VST3 effects. CLEAR/RX
 
 Autosave Recovery lists current/previous/damaged JSON; download before restoring or removing damaged data. One previous snapshot is not a full history or external backup. Job History reopens analysis/render results; closing a dialog need not stop a running server job, but restarting the server does not resume interrupted computation. Results from another project/source are not silently applied. Delete unneeded terminal job history before removing unreferenced cached copies; original files, models and recorded sessions are separate. Settings/Error Logs exports diagnostics, including client-only logs if the server is unavailable. Settings JSON is distinct from project JSON. Logs are not automatically sent elsewhere; inspect before sharing.
 
+### 0.3.1: Keep working during analysis / 분석 창을 닫고 편집 계속하기
+
+Use **Close window and keep working** to close the analysis dialog while its server job continues. The footer keeps the tracked analysis state, stage and progress; click it to reopen the latest status, recognized draft lines or completed result. Reloading the page restores the saved job reference and queries the server. Without a saved reference, the app can discover an active analysis from job history; use **Job History** for the other jobs. Closing the dialog is different from exiting the desktop app or stopping the backend, which can interrupt computation.
+
+**창 닫고 계속 작업**으로 분석 창만 닫으면 서버의 작업은 계속됩니다. 하단에 추적 중인 분석 상태·단계·진행률이 남고, 클릭하면 최신 상태·인식 초안·완료 결과를 다시 엽니다. 페이지를 새로고침하면 저장한 작업 참조로 서버에 상태를 묻고, 참조가 없으면 이력에서 진행 중 분석을 찾을 수 있습니다. 다른 작업들은 **작업 이력**에서 확인합니다. 분석 창 닫기와 설치형 앱 종료·백엔드 종료는 다르며 후자는 계산을 중단할 수 있습니다.
+
+Completion **never applies results automatically**. In a reopened result, reconnect its project and original media, choose **Verify linked source**, then explicitly **Apply result**. Application replaces captions and keeps notes. You can save result JSON and inspect progress without the original file. Dismissing a completed footer indicator only hides that indicator; it does not delete history. If polling repeatedly fails or the job is missing, automatic checks stop and the UI offers a manual retry/history path; it does not claim the server job stopped.
+
+완료돼도 **결과를 자동 적용하지 않습니다**. 다시 연 결과에서는 해당 프로젝트·원본을 연결하고 **연결된 원본 확인 → 결과 적용**을 직접 선택합니다. 적용은 자막을 교체하며 메모는 유지합니다. 원본 파일 없이도 진행 상태를 확인하거나 결과 JSON을 저장할 수 있습니다. 완료된 하단 표시를 닫아도 이력을 삭제하지 않습니다. 반복 연결 실패·작업 없음일 때 자동 조회를 멈추고 재확인·이력 경로를 제공하며, 서버 작업까지 취소됐다고 표시하지 않습니다.
+
+### 0.3.1: Review and clean unused media copies / 미사용 미디어 사본 확인 후 정리
+
+Open **Job History and Storage → Media cache → Clean unused cache**. Review the displayed number and size, then **Confirm cleanup**. Only that reviewed set of app-owned copies is submitted, up to 1,000 at a time; uploads arriving afterwards are not added. Immediately before deletion the server checks reservations again, so a copy newly used by analysis, rendering, mixing, preview or waveform generation is skipped. The result separates removed copies, protected/missing copies and failures. Refresh and review another batch if needed.
+
+**작업 이력 및 저장 공간 → 미디어 캐시 → 정리 가능한 캐시 정리**에서 표시한 개수·크기를 확인한 뒤 **정리 확인**을 누릅니다. 확인한 앱 사본만 한 번에 최대 1,000개 요청하며 이후 업로드한 파일을 추가하지 않습니다. 삭제 직전에 사용 여부를 다시 검사하므로 분석·렌더·믹스·미리듣기·파형 생성에서 새로 사용하는 사본은 건너뜁니다. 결과는 삭제·보호/이미 없음·실패로 구분합니다. 필요하면 새로고침 후 다음 묶음을 다시 확인하세요.
+
+There is **no automatic age/quota deletion**. Retained job history continues to protect its input copies even after completion. Remove only unneeded terminal history when you also intend to discard that job's stored results, then review newly unused media separately. Bulk cache cleanup does not delete original files outside the cache, models, recordings, project JSON or job-result folders.
+
+**기간·용량에 따른 자동 삭제는 없습니다.** 완료 뒤에도 보관 중인 작업 이력은 입력 사본을 보호합니다. 해당 작업의 저장 결과도 더 이상 필요 없을 때만 종료된 이력을 삭제하고, 새로 정리 가능해진 미디어를 별도로 확인하세요. 일괄 캐시 정리는 캐시 밖 사용자 원본·모델·녹음·프로젝트 JSON·작업 결과 폴더를 삭제하지 않습니다.
+
 | 상황 | 조치 |
 | --- | --- |
 | 자동 저장이 손상됐거나 이전 정상본이 필요함 | `자동 저장 복구`에서 현재·이전·오류 원본을 확인하고 JSON을 내려받은 뒤 복구합니다. 이전본 하나는 전체 편집 이력이나 외부 백업을 대신하지 않습니다. |
-| 분석·렌더 창을 닫았음 | `작업 이력·저장 공간`에서 다시 엽니다. 서버가 살아 있으면 창을 닫아도 작업이 계속될 수 있습니다. |
+| 분석·렌더 창을 닫았음 | `작업 이력·저장 공간`에서 다시 엽니다. 0.3.1은 하단 분석 상태로도 다시 엽니다. 서버가 살아 있어야 작업이 계속됩니다. |
 | 서버 연결이 끊김 | 재연결하거나 화면에서 나갈 수 있습니다. 서버 재시작은 진행 중 계산을 자동 재개하지 않습니다. |
 | 이전 분석을 현재 프로젝트에 적용할 수 없음 | 해당 프로젝트와 확인된 같은 원본인지 확인합니다. 다른 프로젝트의 결과는 자동으로 덮어쓰지 않습니다. |
-| 디스크 공간 부족 | 필요한 결과를 저장한 뒤 종료된 작업 이력을 삭제하고 참조가 풀린 미디어 캐시를 정리합니다. 녹음 보관함과 모델 캐시는 별도입니다. |
+| 디스크 공간 부족 | 0.3.1의 `정리 가능한 캐시 정리`에서 개수·크기를 확인합니다. 보호된 사본이 더 이상 필요 없다면 결과를 먼저 저장하고 종료 이력을 삭제한 뒤 다시 검토합니다. 녹음 보관함과 모델 캐시는 별도입니다. |
 | 모델·CUDA·VST 오류 | 화면의 준비 상태·오류를 확인하고 `설정 및 오류 로그`에서 로그를 저장합니다. 설치형 시작 오류는 앱 데이터의 `logs/backend.log`에도 기록합니다. |
 
 설정 JSON과 프로젝트 JSON은 용도가 다릅니다. 설정 백업에는 화면 언어·분석 선호·VST 체인이, 프로젝트에는 편집 내용이 들어갑니다. 로그는 자동 외부 전송하지 않습니다. 문제를 공유할 때는 내보낸 로그에 민감한 경로·내용이 남아 있는지 확인하고 필요한 부분만 전달하세요. [설정과 오류 로그](SETTINGS-AND-LOGS.md)에 위치·보관 범위가 있습니다.

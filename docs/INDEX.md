@@ -4,11 +4,16 @@ Start with the [0.3.0 release record](releases/v0.3.0.md) for publication, downl
 
 [0.3.0 릴리즈 기록](releases/v0.3.0.md)에서 게시·다운로드·검증 상태를 확인한 뒤 한·영 사용자 가이드와 온라인 설치 안내를 읽으세요. 0.3.0 프리뷰를 공개했고 로컬 설치·릴리즈 CI·익명 다운로드·업데이트 검색 검증은 해당 기록에 있습니다. 상세 계약·과거 조사는 한국어 중심입니다.
 
+**0.3.1 is in preparation.** The current user guide and feature table distinguish its source changes from the published 0.3.0 installer: continuous scrolling, theme/language controls, speaker-colored transcripts, preview layout and local Whisper AUTO behavior. No 0.3.1 publication or installation is asserted here.
+
+**0.3.1은 준비 중입니다.** 사용자 가이드·기능표는 연속 스크롤·테마/언어 조작·인물 색 발언록·미리보기 배치·로컬 Whisper AUTO 변경을 배포된 0.3.0과 구분합니다. 이 안내는 0.3.1 게시·설치 성공을 뜻하지 않습니다.
+
 ## Users / 사용자
 
 | Purpose / 목적 | Document / 문서 |
 | --- | --- |
 | 0.3.0 publication, verified installer and checksums / 0.3.0 게시 상태·설치 검증·체크섬 | [0.3.0 release record / 릴리즈 기록](releases/v0.3.0.md) |
+| 0.3.1 source changes and unreleased status / 0.3.1 소스 변경·미출시 상태 | [0.3.1 preparation record / 준비 기록](releases/v0.3.1.md) |
 | Small EXE, speed limit, retry/cache, manual fallback / 작은 EXE·속도 제한·재시도·캐시·수동 대안 | [Online installer / 온라인 설치](ONLINE-INSTALLER.md) |
 | Install, analyze, edit, export and recover / 설치·분석·편집·출력·복구 | [User guide / 사용자 가이드](USER-GUIDE.md) |
 | Features and boundaries / 기능과 한계 | [README](../README.md) |

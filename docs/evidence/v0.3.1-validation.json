@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "appVersion": "0.3.1",
+  "sourceCommit": "a139c3b4b552a66479a8d4c9b96e4ad12e32886c",
+  "tests": {
+    "backendPassed": 801,
+    "backendSkipped": 1,
+    "webPassed": 545,
+    "nodePassed": 70,
+    "onlineInstallerPassed": 15
+  },
+  "sourceCI": {
+    "runId": 36120824651,
+    "conclusion": "success"
+  },
+  "browserQa": {
+    "version": "0.3.1",
+    "environment": "isolated local web UI, synthetic project and injected synthetic analyzer",
+    "captions": {
+      "total": 2404,
+      "continuousScrollToEnd": true,
+      "maxObservedRows": 19,
+      "editedLastRowSurvivesScroll": true,
+      "searchAndClear": true,
+      "timelineRevealCaption2388": true,
+      "onlyTwoConfiguredSpeakerChoices": true
+    },
+    "transcript": {
+      "continuousScrollToEnd": true,
+      "maxObservedTurns": 20,
+      "speakerColors": true,
+      "editedLastCaptionIncluded": true
+    },
+    "theme": {
+      "lightAndDark": true,
+      "nativeSelectMatches": true,
+      "persistedAcrossReload": true
+    },
+    "responsive": {
+      "narrowViewport": [
+        518,
+        778
+      ],
+      "narrowScrollWidth": 518,
+      "wideViewport": [
+        1440,
+        940
+      ],
+      "videoAspectPreserved": true,
+      "emptyNotesHeightPx": 99.4
+    },
+    "backgroundJob": {
+      "dismissDialogKeepsFooter": true,
+      "reopenShowsLatestPreview": true,
+      "reloadRestoresWithoutMedia": true,
+      "completionPersists": true,
+      "applyBlockedWithoutOriginal": true
+    },
+    "cache": {
+      "unusedSyntheticCopyListed": true,
+      "finishedAnalysisSourceProtected": true,
+      "bulkConfirmationShowsReviewedCountAndBytes": true,
+      "uiDeletionExecuted": false,
+      "userCacheTouched": false
+    },
+    "limits": [
+      "Synthetic analyzer validates UI lifecycle only; no accuracy claim.",
+      "No physical live capture or user active job cancellation.",
+      "Native GPU calls use cooperative cancellation, not immediate forced termination."
+    ],
+    "queue": {
+      "priorActiveCancelled": true,
+      "selectedStartedBeforeOtherQueuedJob": true,
+      "actualUserJobsTouched": false,
+      "initialPosition": 2,
+      "afterPriority": 1
+    }
+  },
+  "desktopSmoke": {
+    "passed": true,
+    "restart": true,
+    "sandbox": true,
+    "unicodeUpload": true,
+    "origin": "voicesubsep://app"
+  },
+  "publication": {
+    "published": false
+  },
+  "localInstallation": {
+    "version": "0.3.0",
+    "newVersionInstalled": false,
+    "reason": "User chose to update manually after finishing current work."
+  },
+  "limits": [
+    "GPU inference accuracy was not re-evaluated on the user recording.",
+    "Primary-language AUTO reduces per-segment switching but does not guarantee no hallucinations.",
+    "Cancellation waits for the current native calculation to acknowledge it.",
+    "Windows executables are Authenticode-unsigned; update manifests are separately signed."
+  ],
+  "packagedBackend": {
+    "passed": true,
+    "runtimePassed": true,
+    "inferenceRun": false,
+    "offline": true,
+    "apiVersion": "0.3.1",
+    "shutdown": {
+      "requested": true,
+      "clean": true,
+      "forced": false,
+      "exitCode": 0,
+      "portClosed": true
+    }
+  },
+  "independentPackageAudit": {
+    "passed": true,
+    "exeFileVersion": "0.3.1",
+    "productVersion": "0.3.1.0",
+    "asarVersion": "0.3.1",
+    "asarSha256": "6520ecaff18a0ced26e584801660b091591b9c9f9ad86d679ecb437df84c6ea8",
+    "asarEntries": 4679,
+    "desktopFilesMatched": 13,
+    "webFilesMatched": 7,
+    "resourceFilesReviewed": 4399,
+    "backendSha256": "a309fedc73fb083a7bd2dbd89a44e1d8657fe0647b3a3fbcbe714b4e36c52865",
+    "frozenSourceModulesMatched": [
+      "voicesubsep.jobs",
+      "voicesubsep.media_cache",
+      "voicesubsep.app"
+    ],
+    "userDataPrivateKeysExcluded": true,
+    "asrDiarizationWeightsExcluded": true,
+    "bundledVadAsset": "silero_vad_v6.onnx"
+  },
+  "artifacts": {
+    "schemaVersion": 1,
+    "version": "0.3.1",
+    "installer": {
+      "name": "VOICESUBSEP-0.3.1-Offline-Setup-x64.exe",
+      "size": 1045696,
+      "sha256": "2c09da69e43e4162c36a7da52a83bad80f22b5867543bc6ff2bc9ddb3eccbced"
+    },
+    "payload": {
+      "name": "voicesubsep-0.3.1-x64.nsis.7z",
+      "size": 2419022088,
+      "sha256": "f2a5c0b6e9aa534857933a6cf9685b5075eda7e61f12bf8c3a668771abfd4b04",
+      "parts": [
+        {
+          "name": "voicesubsep-0.3.1-x64.nsis.7z.part001",
+          "size": 1073741824,
+          "sha256": "bcda5b7d3510f2855ae3fe766c5ea5590551fe5fa6a68e2f327660224f23548e"
+        },
+        {
+          "name": "voicesubsep-0.3.1-x64.nsis.7z.part002",
+          "size": 1073741824,
+          "sha256": "98d6bfed226ad7e22195d09da2ea310fade04eb2f9e69d761467adc3e44e5c66"
+        },
+        {
+          "name": "voicesubsep-0.3.1-x64.nsis.7z.part003",
+          "size": 271538440,
+          "sha256": "72a2bde577fa535e446d8a2cdb8c5cdd41a9f675268b7677e27823d4d4e47c40"
+        }
+      ]
+    }
+  },
+  "onlineInstaller": {
+    "name": "VOICESUBSEP-0.3.1-Online-Setup-x64.exe",
+    "size": 166912,
+    "sha256": "1fb3e2a376efdb888beb73c36150145d62927758a7550758db15fee610a36ddb"
+  }
+}
