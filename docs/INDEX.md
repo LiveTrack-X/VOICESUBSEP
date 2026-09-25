@@ -1,12 +1,12 @@
 # Documentation / 문서 안내
 
-Start with the [0.3.3 release record](releases/v0.3.3.md). The Windows preview is published and locally installed, with source/CI, package, public-file and profile-preservation checks recorded. Tests, frozen inference, public downloads and installed-profile checks are separate evidence. Detailed engineering/history documents remain primarily Korean.
+Start with the [0.3.4 release record](releases/v0.3.4.md). The Windows preview is published, with source/CI, package and anonymous-download checks recorded. Local installation and device/recognition quality are separate evidence.
 
-[0.3.3 릴리즈 기록](releases/v0.3.3.md)부터 확인하세요. Windows 프리뷰를 공개하고 로컬 설치했으며 소스·CI·패키지·공개 파일·프로필 보존 검증을 기록했습니다. 테스트·동결 추론·공개 다운로드·설치 프로필 검사를 구분하며 상세 기술·과거 문서는 한국어 중심입니다.
+[0.3.4 릴리즈 기록](releases/v0.3.4.md)부터 확인하세요. Windows 프리뷰를 공개하고 소스·CI·패키지·공개 다운로드 검증을 기록했습니다. 로컬 설치 및 장치·인식 품질은 별도로 구분합니다.
 
-**New in 0.3.3:** optional RNNoise, native VST editor/state saving, personal shortcuts, centered caption follow, clearer cut controls, timeline name editing, compact analysis results, speech-activity checks and document search/playback. See the release record for measured scope and remaining device/quality limits.
+**New in 0.3.4 / 새 기능:** panel/column/note resizing, automatic preview fit, original-media reconnection, timeline menus/clarity, progress controls, VST click fixes and connected-cache protection. / 패널·열·메모 크기 조절, 영상 자동 맞춤, 원본 재연결, 타임라인 메뉴·선명도, 진행창·VST 클릭 수정, 연결 캐시 보호.
 
-**0.3.3의 새 기능:** 선택형 RNNoise·VST 전용 창과 상태 저장·개인 단축키·현재 자막 중앙 따라가기·컷 조작·타임라인 이름 수정·분석 상세 접기·음성 활동 검사·문서 검색과 재생입니다. 측정 범위와 남은 장치·품질 한계는 릴리즈 기록을 확인하세요.
+**Historical 0.3.3 / 이전 0.3.3:** the [release and original installation evidence](releases/v0.3.3.md) remain unchanged. / [릴리즈·당시 설치 증거](releases/v0.3.3.md)는 보존합니다.
 
 **Historical 0.3.2 remains available.** Its [release record](releases/v0.3.2.md), artifacts and evidence are preserved. That version added isolated analysis stop/priority, original-file verification, capture preferences, guarded VST residual checks and experimental YTT. The earlier [0.3.1 record](releases/v0.3.1.md) remains available too.
 
@@ -16,6 +16,7 @@ Start with the [0.3.3 release record](releases/v0.3.3.md). The Windows preview i
 
 | Purpose / 목적 | Document / 문서 |
 | --- | --- |
+| 0.3.4 changes, package/public-file checks and installation status / 0.3.4 변경·패키지/공개 파일·설치 상태 | [0.3.4 release record / 릴리즈 기록](releases/v0.3.4.md) |
 | 0.3.3 changes, package/installation checks and publication status / 0.3.3 변경·패키지/설치 검증·게시 상태 | [0.3.3 release record / 릴리즈 기록](releases/v0.3.3.md) |
 | 0.3.1 publication, verified installer and checksums / 0.3.1 게시 상태·설치 검증·체크섬 | [0.3.1 release record / 릴리즈 기록](releases/v0.3.1.md) |
 | 0.3.2 publication, checksums and installation / 0.3.2 게시·체크섬·설치 | [0.3.2 release record / 릴리즈 기록](releases/v0.3.2.md) |

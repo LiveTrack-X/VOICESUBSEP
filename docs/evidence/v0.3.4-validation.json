@@ -1,6 +1,6 @@
 {
   "version": "0.3.4",
-  "verifiedAt": "2026-09-25T14:14:11.290526+00:00",
+  "verifiedAt": "2026-09-25T14:28:13.372694+00:00",
   "tests": {
     "vitest": 843,
     "node": 84,
@@ -330,12 +330,102 @@
     ]
   },
   "publication": {
-    "status": "pending"
+    "checkedAt": "2026-09-25T14:25:22.744Z",
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.3.4",
+    "publishedAt": "2026-09-25T14:25:04Z",
+    "targetCommit": "f6f0d514b4e8462ee9898e4725e92b4cd4b7476a",
+    "prerelease": true,
+    "assetCount": 10,
+    "allGitHubDigestsMatch": true,
+    "anonymousDownloadsVerified": [
+      "installer-manifest.json",
+      "installer-manifest.sig",
+      "SHA256SUMS.txt",
+      "VOICESUBSEP-0.3.4-Online-Setup-x64.exe"
+    ],
+    "signatureValid": true,
+    "updaterEvents": [
+      {
+        "version": "0.3.3",
+        "event": "available",
+        "offeredVersion": "0.3.4"
+      },
+      {
+        "version": "0.3.4",
+        "event": "not-available",
+        "offeredVersion": "0.3.4"
+      }
+    ],
+    "downloadedExecutablesExecuted": false,
+    "fullPayloadDownloaded": false
   },
   "installation": {
-    "status": "not applied",
+    "status": "installed and relaunched",
+    "installedVersion": "0.3.4.0",
     "previousInstalledVersion": "0.3.3",
-    "reason": "Preserve user working session until update timing is confirmed."
+    "userSavedWorkConfirmed": true,
+    "installerExitCode": 0,
+    "profileFilesChecked": 60,
+    "profileFilesChanged": 0,
+    "installedFileHashes": [
+      {
+        "path": "VOICESUBSEP.exe",
+        "identical": true,
+        "sha256": "4ee13162cbb110786345a0f885fed4a5895a05da9fe894392f1af0f4050bcdd2"
+      },
+      {
+        "path": "resources/app.asar",
+        "identical": true,
+        "sha256": "1966ed74434d762a4fc38804ce4679503faea6ca59b0a34c004b9fa47a08d0dc"
+      },
+      {
+        "path": "resources/backend/voicesubsep-server.exe",
+        "identical": true,
+        "sha256": "1b32e5894ad29b77584995cb4641a1e7497fdd74b2260c0335c4f760757e5126"
+      },
+      {
+        "path": "resources\\web\\app-icon.png",
+        "identical": true,
+        "sha256": "6aa6961a24246cdfeae1f68ff1bcbe70e009c4f5a9d57bb430713812be4ea467"
+      },
+      {
+        "path": "resources\\web\\favicon.ico",
+        "identical": true,
+        "sha256": "61cb2e537574b2c00e56ee485be76ea863bd27f15b5bfe287bf27f56ba45249e"
+      },
+      {
+        "path": "resources\\web\\favicon.png",
+        "identical": true,
+        "sha256": "117fd95181b2d7730c284fb0de68374553a18426f465d164a92c48e18b119ca0"
+      },
+      {
+        "path": "resources\\web\\index.html",
+        "identical": true,
+        "sha256": "0667c5be9fda038d1e4445e7c65dbaf9654c69ec3dfad45abffec560e92a3325"
+      },
+      {
+        "path": "resources\\web\\assets\\index-CgEWxqud.js",
+        "identical": true,
+        "sha256": "b9f7477b44cfa598d33a6d3992a2c80483334f685a410326276ba8ed3d6ee483"
+      },
+      {
+        "path": "resources\\web\\assets\\index-DtCbnuHj.css",
+        "identical": true,
+        "sha256": "a49be39fc32c41e7da815af373136047bb7a357cdf5ac902085de98399003844"
+      },
+      {
+        "path": "resources\\web\\assets\\live-pcm-worklet-BsliAC3S.js",
+        "identical": true,
+        "sha256": "08462ccea4d998902f59ba977af4fca9df237d0430fa9994bb0def75566eb192"
+      }
+    ],
+    "runtimePassed": true,
+    "offlineRuntimeCheck": true,
+    "cleanRuntimeShutdown": true,
+    "apiVersion": "0.3.4",
+    "responsive": true,
+    "title": "VOICESUBSEP",
+    "inferenceRun": false
   },
   "vstClick": {
     "checkedAt": "2026-09-25T13:55:43.992939+00:00",
@@ -385,5 +475,11 @@
     "updatedAt": "2026-09-25T14:07:51Z",
     "url": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/36145258833",
     "workflowName": "Checks"
+  },
+  "tagCI": {
+    "conclusion": "success",
+    "headSha": "f6f0d514b4e8462ee9898e4725e92b4cd4b7476a",
+    "status": "completed",
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/36146198381"
   }
 }

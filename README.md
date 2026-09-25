@@ -4,17 +4,19 @@
 
 **로컬 처리가 기본인 인물별 자막·편집 메모·인터뷰·수동 회의록 편집기입니다.** 로컬 Whisper가 내용을 전사하고 로컬 NVIDIA Nemotron이 화자 활동을 분석합니다. Groq·xAI·Gemini 음성 인식과 Deepgram 화자 구분은 고급 설정에서 직접 선택할 때만 사용합니다. 원본을 들으며 자막과 인물 배정을 검수합니다.
 
-[0.3.3 release record / 릴리즈 기록](docs/releases/v0.3.3.md) · [User guide / 사용자 가이드](docs/USER-GUIDE.md) · [Documentation / 문서 목차](docs/INDEX.md)
+[0.3.4 release record / 릴리즈 기록](docs/releases/v0.3.4.md) · [User guide / 사용자 가이드](docs/USER-GUIDE.md) · [Documentation / 문서 목차](docs/INDEX.md)
 
-**0.3.4 in validation / 검증 중:** resizable editor panels and columns, clearer notes, verified original-file reconnection and timeline/VST/progress-dialog fixes. [Current status / 현재 상태](docs/releases/v0.3.4.md). The [speaker-assignment strategy / 미배정 개선 전략](docs/SPEAKER-ASSIGNMENT-STRATEGY.md) is a proposal, not an implemented recognition change. / 패널·열 크기 조절, 메모 개선, 원본 자동 연결과 타임라인·VST·진행 창 수정을 검증 중입니다. 미배정 전략은 제안이며 인식 알고리즘 변경은 아직 적용하지 않았습니다.
+**v0.3.4 Windows preview is published.** Download the [small online setup EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.4/VOICESUBSEP-0.3.4-Online-Setup-x64.exe). Source/CI, final-package checks and anonymous public downloads passed. Local installation is tracked separately in the [release record](docs/releases/v0.3.4.md).
 
-**v0.3.3 Windows preview is published and locally installed.** Download the [small online setup EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.3/VOICESUBSEP-0.3.3-Online-Setup-x64.exe). The [release record](docs/releases/v0.3.3.md) separates source/package checks, public-file verification and profile-preserving installation.
+**v0.3.4 Windows 프리뷰를 공개했습니다.** [작은 온라인 설치 EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.4/VOICESUBSEP-0.3.4-Online-Setup-x64.exe)로 시작하세요. 소스·CI·최종 패키지와 공개 다운로드를 검증했습니다. 로컬 설치 여부는 [릴리즈 기록](docs/releases/v0.3.4.md)에서 별도로 확인합니다.
 
-**v0.3.3 Windows 프리뷰를 공개하고 로컬 설치했습니다.** [작은 온라인 설치 EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.3/VOICESUBSEP-0.3.3-Online-Setup-x64.exe)로 시작하세요. [릴리즈 기록](docs/releases/v0.3.3.md)에서 소스·패키지 검사, 공개 파일 검증과 프로필을 보존한 설치를 구분합니다.
+**New in 0.3.4:** resize project/preview panels, caption columns and notes; automatic video fit; verified original-media reconnection and clearer connection status; timeline item menus and sharp high-zoom drawing; stable progress controls; VST stale-preview lock fixes; protection for connected media during cache cleanup.
 
-**New in 0.3.3:** optional built-in RNNoise, native VST editor/state saving, a customizable F1 shortcut hub, centered caption follow, clearer cut controls, timeline name editing, compact analysis results and document search/playback. Local Whisper also checks speech activity to suppress strong silence cases and flag uncertain spans for review. These checks do not guarantee recognition accuracy.
+**0.3.4의 새 기능:** 프로젝트·미리보기 패널, 자막 열과 메모 크기 조절, 영상 자동 맞춤, 검증된 원본 자동 연결·연결 상태 표시, 타임라인 항목 메뉴·확대 선명도, 진행창 중복 방지, VST 비교 잠금 수정, 연결 중인 미디어의 캐시 정리 보호입니다.
 
-**0.3.3의 새 기능:** 선택형 내장 RNNoise, VST 전용 창·내부 상태 저장, F1 개인 단축키 허브, 현재 자막 중앙 따라가기, 컷 조작·타임라인 이름 편집, 간결한 분석 결과와 문서 검색·재생입니다. 로컬 Whisper는 음성 활동도 대조해 엄격한 무음 조건의 결과만 제외하고 불확실한 구간은 검수 표시로 보존합니다. 인식 정확도를 보장하는 검사는 아닙니다.
+The [speaker-assignment strategy / 미배정 개선 전략](docs/SPEAKER-ASSIGNMENT-STRATEGY.md) is a proposal, not an implemented recognition change. / 미배정 전략은 제안이며 인식 알고리즘 변경은 아직 적용하지 않았습니다.
+
+**Earlier 0.3.3 / 이전 0.3.3:** optional RNNoise, native VST editor/state saving, F1 personal shortcuts, centered caption follow, cut controls, timeline name editing, compact analysis results, speech-activity checks and document search/playback. See its preserved [release record / 릴리즈 기록](docs/releases/v0.3.3.md).
 
 **Earlier 0.3.2:** isolated analysis stop/priority, original-file identity checks, renewed review after edits, remembered capture inputs, guarded VST residual-delay correction, experimental YTT and removal of the fixed source-upload cap. Its [release and evidence](docs/releases/v0.3.2.md) remain unchanged. / **이전 0.3.2:** 분석 격리 중단·우선순위, 원본 식별, 수정 후 재검수, 녹음 입력 기억, 조건부 VST 잔여 지연 보정, 실험적 YTT·원본 업로드 고정 상한 제거를 포함하며 [당시 기록](docs/releases/v0.3.2.md)은 보존합니다.
 
@@ -24,9 +26,9 @@ Read [dependency notices and distribution obligations / 의존성 고지·재배
 
 ## Install / 설치
 
-Download [VOICESUBSEP-0.3.3-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.3/VOICESUBSEP-0.3.3-Online-Setup-x64.exe) (166,912 bytes). The small EXE downloads the 2.42 GB runtime without GitHub login, verifies SHA256, assembles the payload, and opens the installation wizard. Whisper/Nemotron weights are separate; Silero VAD ONNX and the small RNNoise model are included. The source-code ZIP is not an installer.
+Download [VOICESUBSEP-0.3.4-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.4/VOICESUBSEP-0.3.4-Online-Setup-x64.exe) (166,912 bytes). The small EXE downloads the 2.39 GB runtime without GitHub login, verifies SHA256, assembles the payload, and opens the installation wizard. Whisper/Nemotron weights are separate; Silero VAD ONNX and the small RNNoise model are included. The source-code ZIP is not an installer.
 
-공개 설치 파일과 검증 내역은 [0.3.3 기록](docs/releases/v0.3.3.md)을 확인하세요. 작은 온라인 EXE가 로그인 없이 설치 파일을 받아 검증·재조립합니다. Whisper/Nemotron 가중치는 별도이며 Silero VAD ONNX·소형 RNNoise 모델은 실행환경에 포함합니다. 소스 ZIP은 설치기가 아닙니다.
+공개 설치 파일과 검증 내역은 [0.3.4 기록](docs/releases/v0.3.4.md)을 확인하세요. 작은 온라인 EXE가 로그인 없이 설치 파일을 받아 검증·재조립합니다. Whisper/Nemotron 가중치는 별도이며 Silero VAD ONNX·소형 RNNoise 모델은 실행환경에 포함합니다. 소스 ZIP은 설치기가 아닙니다.
 
 | Requirement / 항목 | Details / 내용 |
 | --- | --- |

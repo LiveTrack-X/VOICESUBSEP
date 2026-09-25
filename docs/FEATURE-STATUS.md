@@ -1,18 +1,12 @@
 # Feature status / 요청 기능 현황
 
-Scope of the **published and locally installed 0.3.3 Windows preview**, reviewed on 2026-09-25. Source, CI, final package, public-file and profile-preserving upgrade checks passed. See the [0.3.3 release record](releases/v0.3.3.md) for each verification stage. Implemented means code and a usable path exist, not a guarantee of device quality or semantic accuracy.
+Scope of the **published 0.3.4 Windows preview**, reviewed on 2026-09-25. Source/CI, package and public-file checks passed. Local installation is tracked independently in the [release record](releases/v0.3.4.md). Implemented means a usable code path, not a guarantee of device or recognition quality.
 
-2026-09-25 기준 **공개·로컬 설치된 0.3.3 Windows 프리뷰**의 범위입니다. 소스·CI·최종 패키지·공개 파일·프로필 보존 업데이트 검증을 통과했습니다. 단계별 증거는 [0.3.3 릴리즈 기록](releases/v0.3.3.md)을 확인하세요. 구현은 사용 경로가 있다는 뜻이며 장치 품질·인식 정확도 보증이 아닙니다.
+2026-09-25 기준 **공개된 0.3.4 Windows 프리뷰** 범위입니다. 소스·CI·패키지·공개 파일 검증을 통과했으며 로컬 설치는 [릴리즈 기록](releases/v0.3.4.md)에서 별도로 확인합니다. 구현은 사용 경로가 있다는 뜻이며 장치·인식 품질 보증이 아닙니다.
 
-**Version labels distinguish new changes from existing features.** The current download is [0.3.3](releases/v0.3.3.md); [0.3.2](releases/v0.3.2.md) remains available as a historical release. The 0.3.2 release/evidence files and [0.3.1 record](releases/v0.3.1.md) remain unchanged.
+Version labels preserve historical changes: [0.3.3](releases/v0.3.3.md), [0.3.2](releases/v0.3.2.md), [0.3.1](releases/v0.3.1.md). / 버전 표시는 각 시점의 변경을 구분하며 과거 기록을 보존합니다.
 
-**버전 표시는 새 변경과 기존 기능을 구분합니다.** 현재 다운로드는 [0.3.3](releases/v0.3.3.md)이며 [0.3.2](releases/v0.3.2.md)는 이전 릴리즈로 유지합니다. 기존 0.3.2 릴리즈·증거 파일과 [0.3.1 기록](releases/v0.3.1.md)은 변경하지 않습니다.
-
-## 0.3.4 preparation / 0.3.4 준비 중
-
-**Source frozen and final source regression passed; packaging and release verification in progress. Not yet published or installed.** Current public/installed release remains 0.3.3. The rows below describe 0.3.4 changes and supersede older layout descriptions only after upgrading. See the [0.3.4 preparation record](releases/v0.3.4.md) and [validation record](evidence/v0.3.4-validation.json) for evidence and limits.
-
-**소스 동결·최종 소스 회귀 통과, 패키징·배포 검증 진행 중이며 아직 미게시·미설치입니다.** 현재 공개·설치 버전은 0.3.3입니다. 아래는 0.3.4 변경이며 업데이트한 뒤에만 이전 배치 설명을 대체합니다. 검증 범위·한계는 [0.3.4 준비 기록](releases/v0.3.4.md)을 확인하세요.
+## 0.3.4 changes / 0.3.4 변경
 
 | Change / 변경 | Source status / 소스 상태 | Actual scope / 실제 범위 |
 | --- | --- | --- |
@@ -30,9 +24,9 @@ Scope of the **published and locally installed 0.3.3 Windows preview**, reviewed
 | Creator links / 제작자 링크 | Implemented / 구현 | Header logo and Created by LiveTrack footer link to the creator GitHub profile / 상단 로고·하단 제작자 표기에서 GitHub 프로필 연결 |
 | New speaker-assignment strategy / 새 화자 배정 전략 | **Proposal only / 제안만** | [Reason evidence, boundary candidates and voice references](SPEAKER-ASSIGNMENT-STRATEGY.md) are not implemented; no accuracy or unassigned-rate improvement claimed / 미배정 원인 근거·경계 후보·확인 음성 전략 미구현, 정확도·미배정률 개선 주장 없음 |
 
-Verification / 검증: **843 frontend + 84 Node tests**, **1,023 backend passed / 1 skipped**, production web build, 42-module frozen-source match and offline runtime/shutdown checks. The skipped Windows diagnostics test requires symlink permission. No fresh inference, final package/public download or 0.3.4 installation success is implied by these checks.
+Verification / 검증: **843 frontend + 84 Node tests**, **1,023 backend passed / 1 skipped**, web build, 42-module frozen-source match, offline runtime/shutdown, final-package integrity, source/tag CI and anonymous public-file checks passed. Local 0.3.4 installation and relaunch passed with 60 checked profile files unchanged. No fresh inference was run. [Structured evidence / 검증 기록](evidence/v0.3.4-validation.json).
 
-프런트 **843개 + Node 84개**, 백엔드 **1,023개 통과·1개 건너뜀**, 웹 빌드·동결 모듈 42개 소스 일치·오프라인 실행환경/종료 확인입니다. 건너뛴 Windows 진단 검사는 심볼릭 링크 권한이 필요합니다. 새 추론·최종 패키지/공개 다운로드·0.3.4 설치 완료를 의미하지 않습니다.
+프런트 **843개 + Node 84개**, 백엔드 **1,023개 통과·1개 건너뜀**, 웹 빌드·동결 소스·실행환경·최종 패키지·CI·공개 파일 검증을 통과했습니다. 로컬 0.3.4 설치·재실행을 확인했고 확인한 사용자 저장 파일 60개는 변경되지 않았습니다. 새 추론은 실행하지 않았습니다.
 
 ## Editing / 자막 편집
 
