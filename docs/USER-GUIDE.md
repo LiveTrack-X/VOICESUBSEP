@@ -1,8 +1,8 @@
 # VOICESUBSEP User Guide / 사용자 가이드
 
-This guide covers the **published 0.3.1 Windows preview**. Download, local installation and verification scope are recorded in the [0.3.1 release record](releases/v0.3.1.md); see [feature status](FEATURE-STATUS.md) for limits. The [0.3.0 record](releases/v0.3.0.md) remains historical evidence for that version.
+The available Windows download is **0.3.1**. Sections explicitly marked **0.3.2** describe source changes under validation: they are **not published or installed yet**. Existing download and installation evidence remain in the [0.3.1 release record](releases/v0.3.1.md); new evidence is in the [0.3.2 preparation record](releases/v0.3.2.md). See [feature status](FEATURE-STATUS.md) for limits.
 
-Windows 10/11 x64의 **공개된 0.3.1 프리뷰 사용법**입니다. 다운로드·로컬 설치·검증 범위는 [0.3.1 릴리즈 기록](releases/v0.3.1.md), 한계는 [기능 현황](FEATURE-STATUS.md)을 확인하세요. [0.3.0 기록](releases/v0.3.0.md)은 해당 버전의 역사적 증거로 보존합니다.
+Windows 10/11 x64의 공개 다운로드는 **0.3.1**입니다. **0.3.2**로 표시한 내용은 검증 중인 소스 변경이며 **아직 게시·설치하지 않았습니다**. 기존 다운로드·설치 증거는 [0.3.1 릴리즈 기록](releases/v0.3.1.md), 새 검증은 [0.3.2 준비 기록](releases/v0.3.2.md), 한계는 [기능 현황](FEATURE-STATUS.md)을 확인하세요.
 
 Whisper transcribes **what was said**; Nemotron identifies **who spoke when**. Review both against the source. Diarization does not separate mixed voices into audio stems or reconstruct inaudible speech.
 
@@ -46,17 +46,21 @@ Use the three **Workspace** buttons below the header: **Subtitles & video** for 
 
 상단의 작업 모드에서 **자막·영상 편집 / 인터뷰·회의록 / 실시간 자막·녹음**을 선택합니다. 편집은 타임라인, 인터뷰·회의록은 문서 창, 실시간 자막·녹음은 라이브·녹음 및 복구 창을 엽니다. 같은 프로젝트를 사용하므로 전환만으로 자막·메모·인물을 초기화하지 않으며, 문서·녹음 창을 닫으면 편집으로 돌아갑니다. 다른 자료를 새 프로젝트로 시작하려면 별도의 `새로` 또는 녹음 결과의 `새 프로젝트로 분석`을 사용하세요.
 
-Open video or MP3/M4A/WAV/FLAC audio; preview support depends on the codec even when analysis is possible. The default upload limit is 8 GiB. Start unrelated work with **New project**, which resets speakers and edits. Merely replacing the media can keep captions and notes.
+Open video or MP3/M4A/WAV/FLAC audio; preview support depends on the codec even when analysis is possible. **0.3.2 removes the fixed source-upload size limit** and ignores `VOICESUBSEP_MAX_UPLOAD_BYTES`. Large sources still need room for the multipart temporary file, cached copy, extracted audio and outputs. Memory stays bounded during copy/hash; disk capacity, filesystem limits and media validity still apply. Separate project JSON, live recording and provider limits are unchanged. Start unrelated work with **New project**, which resets speakers and edits.
 
-Save project JSON and the original media separately: JSON contains edits, styles, cuts and documents, and preserves legacy translation data, **not media**. Reopen JSON, then reconnect the same source. Project relinking checks name and duration, not a portable full-file fingerprint; confirm it is the correct recording. Selecting a differently named source resets cuts after confirmation while caption/note times remain.
+Save project JSON and the original media separately: JSON contains edits, styles, cuts and documents, and preserves legacy translation data, **not media**. Reopen JSON, then reconnect the same source. **0.3.2:** source identity uses SHA256 and byte count from the streamed upload. Identical content under a new name keeps edits and cuts; different content requires explicit confirmation to start a new project. Cancelling keeps the current work. An old project without identity requires confirmation of the first linked source before its hash is saved: the app cannot prove that legacy choice from its name or duration. Source verification can be cancelled; a late upload must not bind itself to a different project. 0.3.1 did not have this fingerprint protection.
 
-영상 또는 MP3·M4A·WAV·FLAC 등 음성 파일을 열 수 있습니다. 컨테이너의 실제 코덱에 따라 브라우저 미리보기 지원이 다를 수 있으므로, 분석 가능과 미리보기 가능을 동일하게 보지는 않습니다. 업로드 한 파일의 기본 제한은 8GiB입니다.
+영상 또는 MP3·M4A·WAV·FLAC 등 음성 파일을 열 수 있습니다. 컨테이너 코덱에 따라 미리보기 지원은 분석 지원과 다를 수 있습니다. **0.3.2는 원본 업로드의 고정 용량 제한을 제거**하고 `VOICESUBSEP_MAX_UPLOAD_BYTES`도 적용하지 않습니다. 큰 원본은 multipart 임시 파일·캐시 사본·추출 오디오·출력 파일을 위한 공간이 필요합니다. 복사·해시는 제한된 메모리로 처리하지만 실제 디스크·파일시스템·미디어 유효성 제약은 남습니다. 프로젝트 JSON·라이브 녹음·공급자별 한도는 별개로 유지합니다.
 
-새 작업은 `새 프로젝트`로 시작합니다. 새 프로젝트는 인물 이름·색·스타일과 편집 내용을 초기화합니다. 다른 미디어만 연결하는 동작은 새 프로젝트 생성이 아니며 기존 자막·메모가 남을 수 있습니다.
+새 작업은 `새 프로젝트`로 시작합니다. 새 프로젝트는 인물 이름·색·스타일과 편집 내용을 초기화합니다.
 
 `프로젝트 저장`으로 JSON 파일을 보관합니다. 자막·인물·스타일·노트·컷·인터뷰/회의록 정보와 이전 프로젝트의 번역 데이터가 보존되며 **원본 미디어는 들어가지 않습니다**. 프로젝트 JSON과 원본 파일을 함께 보관하세요.
 
-다시 열 때는 프로젝트 JSON을 연 뒤 같은 원본을 연결합니다. 현재 프로젝트의 원본 재연결은 파일명·길이를 확인하며, 휴대 가능한 파일 해시로 완전한 동일성을 보증하지 않습니다. 파일명과 길이가 같아도 다른 영상이면 잘못 연결할 수 있으므로 원본을 직접 확인하세요. 다른 이름의 미디어를 연결하면 확인 후 컷을 초기화하며 자막·메모 시간은 유지하므로 새 자료에는 새 프로젝트를 사용하는 편이 분명합니다.
+다시 열 때는 프로젝트 JSON을 연 뒤 같은 원본을 연결합니다. **0.3.2:** 업로드를 스트리밍하며 계산한 SHA256·바이트 수로 원본을 식별합니다. 이름이 바뀌어도 내용이 같으면 편집·컷을 유지하고, 내용이 다르면 새 프로젝트를 시작할지 직접 확인합니다. 취소하면 기존 작업을 유지합니다. 식별 정보 없는 옛 프로젝트는 첫 원본을 사용자가 확인한 뒤 해시를 저장하며 파일명·길이만으로 그 선택의 진위를 보증하지 않습니다. 확인 중 `연결 취소`나 프로젝트 전환은 늦게 끝난 업로드가 현재 프로젝트에 연결되는 것을 막습니다. 0.3.1에는 이 해시 보호가 없습니다.
+
+**0.3.2 export check:** a bound single-source render rechecks the actual cached file's SHA256 and byte count just before rendering. Changed files and missing/corrupt export snapshots fail before the renderer runs. The check reads bounded blocks, accepts cancellation and never changes the original. Legacy API snapshots genuinely lacking identity keep compatibility; mixer inputs retain their separate per-track identity contract.
+
+**0.3.2 내보내기 검사:** 원본이 등록된 단일 파일 렌더는 시작 직전에 실제 캐시 파일의 SHA256·바이트 수를 다시 검사합니다. 다른 파일이나 소실·손상된 작업 스냅샷은 렌더를 실행하지 않고 오류로 처리합니다. 검사는 작은 블록 단위로 읽고 취소할 수 있으며 원본을 수정하지 않습니다. 식별 정보가 원래 없는 기존 API 스냅샷은 호환을 유지하고 믹서는 별도의 트랙별 식별 계약을 사용합니다.
 
 ## 3. 인물별 자막 분석
 
@@ -99,9 +103,25 @@ Stopping is cooperative: native GPU inference **cannot be force-killed instantly
 
 중단은 실행 중 계산이 취소 요청을 확인하는 방식입니다. 이 버튼으로 네이티브 GPU 추론을 **즉시 강제 종료하지 않습니다**. 현재 계산이 반환해 취소를 확인할 때까지 중단 처리 중으로 표시하고 다음 작업도 기다립니다. 중단된 미완료 초안은 최종 결과가 아닙니다. 다만 분석기가 이미 완성된 결과를 반환했다면 늦은 중단 요청에도 완료 결과로 남을 수 있습니다. 원본·기존 적용 자막·완료 이력은 보존하며 서버 재시작으로 대기·중단 분석을 자동 재개하지 않습니다.
 
+### 0.3.2: Force-stop an isolated analysis / 격리된 분석 강제 종료
+
+When the running analysis supports isolation, **Force-stop analysis** terminates its dedicated process tree after confirmation. For a waiting job, **Force-stop current job, then prioritize this job** shows the current job's name and makes the selected job next. A changed current job invalidates the confirmation; it never silently targets the replacement. Ordinary **Stop** remains cooperative.
+
+격리 실행 중인 분석에 **분석 강제 종료**가 표시되면 확인 후 그 분석 전용 프로세스 트리를 종료합니다. 대기 작업의 **현재 작업 강제 종료 후 우선 실행**은 현재 작업 이름을 확인하고 선택한 작업을 다음으로 옮깁니다. 확인 사이 현재 작업이 바뀌면 거부하며 새 작업을 임의로 종료하지 않습니다. 기존 **중단**은 계산 반환을 기다리는 방식입니다.
+
+The UI stays in stopping state until owned-process exit is confirmed; only then can the next analysis begin. The app/backend and unrelated processes remain running. Unfinished recognition is not a final result; originals, applied captions and other completed results remain. If cleanup cannot be confirmed, the queue pauses with an error. This is not a guaranteed immediate GPU deadline. Windows process-tree cleanup has synthetic runtime coverage; equivalent POSIX behavior and real driver hangs are not established. Each isolated job may reload its models, adding preparation time. Force-stopping cannot recall audio already sent to a cloud provider or reverse charges.
+
+소유 프로세스 종료를 확인할 때까지 중단 처리 중으로 표시하고, 확인된 뒤에만 다음 분석을 시작합니다. 앱·백엔드·관계없는 프로세스는 유지합니다. 미완료 인식은 최종 결과가 아니지만 원본·기존 적용 자막·다른 완료 결과는 남습니다. 정리 완료를 확인하지 못하면 오류와 함께 대기열을 멈춥니다. GPU 즉시 종료 시간을 보장하지 않습니다. Windows 프로세스 트리는 합성 실행으로 검증했으며 POSIX의 동등한 동작·실제 드라이버 멈춤은 미검증입니다. 작업별 격리로 모델을 다시 불러와 준비 시간이 재발생할 수 있습니다. 이미 클라우드로 전송한 음성·발생한 과금은 되돌리지 못합니다.
+
 ## 4. 자막·인물·타임라인 편집
 
 *Edit captions, speakers and the timeline*
+
+**0.3.2 review consistency:** text/speaker changes mark a caption **Manual edit** and clear reviewed status; start/end changes mark timing review. No-op and style-only changes preserve review. Recheck edited cues before marking them complete. Transcript timestamp links carry the exact caption ID, so two people starting at the same time select the intended cue.
+
+**0.3.2 검수 상태:** 내용·화자 변경은 **수동 수정**, 시작·끝 시각 변경은 시간 검수 사유를 남기고 검수 완료를 해제합니다. 실제 변경 없음·스타일만 변경은 검수 상태를 유지합니다. 수정한 대사를 다시 확인한 뒤 완료하세요. 발언록 시간 링크는 자막 ID도 전달하므로 두 사람이 같은 시각에 시작해도 선택한 자막으로 이동합니다.
+
+New projects containing the `edited` review reason require a reader that understands it; 0.3.1 can reject them. Keep a separate pre-upgrade JSON if you need to return to 0.3.1. Old projects remain readable in 0.3.2. / 새 `edited` 검수 사유가 든 프로젝트는 이를 이해하는 버전이 필요하며 0.3.1에서는 열리지 않을 수 있습니다. 이전 버전으로 돌아갈 필요가 있으면 업그레이드 전 JSON을 따로 보관하세요. 기존 프로젝트는 0.3.2에서 읽을 수 있습니다.
 
 Click a timeline caption to seek and reveal its row. Edit text, timing, speaker, name/color/style and review status; add time-linked notes. Collapse/resize the timeline or use compact/focus mode. **0.3.1 replaces 100-row pages with continuous scrolling** in captions and the original transcript. Only the nearby portion is drawn for long lists; the rest is available by scrolling and all content remains in the project/export. Bulk speaker/review/delete and literal find/replace remain available. **Select all filtered results** includes matches outside the visible area. Load a summarized waveform and drag caption boundaries.
 
@@ -142,6 +162,12 @@ In the mixer, use **Listen to this track**, **Solo**, or **Preview mix** before 
 
 믹서에서 **이 트랙 듣기·솔로·믹스 미리듣기**로 출력 전에 확인합니다. 현재 재생 위치부터 최대 10초 동안 선택한 실제 스트림을 추출하고 시작 시간을 바꿔 다른 구간도 들을 수 있습니다. 리미터 전·재생 피크는 **이 구간의 샘플 피크**이며 전체 파일·true-peak 검사가 아닙니다. 솔로·트랙 듣기는 저장할 음소거 설정을 바꾸지 않습니다. [믹서 사용법](AUDIO-MIXER.md)을 참고하세요.
 
+### 0.3.2: YouTube styled CC / YouTube 스타일 자막
+
+Open **Export subtitles and notes → YouTube styled CC**, choose original or cut-edited video time, then **Save YouTube CC (.ytt)**. The source exporter includes speaker-name color and subtitle size/color/position/background. Edited-time output stops when a cut crosses a cue without reliable word timing. It does not upload automatically. YouTube upload/player rendering is unverified; karaoke/animation is outside this first scope. See the [YTT guide and format limits](YOUTUBE-CAPTIONS.md).
+
+**자막과 노트 내보내기 → 유튜브 스타일 CC**에서 원본 또는 컷 적용 시간을 고르고 **YouTube CC (.ytt) 저장**을 누릅니다. 소스 출력기는 인물 이름 색·자막 크기/색/위치/배경을 담습니다. 컷 경계를 가로지르는 자막에 신뢰할 단어 시간이 없으면 편집본 출력을 막습니다. 자동 업로드하지 않으며 YouTube 업로드·플레이어 표시는 미검증입니다. 노래방·애니메이션은 첫 범위에서 제외합니다. [YTT 안내와 형식 한계](YOUTUBE-CAPTIONS.md)를 확인하세요.
+
 ## 6. 화면 언어와 음성 언어
 
 *Interface and speech languages*
@@ -179,13 +205,13 @@ For external AI assistance, export a speaker transcript and provide it to the LL
 | Output / 출력 | Contents / 내용 |
 | --- | --- |
 | HTML report / HTML 보고서 | Standalone offline report with names, source times, Q/A or minutes and evidence / 이름·원본 시간·문답 또는 회의 항목·근거를 담은 독립 보고서 |
-| PDF through print / 인쇄를 통한 PDF | Open report preview, then choose Save as PDF in the print dialog; the browser/app must support printing / 보고서 미리보기에서 인쇄를 열고 PDF 저장 선택, 브라우저·앱의 인쇄 기능 필요 |
+| PDF / PDF | Desktop: choose a destination in the native save dialog to generate a PDF. Browser: open report preview and choose Save as PDF through printing / 설치형은 저장 창에서 위치를 고르면 PDF 생성, 브라우저는 보고서 미리보기의 인쇄/PDF 저장 |
 | Excel `.xlsx` / Excel 통합문서 | Interview: report + transcript; minutes: report + transcript + actions + evidence / 인터뷰는 보고서·전체 대사, 회의록은 보고서·전체 대사·할 일·근거 시트 |
 | Markdown / Markdown 문서 | Editable plain-text document / 수정 가능한 텍스트 문서 |
 
-Reports show pending review and stale evidence. Export timestamps are not the meeting date. Original media times are retained; cuts do not rewrite report evidence times. Save project JSON as well to continue editing. PDF printing does not automatically save a file, and an embedded browser without printing can still download HTML/XLSX.
+Reports show pending review and stale evidence. Export timestamps are not the meeting date. Original media times are retained; cuts do not rewrite report evidence times. Save project JSON as well to continue editing. Desktop PDF requires an explicit save destination; browser printing requires choosing PDF and saving in the print dialog. An embedded browser without printing can still download HTML/XLSX.
 
-보고서에는 검수 대기·변경된 근거 상태를 표시합니다. 내보낸 시각을 회의 일시로 표시하지 않으며, 원본 미디어 시간은 컷편집 뒤에도 유지합니다. 편집을 계속하려면 프로젝트 JSON도 보관하세요. PDF는 자동 파일 저장이 아니며, 인쇄를 지원하지 않는 내장 브라우저에서는 HTML·XLSX를 내려받을 수 있습니다.
+보고서에는 검수 대기·변경된 근거 상태를 표시합니다. 내보낸 시각을 회의 일시로 표시하지 않으며, 원본 미디어 시간은 컷편집 뒤에도 유지합니다. 편집을 계속하려면 프로젝트 JSON도 보관하세요. 설치형 PDF는 저장 위치를 직접 선택하고 브라우저에서는 인쇄 창의 PDF 저장을 선택합니다. 인쇄를 지원하지 않는 내장 브라우저에서도 HTML·XLSX는 내려받을 수 있습니다.
 
 ## 8. 라이브 자막·마이크·시스템 소리 녹음
 
@@ -194,6 +220,10 @@ Reports show pending review and stale evidence. Export timestamps are not the me
 Open **Live captions and recording** and choose **Record, then analyze** or **Live captions + recording**. Both modes capture microphone, system audio, or both in the browser/Electron. Use **Microphone permission / refresh devices** to reveal device names; this temporary permission check releases the microphone without creating a recording. A fixed missing input is never silently replaced by the OS default. System sharing depends on the browser/OS and can include calls, games and notifications; only audio is stored. Individual WASAPI playback endpoints and ASIO channel routing are not supported.
 
 상단 **실시간 자막·녹음**에서 **녹음 후 분석** 또는 **라이브 자막 + 녹음**을 고릅니다. 브라우저·Electron 모두 마이크·시스템 소리·둘 다를 선택합니다. **마이크 권한 확인·장치 새로고침**은 이름을 확인한 뒤 임시 마이크 접근을 해제하며 파일 녹음을 시작하지 않습니다. 고정 입력이 사라지면 직접 다시 선택해야 합니다. 시스템 공유는 브라우저·OS에 따라 달라지고 통화·게임·알림까지 담길 수 있으며 영상은 저장하지 않습니다. 개별 WASAPI 출력 장치·ASIO 채널 라우팅은 지원하지 않습니다.
+
+**0.3.2 input preferences:** microphone/system/both and the chosen microphone are remembered in this app/browser profile. Reopening does not start recording or preapprove permissions. A fixed input that is absent or not yet visible after permissions must be checked or selected again; it is never silently replaced by the default. Storage and device IDs can differ between profiles.
+
+**0.3.2 입력 기억:** 마이크·시스템·둘 다와 선택 마이크를 현재 앱·브라우저 프로필에 기억합니다. 창 재열기는 녹음·권한 승인을 자동 실행하지 않습니다. 저장한 고정 입력이 없거나 권한 전이라 확인되지 않으면 확인·재선택해야 하며 기본 장치로 임의 대체하지 않습니다. 프로필마다 저장 공간·장치 식별자는 다를 수 있습니다.
 
 **Live workflow / 라이브 순서**
 
@@ -219,11 +249,11 @@ Both recording modes journal approximately one-second chunks locally. After stop
 
 *VST3 preprocessing*
 
-Use up to four separately installed/activated Windows x64 VST3 effects. CLEAR/RX licenses and plugins are not included. Add effects, adjust order/bypass/parameters and compare a short original/processed preview. Default processing applies to ASR only; applying it to Nemotron is optional. Reported plugin latency is compensated per processing run, not independently measured physical delay. Over-denoising can remove speech. Source files and final rendered audio are unchanged. Native plugin GUIs, vendor preset files and real-time VST processing are unsupported. See [VST details](VST-CHAIN.md).
+Use up to four separately installed/activated Windows x64 VST3 effects. CLEAR/RX licenses and plugins are not included. Add effects, adjust order/bypass/parameters and compare a short original/processed preview. Default processing applies to ASR only; applying it to Nemotron is optional. Reported latency is compensated per run. **0.3.2 also compares real input/output windows for residual delay**, adding compensation only when strong, unambiguous matches agree. Uncertain, negative or time-varying delay adds no guessed shift. This checks the current material, not every setting or a plugin's universal latency. Over-denoising can remove speech. Source files and final rendered audio are unchanged. Native plugin GUIs, vendor preset files and real-time VST processing are unsupported. See [VST details](VST-CHAIN.md).
 
 설치·활성화한 Windows x64 VST3 효과를 최대 4개 연결할 수 있습니다. CLEAR·RX 플러그인과 라이선스는 앱에 포함되지 않습니다. `음성 분석`의 VST 영역에서 추가하고 순서·우회·매개변수를 조절한 뒤 짧은 원본/처리음 비교를 먼저 만드세요.
 
-기본은 음성 인식에만 적용하며 Nemotron에도 적용할지 선택할 수 있습니다. 각 플러그인이 보고하는 지연을 처리마다 보정합니다. 잘못 보고된 지연이나 강한 잡음 제거에 따른 말소리 손실까지 자동으로 해결하지는 않습니다. 원본과 최종 렌더 오디오는 이 전처리로 바뀌지 않습니다. 전용 플러그인 창·제조사 프리셋·실시간 VST 처리는 지원하지 않습니다. [VST 사용법](VST-CHAIN.md)을 참고하세요.
+기본은 음성 인식에만 적용하며 Nemotron에도 적용할지 선택할 수 있습니다. 보고 지연을 처리마다 보정합니다. **0.3.2는 실제 입출력의 여러 구간을 비교해 남은 지연도 측정**하며, 충분히 높은 상관과 모호하지 않은 일치 결과가 모일 때만 추가 보정합니다. 불확실·음수·가변 지연은 추측해 이동하지 않습니다. 이번 처리 음원의 증거이지 플러그인의 모든 설정에 적용되는 지연 보증은 아니며, 잡음 제거로 사라진 말소리를 복원하지도 않습니다. 원본과 최종 렌더 오디오는 이 전처리로 바뀌지 않습니다. 전용 플러그인 창·제조사 프리셋·실시간 VST 처리는 지원하지 않습니다. [VST 사용법](VST-CHAIN.md)을 참고하세요.
 
 ## 10. 저장 복구·오류·디스크 관리
 
@@ -240,6 +270,10 @@ Use **Close window and keep working** to close the analysis dialog while its ser
 Completion **never applies results automatically**. In a reopened result, reconnect its project and original media, choose **Verify linked source**, then explicitly **Apply result**. Application replaces captions and keeps notes. You can save result JSON and inspect progress without the original file. Dismissing a completed footer indicator only hides that indicator; it does not delete history. If polling repeatedly fails or the job is missing, automatic checks stop and the UI offers a manual retry/history path; it does not claim the server job stopped.
 
 완료돼도 **결과를 자동 적용하지 않습니다**. 다시 연 결과에서는 해당 프로젝트·원본을 연결하고 **연결된 원본 확인 → 결과 적용**을 직접 선택합니다. 적용은 자막을 교체하며 메모는 유지합니다. 원본 파일 없이도 진행 상태를 확인하거나 결과 JSON을 저장할 수 있습니다. 완료된 하단 표시를 닫아도 이력을 삭제하지 않습니다. 반복 연결 실패·작업 없음일 때 자동 조회를 멈추고 재확인·이력 경로를 제공하며, 서버 작업까지 취소됐다고 표시하지 않습니다.
+
+**0.3.2 history refresh:** while job history is open, running entries and the selected analysis update as work progresses and completes. The queue controls can act on that selected job; closing/reopening is unnecessary to discover completion. Connection errors do not auto-cancel a server job, and results still require explicit application.
+
+**0.3.2 작업 이력 갱신:** 이력 창을 열어두면 실행 중 항목과 선택한 분석의 진행·완료를 갱신합니다. 선택한 작업의 대기열 조작을 사용할 수 있고 완료를 확인하려고 창을 닫았다 다시 열 필요가 없습니다. 조회 연결 오류가 서버 작업을 자동 취소하지 않으며 완료 결과도 직접 적용합니다.
 
 ### 0.3.1: Review and clean unused media copies / 미사용 미디어 사본 확인 후 정리
 

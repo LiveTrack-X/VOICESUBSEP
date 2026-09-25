@@ -34,6 +34,10 @@ def create_desktop_app(*, data_dir: Path, web_dir: Path, port: int, token: str,
 def main() -> int | None:
     # The frozen worker uses this same executable. Dispatch before requiring
     # server arguments, importing uvicorn, opening storage, or binding a port.
+    if sys.argv[1:2] == ["--analysis-worker"]:
+        from voicesubsep.analysis_worker import main as worker_main
+
+        return worker_main()
     if sys.argv[1:2] == ["--vst-worker"]:
         from voicesubsep.vst_worker import main as worker_main
 

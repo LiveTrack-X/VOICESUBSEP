@@ -5,7 +5,7 @@ export type HistoryItem = {
   createdAt: string; mediaId: string; mediaName: string; projectId?: string | null; projectName: string;
   progress: number; stage: string; hasResult: boolean;
 };
-export type CacheInfo = {items:{id:string;name:string;bytes:number;duration:number;protected:boolean}[];bytes:number;reclaimableBytes:number;freeBytes:number;maxUploadBytes:number};
+export type CacheInfo = {items:{id:string;name:string;bytes:number;duration:number;protected:boolean}[];bytes:number;reclaimableBytes:number;freeBytes:number};
 export type CacheCleanupResult = {removedCount:number;removedBytes:number;skippedCount:number;failedCount:number};
 /** Snapshot only the displayed app-owned, unreserved copies. New uploads stay out. */
 export function cacheCleanupSelection(cache: CacheInfo) {

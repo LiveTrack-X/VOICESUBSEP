@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 import threading
 import time
@@ -83,6 +84,136 @@ def test_export_api_result_download_and_persistence_without_models(tmp_path):
         assert client.get(done["result"]["url"]).content == b"completed export"
 
 
+def test_same_name_and_length_different_content_cannot_reuse_saved_cuts(tmp_path):
+    with client_for(tmp_path, renderer=lambda *a, **kw: pytest.fail("Wrong original must not render")) as client:
+        media = upload(client)
+        other = client.post("/api/media", files={"file": (media["name"], b"different source", "video/x-matroska")}).json()
+        identity = {"sha256": hashlib.sha256(b"source recording").hexdigest(), "bytes": len(b"source recording")}
+        response = client.post("/api/renders", json=request(other["id"], projectSnapshot={"schemaVersion":2,"captions":[],"notes":[],"mediaIdentity": identity}))
+        assert response.status_code == 422
+        assert "original" in response.json()["detail"]
+        assert not list((tmp_path / "data" / "renders").iterdir())
+        assert client.get(media["url"]).content == b"source recording"
+
+
+def test_matching_content_with_a_renamed_original_can_render(tmp_path):
+    with client_for(tmp_path, renderer=renderer) as client:
+        media = client.post("/api/media", files={"file": ("renamed.mkv", b"source recording", "video/x-matroska")}).json()
+        identity = {"sha256": hashlib.sha256(b"source recording").hexdigest(), "bytes": len(b"source recording")}
+        created = client.post("/api/renders", json=request(media["id"], projectSnapshot={"schemaVersion":2,"captions":[],"notes":[],"mediaName":"old.mkv", "mediaIdentity": identity}))
+        assert created.status_code == 202
+        assert wait(client, created.json()["id"])["status"] == "completed"
+
+
+@pytest.mark.parametrize("mutation", ["same-size-source", "truncated-source", "missing-snapshot", "corrupt-snapshot"])
+def test_queued_export_rechecks_actual_source_and_saved_snapshot(tmp_path, mutation):
+    started, release = threading.Event(), threading.Event()
+    invocations = []
+
+    def blocked(source, destination, **kwargs):
+        invocations.append(destination)
+        result = renderer(source, destination, **kwargs)
+        started.set()
+        assert release.wait(5)
+        return result
+
+    with client_for(tmp_path, renderer=blocked) as client:
+        media = upload(client)
+        first = client.post("/api/renders", json=request(media["id"])).json()["id"]
+        assert started.wait(2)
+        try:
+            identity = {"sha256": hashlib.sha256(b"source recording").hexdigest(), "bytes": 16}
+            created = client.post("/api/renders", json=request(media["id"], projectSnapshot={
+                "schemaVersion": 2, "captions": [], "notes": [], "mediaIdentity": identity,
+            }))
+            assert created.status_code == 202, created.text
+            job_id = created.json()["id"]
+            assert client.get(f"/api/renders/{job_id}").json()["status"] == "queued"
+            snapshot = tmp_path / "data" / "renders" / job_id / "snapshot.json"
+            _, source = Storage(tmp_path / "data").get_media(media["id"])
+            if mutation == "same-size-source":
+                source.write_bytes(b"different source")
+                assert source.stat().st_size == identity["bytes"]
+            elif mutation == "truncated-source":
+                source.write_bytes(b"short")
+            elif mutation == "missing-snapshot":
+                snapshot.unlink()
+            else:
+                snapshot.write_text("{", encoding="utf-8")
+            source_before_verification = source.read_bytes()
+        finally:
+            release.set()
+        assert wait(client, first)["status"] == "completed"
+        done = wait(client, job_id)
+        assert done["status"] == "failed"
+        assert ("original" if mutation.endswith("source") else "snapshot") in done["error"]
+        assert len(invocations) == 1  # The second renderer never gets the wrong source.
+        assert client.get(f"/api/renders/{job_id}/file").status_code == 404
+        assert source.read_bytes() == source_before_verification  # Verification never modifies it.
+
+
+@pytest.mark.parametrize("cancel_after_first_block", [False, True])
+def test_source_identity_hash_reads_bounded_blocks_and_observes_cancellation(tmp_path, monkeypatch, cancel_after_first_block):
+    from voicesubsep import media_identity
+
+    content = b"source recording" * 4
+    source = tmp_path / "source.mkv"
+    source.write_bytes(content)
+    identity = {"sha256": hashlib.sha256(content).hexdigest(), "bytes": len(content)}
+    original_open = Path.open
+    reads, cancelled = [], threading.Event()
+
+    class ReadOnlyStream:
+        def __enter__(self):
+            self.stream = original_open(source, "rb")
+            return self
+
+        def __exit__(self, *args):
+            self.stream.close()
+
+        def fileno(self):
+            return self.stream.fileno()
+
+        def read(self, size):
+            reads.append(size)
+            block = self.stream.read(size)
+            if cancel_after_first_block:
+                cancelled.set()
+            return block
+
+    def open_readonly(path, mode="r", *args, **kwargs):
+        assert path == source and mode == "rb"
+        return ReadOnlyStream()
+
+    monkeypatch.setattr(media_identity, "HASH_BLOCK_BYTES", 8)
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "open", open_readonly)
+        if cancel_after_first_block:
+            with pytest.raises(RenderCancelled):
+                media_identity.verify_snapshot_source({"mediaIdentity": identity}, identity, source, cancelled.is_set)
+        else:
+            media_identity.verify_snapshot_source({"mediaIdentity": identity}, identity, source, cancelled.is_set)
+    assert reads == [8] * (1 if cancel_after_first_block else len(content) // 8 + 1)
+    assert source.read_bytes() == content
+
+
+def test_legacy_snapshot_without_identity_does_not_invent_a_source_hash(tmp_path):
+    from voicesubsep.media_identity import verify_snapshot_source
+
+    # Existing callers had no fingerprint; even absent hash metadata keeps the
+    # legacy policy instead of inventing trust from a file name or duration.
+    verify_snapshot_source({"captions": []}, {}, tmp_path / "unused", lambda: False)
+
+
+@pytest.mark.parametrize("identity", [None, {}, {"sha256":"a"*64,"bytes":True}, {"sha256":"A"*64,"bytes":16}, {"sha256":"a"*64,"bytes":16,"path":"other"}])
+def test_invalid_saved_media_identity_rejected_without_queueing(tmp_path, identity):
+    with client_for(tmp_path, renderer=renderer) as client:
+        media=upload(client)
+        response=client.post("/api/renders",json=request(media["id"],projectSnapshot={"schemaVersion":2,"captions":[],"notes":[],"mediaIdentity":identity}))
+        assert response.status_code==422
+        assert not list((tmp_path / "data" / "renders").iterdir())
+
+
 @pytest.mark.parametrize("change", [
     {"keepRanges": []}, {"keepRanges": [{"start": 0, "end": 0}]},
     {"keepRanges": [{"start": 0, "end": 4}]}, {"keepRanges": [{"start": "0", "end": 1}]},
@@ -127,8 +258,9 @@ def test_audio_only_upload_cannot_export_mp4_and_actual_file_is_reprobed(tmp_pat
 
 
 def test_running_cancellation_waits_for_renderer_cleanup_and_never_serves_partial(tmp_path):
-    cancel_seen, allow_cleanup, exited = threading.Event(), threading.Event(), threading.Event()
+    started, cancel_seen, allow_cleanup, exited = (threading.Event() for _ in range(4))
     def blocked(source, destination, **kwargs):
+        started.set()
         while not kwargs["cancelled"]():
             time.sleep(0.005)
         cancel_seen.set()
@@ -139,6 +271,7 @@ def test_running_cancellation_waits_for_renderer_cleanup_and_never_serves_partia
         media = upload(client)
         job_id = client.post("/api/renders", json=request(media["id"])).json()["id"]
         wait(client, job_id, {"running"})
+        assert started.wait(2)
         try:
             response = client.delete(f"/api/renders/{job_id}")
             assert cancel_seen.wait(2)

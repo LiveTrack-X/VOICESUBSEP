@@ -1,4 +1,4 @@
-"""Persistent jobs with one cooperative inference worker."""
+"""Persistent queue with one owned inference process (injected analyzers use a thread)."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from .storage import Storage, new_id, valid_id
 from .diagnostics import Diagnostics
 from .cloud_credentials import ProviderCredentials
 from .recognition_preview import PREVIEW_MAX_LINES, preview_line, preview_options
+from .analysis_process import AnalysisProcess, AnalysisWorkerCleanupError
 
 Analyzer = Callable[..., dict[str, Any]]
 TERMINAL = {"completed", "failed", "cancelled"}
@@ -38,8 +39,10 @@ class JobManager:
         self.diagnostics = diagnostics
         self.provider_credentials = provider_credentials
         self.analyzer = analyzer or default_analyzer
+        self._isolated = analyzer is None or analyzer is default_analyzer
         self._jobs: dict[str, dict[str, Any]] = {}
         self._cancellations: dict[str, threading.Event] = {}
+        self._force_cancellations: dict[str, threading.Event] = {}
         self._provider_keys: dict[str, Callable[[], str]] = {}
         self._diarization_keys: dict[str, Callable[[], str]] = {}
         self._mutex = threading.RLock()
@@ -82,13 +85,16 @@ class JobManager:
             for job_id, record in self._jobs.items():
                 if record["status"] not in TERMINAL:
                     self._cancellations[job_id].set()
+                    if self._isolated:
+                        self._force_cancellations[job_id].set()
                     if record["status"] == "queued":
                         self._update(record, status="cancelled", stage="cancelled")
             self._pending.clear()
             self._condition.notify_all()
         if self._thread is not None:
             self._thread.join(timeout=5)
-        # A still-running native model call retains the lock until its worker exits.
+        # Isolated workers are terminated on server shutdown. Injected in-process
+        # analyzers retain the storage lock until their cooperative worker exits.
 
     def _update(self, record: dict[str, Any], *, persist: bool = True, **changes: Any) -> None:
         candidate = {**record, **changes, "updatedAt": timestamp()}
@@ -125,6 +131,7 @@ class JobManager:
             self.storage.write_json(self.storage.job_path(job_id), record)
             self._jobs[job_id] = record
             self._cancellations[job_id] = threading.Event()
+            self._force_cancellations[job_id] = threading.Event()
             if provider_key is not None:
                 self._provider_keys[job_id] = provider_key
             if diarization_key is not None:
@@ -142,6 +149,8 @@ class JobManager:
                 "id", "status", "stage", "progress", "error", "result", "createdAt", "updatedAt",
                 "recognitionPreview") if key in record}
             response["cancelRequested"] = record["status"] == "running" and bool(self._cancellations.get(job_id) and self._cancellations[job_id].is_set())
+            response["canForceCancel"] = self._isolated and record["status"] == "running"
+            response["forceCancelRequested"] = record["status"] == "running" and bool(self._force_cancellations.get(job_id) and self._force_cancellations[job_id].is_set())
             if record["status"] == "queued":
                 pending = [identifier for identifier in self._pending if self._jobs.get(identifier, {}).get("status") == "queued"]
                 blocker = self._jobs.get(self._active_job_id or "")
@@ -156,16 +165,19 @@ class JobManager:
                                     "mediaName": media_name, "stage": blocker.get("stage", ""),
                                     "progress": blocker.get("progress", 0),
                                     "cancelRequested": self._cancellations[blocker["id"]].is_set()}
+                    if self._isolated:
+                        blocking_job.update(canForceCancel=True, forceCancelRequested=self._force_cancellations[blocker["id"]].is_set())
                 response["queue"] = {"position": pending.index(job_id) + 1 if job_id in pending else 0,
                                      "waitingCount": len(pending), "blockingJob": blocking_job,
                                      "workerAvailable": bool(self._thread and self._thread.is_alive() and not self._stopping.is_set())}
             return copy.deepcopy(response)
 
-    def prioritize(self, job_id: str, *, cancel_running: bool = False, expected_running_job_id: str | None = None):
+    def prioritize(self, job_id: str, *, cancel_running: bool = False, expected_running_job_id: str | None = None,
+                   force_running: bool = False):
         """Move one queued job first; optionally cancel exactly the reviewed blocker.
 
-        Native inference stays in its worker thread. Its cancellation callback must
-        acknowledge the request before another job can occupy that worker.
+        Force termination is available only for the owned production subprocess.
+        The next job cannot claim the queue slot until that process tree exits.
         """
         with self._condition:
             record = self._jobs.get(job_id)
@@ -175,18 +187,30 @@ class JobManager:
                 raise RuntimeError("The inference worker is not available.")
             if record["status"] != "queued" or job_id not in self._pending:
                 raise ValueError("This analysis is no longer queued. Refresh its status.")
+            if force_running and (not cancel_running or not self._isolated):
+                raise ValueError("Force stop is unavailable for this analysis worker.")
             if cancel_running:
                 blocker = self._jobs.get(self._active_job_id or "")
                 if not expected_running_job_id or not blocker or blocker["status"] != "running" or blocker["id"] != expected_running_job_id:
                     raise ValueError("The running analysis changed. Refresh and confirm again.")
                 # Persist before setting the event/reordering, so a storage error
                 # cannot cancel an unreported different job or silently reorder.
-                self._update(blocker, stage="cancellation requested")
+                self._update(blocker, stage="force cancellation requested" if force_running else "cancellation requested")
                 self._cancellations[blocker["id"]].set()
+                if force_running:
+                    self._force_cancellations[blocker["id"]].set()
             self._pending.remove(job_id)
             self._pending.appendleft(job_id)
             self._condition.notify()
             return self.get(job_id)
+
+    def require_idle(self) -> None:
+        """Live capture must not overlap a paused/possibly un-reaped file worker."""
+        with self._mutex:
+            if not self._thread or not self._thread.is_alive() or self._stopping.is_set():
+                raise RuntimeError("The analysis worker is unavailable. Restart the backend before starting live recognition.")
+            if any(record["status"] in {"queued", "running"} for record in self._jobs.values()):
+                raise PermissionError("파일 분석이 끝난 뒤 라이브 세션을 시작하세요. 로컬 모델은 동시에 실행하지 않습니다.")
 
     def history(self) -> list[dict]:
         with self._mutex:
@@ -211,6 +235,21 @@ class JobManager:
             self._provider_keys.pop(job_id, None)
             self._diarization_keys.pop(job_id, None)
             self._cancellations.pop(job_id, None)
+            self._force_cancellations.pop(job_id, None)
+
+    def force_cancel(self, job_id: str) -> dict[str, Any]:
+        with self._mutex:
+            record = self._jobs.get(job_id)
+            if record is None:
+                raise KeyError(job_id)
+            if record["status"] in TERMINAL:
+                return self.get(job_id)
+            if not self._isolated or record["status"] != "running" or self._active_job_id != job_id:
+                raise ValueError("Force stop is available only for this running isolated analysis.")
+            self._update(record, stage="force cancellation requested")
+            self._cancellations[job_id].set()
+            self._force_cancellations[job_id].set()
+            return self.get(job_id)
 
     def cancel(self, job_id: str) -> dict[str, Any]:
         with self._mutex:
@@ -237,6 +276,7 @@ class JobManager:
             self._provider_keys.pop(job_id, None)
             self._diarization_keys.pop(job_id, None)
             return False
+        self._force_cancellations.setdefault(job_id, threading.Event())
         self._update(record, status="running", stage="preparing", progress=0.01)
         self._active_job_id = job_id
         return True
@@ -247,6 +287,7 @@ class JobManager:
                 return
             record = self._jobs[job_id]
             event = self._cancellations[job_id]
+            force_event = self._force_cancellations[job_id]
             request = dict(record["request"])
 
         last_progress_save = time.monotonic()
@@ -311,7 +352,11 @@ class JobManager:
                 options.update(asr_provider=provider, provider_model=request.get("providerModel"),
                                cloud_consent=request.get("cloudConsent", False),
                                get_provider_key=provider_key)
-            if request.get("trackSpeakers"):
+            if self._isolated:
+                result = AnalysisProcess().run(media_path, options=options, track_speakers=request.get("trackSpeakers"),
+                                               progress=progress, recognition_preview=recognition_preview,
+                                               cancelled=event.is_set, force_cancelled=force_event.is_set)
+            elif request.get("trackSpeakers"):
                 from .multitrack import analyze_tracks
                 result = analyze_tracks(self.analyzer, media_path, selections=request["trackSpeakers"],
                                         options=options, progress=progress, cancelled=event.is_set,
@@ -320,12 +365,20 @@ class JobManager:
                 result = self.analyzer(media_path, **options, progress=progress, cancelled=event.is_set,
                                        **preview_options(self.analyzer, recognition_preview))
             with self._mutex:
+                if force_event.is_set():
+                    self._update(record, status="cancelled", stage="cancelled")
+                    return
                 # An analyzer returning a completed result wins a late cancellation race.
                 # Cancellation is reported only when the analyzer acknowledges it.
                 self._update(record, status="completed", stage="completed", progress=1.0, result=result)
         except Exception as exc:
             with self._mutex:
-                if type(exc).__name__ == "AnalysisCancelled":
+                if isinstance(exc, AnalysisWorkerCleanupError):
+                    self._stopping.set()
+                    if self.diagnostics:
+                        self.diagnostics.exception("analysis", "worker_cleanup_failed", exc, jobId=job_id)
+                    self._update(record, status="failed", stage="failed", error=str(exc))
+                elif force_event.is_set() or type(exc).__name__ == "AnalysisCancelled":
                     self._update(record, status="cancelled", stage="cancelled")
                 else:
                     if self.diagnostics:

@@ -58,11 +58,13 @@ export type Job = {
   error?: string;
   result?: AnalysisResult;
   cancelRequested?: boolean;
+  canForceCancel?: boolean;
+  forceCancelRequested?: boolean;
   queue?: {
     position: number;
     waitingCount: number;
     workerAvailable: boolean;
-    blockingJob: { id: string; projectName: string; mediaName: string; stage: string; progress: number; cancelRequested: boolean } | null;
+    blockingJob: { id: string; projectName: string; mediaName: string; stage: string; progress: number; cancelRequested: boolean; canForceCancel?: boolean; forceCancelRequested?: boolean } | null;
   };
 };
 export class ApiError extends Error {
@@ -111,8 +113,6 @@ export function uploadMedia(file: File): Promise<MediaInfo> {
       try { return entry.info = await request<MediaInfo>(`/api/media/${entry.info.id}`); }
       catch (error) { if (!(error instanceof ApiError) || error.status !== 404) throw error; entry.info = undefined; }
     }
-    const capacity = await request<{maxUploadBytes:number}>("/api/cache");
-    if (file.size > capacity.maxUploadBytes) throw new Error(`파일이 업로드 한도 (${(capacity.maxUploadBytes / 1024 ** 3).toFixed(1)} GB)를 초과합니다.`);
     const form = new FormData();
     form.append("file", file);
     entry.info = await request<MediaInfo>("/api/media", {method:"POST", body:form, signal:AbortSignal.timeout(30 * 60_000)});

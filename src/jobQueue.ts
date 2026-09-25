@@ -1,16 +1,26 @@
 import { ApiError, request, type Job } from "./api";
 
-export function priorityRequest(job:Job, expectedRunningJobId?:string) {
+export function priorityRequest(job:Job, expectedRunningJobId?:string, forceRunning=false) {
   if(job.status!=="queued"||!job.queue||!job.queue.workerAvailable||!/^[a-f0-9]{32}$/u.test(job.id))throw new Error("queue-changed");
   if(expectedRunningJobId!==undefined){
-    if(!/^[a-f0-9]{32}$/u.test(expectedRunningJobId)||job.queue.blockingJob?.id!==expectedRunningJobId||job.queue.blockingJob.cancelRequested)throw new Error("queue-changed");
-    return {cancelRunning:true,expectedRunningJobId};
+    const blocker=job.queue.blockingJob;
+    if(!/^[a-f0-9]{32}$/u.test(expectedRunningJobId)||blocker?.id!==expectedRunningJobId||
+      (forceRunning?(!blocker.canForceCancel||blocker.forceCancelRequested):blocker.cancelRequested))throw new Error("queue-changed");
+    return {cancelRunning:true,expectedRunningJobId,...(forceRunning?{forceRunning:true}:{})};
   }
+  if(forceRunning)throw new Error("queue-changed");
   return {cancelRunning:false};
 }
-export async function prioritizeAnalysis(job:Job, expectedRunningJobId?:string):Promise<Job> {
-  const body=priorityRequest(job,expectedRunningJobId);
+export async function prioritizeAnalysis(job:Job, expectedRunningJobId?:string, forceRunning=false):Promise<Job> {
+  const body=priorityRequest(job,expectedRunningJobId,forceRunning);
   const result=await request<Job>(`/api/jobs/${job.id}/prioritize`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(result.id!==job.id)throw new Error("queue-changed");
+  return result;
+}
+export async function stopAnalysis(job:Job, force=false):Promise<Job> {
+  if(!/^[a-f0-9]{32}$/u.test(job.id)||job.status!=="running"||
+    (force?(!job.canForceCancel||job.forceCancelRequested):job.cancelRequested))throw new Error("queue-changed");
+  const result=await request<Job>(`/api/jobs/${job.id}${force?"/force-cancel":""}`,force?{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}:{method:"DELETE"});
   if(result.id!==job.id)throw new Error("queue-changed");
   return result;
 }

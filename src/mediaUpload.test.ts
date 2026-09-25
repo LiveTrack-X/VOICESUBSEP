@@ -8,7 +8,7 @@ const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,
 
 describe("media source reuse",()=>{
   it("shares concurrent uploads then checks the retained source instead of copying again",async()=>{
-    const fetch=vi.fn(async(url:string)=>json(url==="/api/cache"?{maxUploadBytes:1000}:info));vi.stubGlobal("fetch",fetch);
+    const fetch=vi.fn(async(url:string)=>{expect(url).not.toBe("/api/cache");return json(info);});vi.stubGlobal("fetch",fetch);
     const file=new File(["abc"],"voice.wav");
     const [left,right]=await Promise.all([uploadMedia(file),uploadMedia(file)]);
     expect(left.id).toBe(right.id);
@@ -19,18 +19,34 @@ describe("media source reuse",()=>{
   });
   it("reuploads after explicit cache removal, but not on a transient connection error",async()=>{
     let status=200;
-    const fetch=vi.fn(async(url:string)=>url.startsWith("/api/media/")?json({detail:"missing"},status):json(url==="/api/cache"?{maxUploadBytes:1000}:info));vi.stubGlobal("fetch",fetch);
+    const fetch=vi.fn(async(url:string)=>{expect(url).not.toBe("/api/cache");return url.startsWith("/api/media/")?json({detail:"missing"},status):json(info);});vi.stubGlobal("fetch",fetch);
     const file=new File(["abc"],"voice.wav");await uploadMedia(file);
     status=503;await expect(uploadMedia(file)).rejects.toBeInstanceOf(ApiError);
     expect(fetch.mock.calls.filter(([url])=>url==="/api/media")).toHaveLength(1);
     status=404;await uploadMedia(file);
     expect(fetch.mock.calls.filter(([url])=>url==="/api/media")).toHaveLength(2);
   });
-  it("rejects oversized input before uploading and can retry a failed upload",async()=>{
-    let limit=2;
-    const fetch=vi.fn(async(url:string)=>json(url==="/api/cache"?{maxUploadBytes:limit}:info));vi.stubGlobal("fetch",fetch);
-    const file=new File(["abc"],"voice.wav");await expect(uploadMedia(file)).rejects.toThrow("한도");
-    expect(fetch.mock.calls).toHaveLength(1);limit=100;await expect(uploadMedia(file)).resolves.toEqual(info);
+  it("does not preflight cache capacity or reject a file above the former cap",async()=>{
+    const fetch=vi.fn(async(url:string,options?:RequestInit)=>{
+      expect(url).toBe("/api/media");expect(options?.method).toBe("POST");
+      expect(options?.body).toBeInstanceOf(FormData);
+      return json(info);
+    });vi.stubGlobal("fetch",fetch);
+    const file=new File(["small fixture, no giant allocation"],"large-recording.mkv");
+    Object.defineProperty(file,"size",{value:9*1024**3});
+    await expect(uploadMedia(file)).resolves.toEqual(info);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect((fetch.mock.calls[0][1]?.body as FormData).get("file")).toBe(file);
+  });
+  it("can retry a failed upload without a separate cache request",async()=>{
+    let failed=true;
+    const fetch=vi.fn(async(url:string)=>{
+      expect(url).toBe("/api/media");return failed?json({detail:"Disk full"},507):json(info);
+    });vi.stubGlobal("fetch",fetch);
+    const file=new File(["abc"],"voice.wav");
+    await expect(uploadMedia(file)).rejects.toMatchObject({status:507,message:"Disk full"});
+    failed=false;await expect(uploadMedia(file)).resolves.toEqual(info);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
   it("preserves HTTP status for missing-job recovery",async()=>{
     vi.stubGlobal("fetch",vi.fn(async()=>json({detail:"missing"},404)));

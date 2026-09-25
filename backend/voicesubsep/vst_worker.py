@@ -4,7 +4,8 @@ Pedalboard 0.9.25 ExternalPlugin.h automatically discards reported latency.
 After one explicit reset (plugin initialization itself can process test audio),
 streaming uses reset=False on every call and feeds silence at EOF until the
 source frame count has been emitted. Resetting at EOF would destroy the buffered
-tail. We cannot correct latency a third-party plugin misreports.
+tail. Strong, consistent residual-delay evidence can correct additional delay;
+ambiguous audio is reported as uncertain and is never shifted by a guess.
 """
 
 from __future__ import annotations
@@ -16,10 +17,12 @@ import os
 from pathlib import Path
 import shutil
 import struct
+import tempfile
 import time
 from typing import Callable
 
 from .vst_host import MAX_JSON_BYTES, MAX_PARAMETERS, validate_chain, validate_plugin_path
+from .vst_latency import MAX_RESIDUAL_FRAMES, measure_residual
 
 SAMPLE_RATE = 48000
 CHUNK_FRAMES = 48000
@@ -143,7 +146,8 @@ def _wav_header(frames: int, channels: int) -> bytes:
 
 
 def _stream(reader, write: Callable, board, progress: Callable[[float], None], *,
-            chunk_frames: int = CHUNK_FRAMES, latency_plugins: list | None = None) -> dict:
+            chunk_frames: int = CHUNK_FRAMES, latency_plugins: list | None = None,
+            float_output: bool = False, tail_frames: int = 0) -> dict:
     import numpy as np
     # ExternalPlugin initialization probes reset behavior with audio, leaving
     # sample counters advanced. CLEAR then emitted its initial 2238-sample delay
@@ -162,9 +166,12 @@ def _stream(reader, write: Callable, board, progress: Callable[[float], None], *
     baseline_latencies = None
     compensated_frames = 0
     total, channels = int(reader.frames), int(reader.num_channels)
+    if not 0 <= tail_frames <= MAX_RESIDUAL_FRAMES:
+        raise ValueError("Invalid VST verification tail length.")
+    target = total + tail_frames
     received = consumed = flush_frames = clipped = 0
     input_peak = output_peak = 0.0
-    while consumed < total or received < total:
+    while consumed < total or received < target:
         if consumed < total:
             part = reader.read(min(chunk_frames, total - consumed))
             count = part.shape[-1]
@@ -175,7 +182,7 @@ def _stream(reader, write: Callable, board, progress: Callable[[float], None], *
             consumed += count
             input_peak = max(input_peak, float(np.max(np.abs(part))))
         else:
-            count = min(chunk_frames, MAX_FLUSH_FRAMES - flush_frames)
+            count = min(chunk_frames, MAX_FLUSH_FRAMES + tail_frames - flush_frames)
             if count <= 0:
                 raise ValueError("The VST chain buffered more than ten seconds or failed to emit its tail.")
             part = np.zeros((channels, count), dtype=np.float32)
@@ -206,14 +213,17 @@ def _stream(reader, write: Callable, board, progress: Callable[[float], None], *
             if missing != expected_missing:
                 raise ValueError("VST latency compensation did not match the plugins' reported delay. This chain cannot be aligned reliably.")
             compensated_frames += missing
-        output = output[:, :max(0, total - received)]
+        output = output[:, :max(0, target - received)]
         if output.size:
             output_peak = max(output_peak, float(np.max(np.abs(output))))
             clipped += int(np.count_nonzero((output < -1) | (output > 32767 / 32768)))
-            pcm = np.rint(np.clip(output, -1, 32767 / 32768) * 32768).astype("<i2")
-            write(pcm.T.tobytes())
+            if float_output:
+                write(output.astype("<f4").T.tobytes())
+            else:
+                pcm = np.rint(np.clip(output, -1, 32767 / 32768) * 32768).astype("<i2")
+                write(pcm.T.tobytes())
             received += output.shape[1]
-        progress(min(0.99, received / total))
+        progress(min(0.99, received / target))
     report = {"inputFrames": total, "outputFrames": received, "sampleRate": SAMPLE_RATE,
               "channels": channels, "flushFrames": flush_frames, "inputPeak": input_peak,
               "outputPeak": output_peak, "clippedSamples": clipped}
@@ -223,6 +233,53 @@ def _stream(reader, write: Callable, board, progress: Callable[[float], None], *
                       latencyReports=[{"reportedLatencyBeforeProcessingSamples": before, "reportedLatencySamples": after}
                                       for before, after in zip(initial_latencies, baseline_latencies)])
     return report
+
+
+class _FloatReader:
+    """Bounded reads of an interleaved float stage with a logical trimmed view."""
+    def __init__(self, path: Path, frames: int, channels: int, offset: int = 0):
+        self.frames, self.num_channels, self.offset = frames, channels, offset
+        self.stream = path.open("rb")
+        self.position = 0
+        self.seek(0)
+
+    def seek(self, position: int):
+        if not 0 <= position <= self.frames:
+            raise ValueError("Invalid VST verification position.")
+        self.position = position
+        self.stream.seek((self.offset + position) * self.num_channels * 4)
+
+    def read(self, count: int):
+        import numpy as np
+        count = min(count, self.frames - self.position)
+        raw = self.stream.read(count * self.num_channels * 4)
+        if len(raw) != count * self.num_channels * 4:
+            raise ValueError("The VST verification stage ended early.")
+        self.position += count
+        return np.frombuffer(raw, dtype="<f4").reshape(count, self.num_channels).T
+
+    def close(self):
+        self.stream.close()
+
+
+def _finish_pcm(reader, destination: Path, progress: Callable[[float], None]) -> dict:
+    import numpy as np
+    reader.seek(0)
+    received = clipped = 0
+    peak = 0.0
+    with destination.open("wb") as writer:
+        writer.write(_wav_header(reader.frames, reader.num_channels))
+        while received < reader.frames:
+            output = reader.read(min(CHUNK_FRAMES, reader.frames - received))
+            if output.shape != (reader.num_channels, min(CHUNK_FRAMES, reader.frames - received)) or not np.isfinite(output).all():
+                raise ValueError("The processed VST audio is invalid.")
+            peak = max(peak, float(np.max(np.abs(output))))
+            clipped += int(np.count_nonzero((output < -1) | (output > 32767 / 32768)))
+            pcm = np.rint(np.clip(output, -1, 32767 / 32768) * 32768).astype("<i2")
+            writer.write(pcm.T.tobytes())
+            received += output.shape[1]
+            progress(received / reader.frames)
+    return {"outputFrames": received, "outputPeak": peak, "clippedSamples": clipped}
 
 
 def process(source: Path, destination: Path, chain: list[dict],
@@ -248,26 +305,70 @@ def process(source: Path, destination: Path, chain: list[dict],
             return {"inputFrames": reader.frames, "outputFrames": reader.frames, "sampleRate": SAMPLE_RATE,
                     "channels": reader.num_channels, "plugins": [], "bypassed": True, "warnings": [],
                     "totalReportedLatencySamples": 0, "compensatedLatencySamples": 0}
-        board = module.Pedalboard(loaded)
-        with destination.open("wb") as writer:
-            writer.write(_wav_header(reader.frames, reader.num_channels))
-            report = _stream(reader, writer.write, board,
-                             lambda fraction: progress("Applying VST preprocessing", 0.05 + fraction * 0.94),
-                             latency_plugins=loaded)
+        frames, channels = int(reader.frames), int(reader.num_channels)
+        # At most two float stages coexist, plus the final PCM16. Files live
+        # inside the host-owned output folder, so terminating this subprocess
+        # also lets the host remove them. Never evict user data to make room.
+        required = (frames + MAX_RESIDUAL_FRAMES) * channels * 8 + frames * channels * 2 + 1024 * 1024
+        if shutil.disk_usage(destination.parent).free < required:
+            raise ValueError("Not enough free disk space for safe VST latency verification.")
+        report = {"inputFrames": frames, "sampleRate": SAMPLE_RATE, "channels": channels,
+                  "flushFrames": 0, "totalReportedLatencySamples": 0, "compensatedLatencySamples": 0,
+                  "totalMeasuredResidualSamples": 0, "inputPeak": 0.0}
+        current, current_path = reader, None
+        with tempfile.TemporaryDirectory(prefix="vst-measure-", dir=destination.parent) as temporary:
+            try:
+                for index, (plugin, description) in enumerate(zip(loaded, reports)):
+                    stage_path = Path(temporary) / f"stage-{index}.float"
+                    start, portion = 0.05 + index * 0.85 / len(loaded), 0.85 / len(loaded)
+                    current.seek(0)
+                    with stage_path.open("wb") as writer:
+                        stage = _stream(current, writer.write, module.Pedalboard([plugin]),
+                                        lambda fraction: progress("Applying VST preprocessing", start + fraction * portion * 0.9),
+                                        latency_plugins=[plugin], float_output=True, tail_frames=MAX_RESIDUAL_FRAMES)
+                    rendered = _FloatReader(stage_path, frames + MAX_RESIDUAL_FRAMES, channels)
+                    try:
+                        measurement = measure_residual(current, rendered,
+                            lambda fraction: progress("Verifying residual VST latency", start + portion * (0.9 + fraction * 0.1)))
+                    finally:
+                        rendered.close()
+                    latency = stage["latencyReports"][0]
+                    if int(plugin.reported_latency_samples) != latency["reportedLatencySamples"]:
+                        raise ValueError("A VST plugin changed its reported latency during processing. Use stable settings and restart preprocessing.")
+                    description.update(latency, residualMeasurement=measurement)
+                    for name in ("flushFrames", "totalReportedLatencySamples", "compensatedLatencySamples"):
+                        report[name] += stage[name]
+                    if report["totalReportedLatencySamples"] > MAX_FLUSH_FRAMES:
+                        raise ValueError("The VST chain reports unsupported latency (maximum ten seconds in total).")
+                    if index == 0:
+                        report["inputPeak"] = stage["inputPeak"]
+                    report["totalMeasuredResidualSamples"] += measurement["appliedSamples"]
+                    if current_path is not None:
+                        current.close()
+                        current_path.unlink()
+                    current = _FloatReader(stage_path, frames, channels, measurement["appliedSamples"])
+                    current_path = stage_path
+                report.update(_finish_pcm(current, destination,
+                    lambda fraction: progress("Writing verified VST audio", 0.9 + fraction * 0.09)))
+            finally:
+                if current is not reader:
+                    current.close()
     # Read back using an independent file handle before the host commits it.
     with AudioFile(str(destination)) as checked:
         if checked.frames != report["inputFrames"] or checked.samplerate != SAMPLE_RATE:
             raise ValueError("The processed WAV failed its sample-count verification.")
-    for plugin, description, latency in zip(loaded, reports, report.pop("latencyReports")):
-        if int(plugin.reported_latency_samples) != latency["reportedLatencySamples"]:
+    for plugin, description in zip(loaded, reports):
+        if int(plugin.reported_latency_samples) != description["reportedLatencySamples"]:
             raise ValueError("A VST plugin changed its reported latency during processing. Use stable settings and restart preprocessing.")
-        description.update(latency)
     warnings = []
     if report["clippedSamples"]:
         warnings.append("The chain exceeded full scale; clipped samples were limited when writing PCM16.")
     if report["inputPeak"] > 0.001 and report["outputPeak"] < 0.00001:
         warnings.append("The chain output is silent or nearly silent. Review the effect settings before transcription.")
-    report.update(plugins=reports, bypassed=False, warnings=warnings, latencyCompensation="plugin-reported")
+    if any(item["residualMeasurement"]["status"] == "uncertain" for item in reports):
+        warnings.append("Some residual delays could not be verified. No additional shift was guessed for those effects.")
+    report.update(plugins=reports, bypassed=False, warnings=warnings, latencyCompensation="plugin-reported+verified-residual",
+                  totalCompensatedLatencySamples=report["compensatedLatencySamples"] + report["totalMeasuredResidualSamples"])
     progress("VST preprocessing complete", 1.0)
     return report
 

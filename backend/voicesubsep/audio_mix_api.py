@@ -96,6 +96,14 @@ class AudioMixJobManager(RenderJobManager):
         finally:
             super().stop()
 
+    def _validate_submission_sources(self, request):
+        # The shared queue does not imply a single project-original contract:
+        # a mix (and its preview) identifies each track separately by SHA256.
+        ids = {track["mediaId"] for track in request["tracks"]}
+        if request.get("videoMediaId"):
+            ids.add(request["videoMediaId"])
+        validate_mix(request, {mid: self.storage.get_media(mid) for mid in ids})
+
     def get(self, job_id):
         with self._mutex:
             return {**super().get(job_id), "request": copy.deepcopy(self._jobs[job_id]["request"])}

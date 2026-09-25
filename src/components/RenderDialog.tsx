@@ -5,6 +5,7 @@ import { buildKeepSpans } from "../cuts";
 import { exportSrt, exportNotesCsv, safeFilename, parseProject, type Project } from "../domain";
 import { ApiError, download, request, uploadMedia, type MediaInfo } from "../api";
 import { renderedProject, type RenderJob } from "../render";
+import { assertProjectMedia } from "../mediaIdentity";
 
 export function RenderDialog({project,file,onClose,resumeId}: {project:Project;file:File|null;onClose:()=>void;resumeId?:string}) {
   const {t}=useI18n();
@@ -39,7 +40,7 @@ export function RenderDialog({project,file,onClose,resumeId}: {project:Project;f
   useEffect(()=>{
     if(!file||resumeId)return;
     let alive=true;setLoading(true);
-    uploadMedia(file).then(info=>{if(alive){setMedia(info);setTrack(info.audioTracks[0]?.index??0);setFormat((info as {hasVideo?:boolean}).hasVideo?"mp4":"wav");}})
+    uploadMedia(file).then(info=>{if(alive){assertProjectMedia(project,info);setMedia(info);setTrack(info.audioTracks[0]?.index??0);setFormat((info as {hasVideo?:boolean}).hasVideo?"mp4":"wav");}})
       .catch(e=>{if(alive)setError((e as Error).message);}).finally(()=>{if(alive)setLoading(false);});
     return()=>{alive=false;};
   },[file,resumeId]);
@@ -59,6 +60,7 @@ export function RenderDialog({project,file,onClose,resumeId}: {project:Project;f
     if(Math.abs(media.duration-snapshot.duration)>0.15){setError(t("원본 길이가 프로젝트와 다릅니다. 같은 원본 파일을 연결하세요."));return;}
     setStarting(true);setError("");
     try{
+      assertProjectMedia(snapshot,media);
       const {id}=await request<{id:string}>("/api/renders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mediaId:media.id,audioTrack:track,format,frameRate,projectId:snapshot.id,projectName:snapshot.name,projectSnapshot:snapshot,keepRanges:buildKeepSpans(snapshot.cuts??[],snapshot.duration).map(s=>({start:s.sourceStart,end:s.sourceEnd}))})});
       if(mounted.current)setJob({id,status:"queued",stage:"queued",progress:0});
     }catch(e){setError((e as Error).message);}finally{setStarting(false);}

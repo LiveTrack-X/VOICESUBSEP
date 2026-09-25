@@ -107,7 +107,9 @@ def test_api_exposes_last_two_segments_while_real_analysis_pipeline_is_still_run
 
     fake_whisper(monkeypatch, stream)
     monkeypatch.setattr(infer, "_extract_audio", lambda *args: (10.0, 1))
-    app = create_app(data_dir=tmp_path / "data", probe=lambda _: {
+    # This test patches the in-process engine; the separate-process IPC path has
+    # its own real worker fixture in test_analysis_process.py.
+    app = create_app(data_dir=tmp_path / "data", analyzer=infer.analyze, probe=lambda _: {
         "duration": 10.0, "audioTracks": [{"index": index, "label": f"Track {index}", "channels": 1} for index in (0, 1)]})
     with TestClient(app, base_url="http://127.0.0.1:8787") as client:
         try:

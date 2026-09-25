@@ -126,9 +126,9 @@ def test_overlay_read_only_token_mute_clear_and_terminal_removal(tmp_path):
 def test_file_jobs_and_live_are_mutually_exclusive(tmp_path, monkeypatch):
     app = create_app(data_dir=tmp_path, live_engine_factory=FakeEngine)
     with TestClient(app, base_url="http://127.0.0.1:8787") as client:
-        monkeypatch.setattr(app.state.jobs, "history", lambda: [{"status": "queued"}])
-        assert client.post("/api/live/sessions", json={}).status_code == 409
-        monkeypatch.setattr(app.state.jobs, "history", lambda: [])
+        with monkeypatch.context() as pending:
+            pending.setattr(app.state.jobs, "_jobs", {"fixture": {"status": "queued"}})
+            assert client.post("/api/live/sessions", json={}).status_code == 409
         identity = create(client)
         assert client.post("/api/live/sessions", json={}).status_code == 409
         assert client.post("/api/jobs", json={"mediaId": "a" * 32, "speakerCount": 1, "audioTrack": 0}).status_code == 409

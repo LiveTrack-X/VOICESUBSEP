@@ -14,14 +14,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Any, Callable, Literal
 
-from fastapi import FastAPI, File, HTTPException, Path as ApiPath, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, Path as ApiPath, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.formparsers import MultiPartException
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .diagnostics import Diagnostics
@@ -33,6 +32,7 @@ from .live import LiveManager
 from .live_api import register_live_routes
 from .media import MEDIA_EXTENSIONS, clean_name, probe_media
 from .media_cache import MediaCache
+from .media_upload import uploaded_media
 from .waveform import Waveforms
 from .render_jobs import Renderer, RenderJobManager
 from .rendering import validate_request as validate_render_request
@@ -48,17 +48,19 @@ Identifier = Annotated[str, ApiPath(pattern=ID_PATTERN)]
 
 
 class RequestSizeLimit:
-    """Bound streaming bodies before Starlette spools multipart uploads to disk."""
+    """Bound control requests; media files stream through the multipart spool."""
 
-    def __init__(self, app, upload_limit: int):
+    def __init__(self, app):
         self.app = app
-        self.upload_limit = upload_limit
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope.get("method") not in {"POST", "PUT", "PATCH"}:
             return await self.app(scope, receive, send)
-        multipart = scope.get("path") == "/api/media"
-        limit = self.upload_limit + 64 * 1024 if multipart else (8 * 1024**2 + 64 * 1024 if scope.get("path") == "/api/renders" else 64 * 1024)
+        # Source files have no app-defined byte ceiling. Starlette still spools
+        # file parts to disk and retains its separate field/count protections.
+        if scope.get("path") == "/api/media":
+            return await self.app(scope, receive, send)
+        limit = 8 * 1024**2 + 64 * 1024 if scope.get("path") == "/api/renders" else 64 * 1024
         received = 0
         exceeded = False
 
@@ -69,9 +71,6 @@ class RequestSizeLimit:
                 received += len(message.get("body", b""))
                 if received > limit:
                     exceeded = True
-                    if multipart:
-                        # MultiPartException also closes files created by the parser.
-                        raise MultiPartException("Upload exceeds the configured size limit.")
                     raise StarletteHTTPException(413, "Request body exceeds the configured size limit.")
             return message
 
@@ -99,13 +98,20 @@ class CacheCleanupRequest(BaseModel):
 class PrioritizeJobRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     cancelRunning: bool = False
+    forceRunning: bool = False
     expectedRunningJobId: str | None = Field(default=None, pattern=ID_PATTERN)
 
     @model_validator(mode="after")
     def require_reviewed_blocker(self):
+        if self.forceRunning and not self.cancelRunning:
+            raise ValueError("Force stop requires confirmed cancellation of the running analysis.")
         if self.cancelRunning and self.expectedRunningJobId is None:
             raise ValueError("Confirm the currently running analysis before requesting cancellation.")
         return self
+
+
+class ForceCancelJobRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
 
 
 class JobRequest(BaseModel):
@@ -211,17 +217,15 @@ class RenderRequest(BaseModel):
 def create_app(
     *, data_dir: Path | None = None, analyzer: Analyzer | None = None,
     probe: Callable[[Path], dict[str, Any]] | None = None,
-    max_upload_bytes: int | None = None,
     allowed_origins: set[str] | None = None,
     renderer: Renderer | None = None,
     live_engine_factory: Callable | None = None,
 ) -> FastAPI:
     root = data_dir or Path(os.environ.get("VOICESUBSEP_DATA_DIR", str(Path(__file__).resolve().parents[2] / "data")))
-    limit = max_upload_bytes if max_upload_bytes is not None else int(os.environ.get("VOICESUBSEP_MAX_UPLOAD_BYTES", str(8 * 1024**3)))
-    if limit <= 0:
-        raise ValueError("VOICESUBSEP_MAX_UPLOAD_BYTES must be positive.")
+    # VOICESUBSEP_MAX_UPLOAD_BYTES is retired and intentionally ignored. Actual
+    # filesystem capacity and media validity still constrain source uploads.
     storage = Storage(root)
-    diagnostics = Diagnostics(storage, "0.3.1")
+    diagnostics = Diagnostics(storage, "0.3.2")
     provider_credentials = ProviderCredentials()
     jobs = JobManager(storage, analyzer, diagnostics=diagnostics, provider_credentials=provider_credentials)
     live = LiveManager(storage, live_engine_factory)
@@ -258,7 +262,7 @@ def create_app(
             provider_credentials.clear()
             await run_in_threadpool(jobs.stop)
 
-    application = FastAPI(title="VOICESUBSEP", version="0.3.1", lifespan=lifespan)
+    application = FastAPI(title="VOICESUBSEP", version="0.3.2", lifespan=lifespan)
     application.state.storage = storage
     application.state.jobs = jobs
     application.state.live = live
@@ -277,7 +281,7 @@ def create_app(
         return JSONResponse({"detail": [{key: error[key] for key in ("loc", "msg", "type")}
                                         for error in exc.errors()]}, status_code=422)
 
-    application.add_middleware(RequestSizeLimit, upload_limit=limit)
+    application.add_middleware(RequestSizeLimit)
     application.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]"])
     application.add_middleware(CORSMiddleware, allow_origins=sorted(origins),
                                allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type", "Range"],
@@ -294,8 +298,8 @@ def create_app(
             size = request.headers.get("content-length")
             if size is not None:
                 try:
-                    if int(size) < 0 or int(size) > limit + 64 * 1024:
-                        return JSONResponse({"detail": f"Upload exceeds the {limit} byte limit."}, status_code=413)
+                    if int(size) < 0:
+                        return JSONResponse({"detail": "Invalid Content-Length."}, status_code=400)
                 except ValueError:
                     return JSONResponse({"detail": "Invalid Content-Length."}, status_code=400)
         try:
@@ -338,7 +342,7 @@ def create_app(
 
     @application.get("/api/cache")
     def cache_usage():
-        return {**cache.summary(), "maxUploadBytes": limit}
+        return cache.summary()
 
     @application.post("/api/cache/cleanup")
     def cleanup_cache(request: CacheCleanupRequest):
@@ -405,7 +409,7 @@ def create_app(
         return result
 
     @application.post("/api/media", status_code=201)
-    async def upload_media(file: UploadFile = File(...)):
+    async def upload_media(file: UploadFile = Depends(uploaded_media)):
         folder = None
         try:
             name = clean_name(file.filename)
@@ -422,8 +426,6 @@ def create_app(
             with path.open("xb") as output:
                 while chunk := await file.read(1024 * 1024):
                     total += len(chunk)
-                    if total > limit:
-                        raise HTTPException(413, f"Upload exceeds the {limit} byte limit.")
                     output.write(chunk)
                     digest.update(chunk)
             if total == 0:
@@ -441,9 +443,11 @@ def create_app(
         except OSError as exc:
             raise HTTPException(507, "The media could not be saved. Check available disk space and data directory permissions.") from exc
         finally:
-            await file.close()
-            if folder is not None and folder.exists():
-                shutil.rmtree(storage.contained(folder))
+            try:
+                await file.close()
+            finally:
+                if folder is not None and folder.exists():
+                    shutil.rmtree(storage.contained(folder))
 
     @application.get("/api/media/{media_id}/file")
     def media_file(media_id: Identifier):
@@ -533,13 +537,23 @@ def create_app(
     @application.post("/api/jobs/{job_id}/prioritize")
     def prioritize_job(job_id: Identifier, request: PrioritizeJobRequest):
         try:
-            return jobs.prioritize(job_id, cancel_running=request.cancelRunning, expected_running_job_id=request.expectedRunningJobId)
+            return jobs.prioritize(job_id, cancel_running=request.cancelRunning, expected_running_job_id=request.expectedRunningJobId,
+                                   force_running=request.forceRunning)
         except KeyError:
             raise HTTPException(404, "Analysis job was not found.")
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
         except RuntimeError as exc:
             raise HTTPException(503, str(exc)) from exc
+
+    @application.post("/api/jobs/{job_id}/force-cancel")
+    def force_cancel_job(job_id: Identifier, request: ForceCancelJobRequest):
+        try:
+            return jobs.force_cancel(job_id)
+        except KeyError:
+            raise HTTPException(404, "Analysis job was not found.")
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
 
     @application.post("/api/renders", status_code=202)
     def create_render(request: RenderRequest):

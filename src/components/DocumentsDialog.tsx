@@ -71,7 +71,7 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
   return <Dialog title={t("인터뷰·회의록")} onClose={()=>close()} closeDisabled={exporting}>
     <div className="document-tabs"><button disabled={exporting} aria-pressed={mode==="transcript"} onClick={()=>setMode("transcript")}>{t("발언록")}</button><button disabled={exporting} aria-pressed={mode==="interview"} onClick={()=>setMode("interview")}>{t("인터뷰 문답")}</button><button disabled={exporting} aria-pressed={mode==="minutes"} onClick={()=>setMode("minutes")}>{t("회의 메모")}</button></div>
     {mode !== "transcript" && <p>{t("원본 시간과 근거 자막을 유지합니다. 생성 문서는 확인 전까지 초안입니다.")}</p>}
-    {mode === "transcript" ? <TranscriptDocumentPanel project={project} onExportingChange={setExporting} onSeek={time=>{const caption=captions.find(c=>c.start===time);if(caption)close(time,caption.id);}}/> : mode==="interview" ? <>
+    {mode === "transcript" ? <TranscriptDocumentPanel project={project} onExportingChange={setExporting} onSeek={close}/> : mode==="interview" ? <>
       <div className="interview-roles">{participants.map(s=><label key={s.id}>{s.name}<select aria-label={`${s.name} ${t("인터뷰 역할")}`} value={docs.roles[s.id]??"participant"} onChange={e=>edit(d=>({...d,roles:{...d.roles,[s.id]:e.target.value as InterviewRole}}))}><option value="participant">{t("참가자")}</option><option value="questioner">{t("질문자")}</option><option value="respondent">{t("답변자")}</option></select></label>)}</div>
       <p>{t("인물 역할로 질문과 답변을 구분하며, 각 자막의 분류를 직접 바꿀 수 있습니다.")}</p>
       <div className="document-transcript">{captions.slice(page*50,(page+1)*50).map(c=><article key={c.id} className={`interview-${interviewTag(c,docs)}`}>

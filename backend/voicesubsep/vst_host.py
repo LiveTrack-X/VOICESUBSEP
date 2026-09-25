@@ -19,6 +19,8 @@ import threading
 import time
 from typing import Callable
 
+from .vst_process_lock import vst_process_lock
+
 MAX_EFFECTS = 4
 MAX_PARAMETERS = 256
 MAX_JSON_BYTES = 512 * 1024
@@ -131,8 +133,14 @@ def _run_worker(request: dict, *, timeout: float, cancelled: Cancelled,
     if not _WORKER_LOCK.acquire(blocking=False):
         raise VSTError("Another VST operation is running. Wait for it to finish or cancel it first.")
     try:
-        return _run_worker_locked(request, timeout=timeout, cancelled=cancelled, progress=progress,
-                                  directory=directory, stall_timeout=stall_timeout)
+        try:
+            with vst_process_lock():
+                return _run_worker_locked(request, timeout=timeout, cancelled=cancelled, progress=progress,
+                                          directory=directory, stall_timeout=stall_timeout)
+        except RuntimeError as exc:
+            if isinstance(exc, VSTError):
+                raise
+            raise VSTError(str(exc)) from exc
     finally:
         _WORKER_LOCK.release()
 
@@ -297,7 +305,49 @@ def process_chain(source: Path, destination: Path, chain: list[dict], cancelled:
                 or type(result.get("inputFrames")) is not int or result["inputFrames"] <= 0
                 or result.get("outputFrames") != result["inputFrames"]):
             raise VSTError("VST output failed its source-duration check.")
+        _validate_residual_report(result)
         _checkpoint(cancelled)
         os.replace(staged, destination)
         progress("VST preprocessing complete", 1.0)
         return result
+
+
+def _validate_residual_report(result: dict) -> None:
+    """Do not commit an output that makes an inconsistent measurement claim."""
+    if result.get("latencyCompensation") != "plugin-reported+verified-residual":
+        return  # Older reports and the byte-preserving bypass remain valid.
+    def integer(value, maximum):
+        return type(value) is int and 0 <= value <= maximum
+    def invalid():
+        raise VSTError("VST output failed its residual-latency verification report check.")
+    plugins = result.get("plugins")
+    if not isinstance(plugins, list) or not 1 <= len(plugins) <= MAX_EFFECTS:
+        invalid()
+    reported = measured = 0
+    for plugin in plugins:
+        if not isinstance(plugin, dict) or not integer(plugin.get("reportedLatencySamples"), 480000):
+            invalid()
+        measurement = plugin.get("residualMeasurement")
+        if not isinstance(measurement, dict):
+            invalid()
+        status, applied, confidence = measurement.get("status"), measurement.get("appliedSamples"), measurement.get("confidence")
+        matched, examined = measurement.get("matchedWindows"), measurement.get("examinedWindows")
+        if (status not in ("uncertain", "verified", "corrected") or not integer(applied, 11999)
+                or type(confidence) not in (float, int) or not math.isfinite(confidence) or not 0 <= confidence <= 1
+                or not integer(matched, 7) or not integer(examined, 7) or matched > examined
+                or measurement.get("maxSearchSamples") != 12000):
+            invalid()
+        if status == "uncertain":
+            if applied != 0 or measurement.get("measuredSamples") is not None:
+                invalid()
+        elif (not integer(measurement.get("measuredSamples"), 11999) or measurement.get("measuredSamples") != applied or confidence < .9 or matched < 3
+              or (status == "verified" and applied != 0) or (status == "corrected" and applied == 0)):
+            invalid()
+        reported += plugin["reportedLatencySamples"]
+        measured += applied
+    if (any(not integer(result.get(name), 527996) for name in ("totalReportedLatencySamples", "compensatedLatencySamples", "totalMeasuredResidualSamples", "totalCompensatedLatencySamples"))
+            or reported > 480000 or result.get("totalReportedLatencySamples") != reported
+            or result.get("compensatedLatencySamples") != reported
+            or result.get("totalMeasuredResidualSamples") != measured
+            or result.get("totalCompensatedLatencySamples") != reported + measured):
+        invalid()

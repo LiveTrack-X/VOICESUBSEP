@@ -4,7 +4,7 @@ import { cacheMessages } from "./i18n-cache";
 
 describe("reviewed cache cleanup selection", () => {
   it("excludes protected sources and preserves the confirmation snapshot across refreshes", () => {
-    const cache: CacheInfo = {items:[{id:"free",name:"copy",bytes:5,duration:2,protected:false},{id:"busy",name:"job",bytes:10,duration:2,protected:true}],bytes:15,reclaimableBytes:5,freeBytes:100,maxUploadBytes:100};
+    const cache: CacheInfo = {items:[{id:"free",name:"copy",bytes:5,duration:2,protected:false},{id:"busy",name:"job",bytes:10,duration:2,protected:true}],bytes:15,reclaimableBytes:5,freeBytes:100};
     const selection = cacheCleanupSelection(cache);
     cache.items[0].protected = true; cache.items.push({...cache.items[0],id:"new",protected:false});
     expect(selection).toEqual({ids:["free"],bytes:5});
@@ -12,7 +12,7 @@ describe("reviewed cache cleanup selection", () => {
   });
   it("bounds each confirmation to the server request limit with matching displayed bytes", () => {
     const items = Array.from({length:1001},(_,index)=>({id:String(index),name:"copy",bytes:2,duration:1,protected:false}));
-    const selection = cacheCleanupSelection({items,bytes:2002,reclaimableBytes:2002,freeBytes:0,maxUploadBytes:2002});
+    const selection = cacheCleanupSelection({items,bytes:2002,reclaimableBytes:2002,freeBytes:0});
     expect(selection.ids).toHaveLength(1000); expect(selection.bytes).toBe(2000);
     expect(selection.ids).not.toContain("1000");
   });

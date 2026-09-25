@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ApiError, type Job } from "./api";
-import { priorityRequest, prioritizeAnalysis, queueError } from "./jobQueue";
+import { priorityRequest, prioritizeAnalysis, queueError, stopAnalysis } from "./jobQueue";
 import { jobStageLabel } from "./jobStage";
 import { AnalysisQueueControls } from "./components/AnalysisQueueControls";
 import { I18nProvider } from "./i18n";
@@ -48,5 +48,23 @@ describe("analysis queue controls",()=>{
   it("provides complete four translated locales while preserving named placeholders",()=>{
     const slots=(text:string)=>[...text.matchAll(/\{\w+\}/g)].map(match=>match[0]).sort();
     for(const [key,translations]of Object.entries(queueMessages)){expect(translations).toHaveLength(4);for(const value of translations){expect(value).toBeTruthy();expect(value).not.toMatch(/[가-힣]/);expect(slots(value)).toEqual(slots(key));}}
+  });
+  it("offers force stop only for an isolated worker, including one stuck after cooperative cancellation",()=>{
+    expect(markup(queued)).not.toContain("현재 작업 강제 종료 후 우선 실행");
+    const forceJob={...queued,queue:{...queued.queue!,blockingJob:{...blocker,canForceCancel:true,cancelRequested:true}}};
+    expect(markup(forceJob)).toContain("현재 작업 강제 종료 후 우선 실행");
+    expect(priorityRequest(forceJob,blocker.id,true)).toEqual({cancelRunning:true,expectedRunningJobId:blocker.id,forceRunning:true});
+    expect(()=>priorityRequest(queued,blocker.id,true)).toThrow("queue-changed");
+    expect(()=>priorityRequest(forceJob,undefined,true)).toThrow("queue-changed");
+    expect(()=>priorityRequest({...forceJob,queue:{...forceJob.queue,blockingJob:{...forceJob.queue.blockingJob,forceCancelRequested:true}}},blocker.id,true)).toThrow("queue-changed");
+  });
+  it("force stops only the inspected running job and rejects unsupported or finished jobs",async()=>{
+    const running:Job={...queued,status:"running",canForceCancel:true,cancelRequested:true};
+    const fetch=vi.fn(async()=>new Response(JSON.stringify({...running,forceCancelRequested:true}),{status:200}));vi.stubGlobal("fetch",fetch);
+    await stopAnalysis(running,true);
+    expect(fetch).toHaveBeenCalledWith(`/api/jobs/${running.id}/force-cancel`,expect.objectContaining({method:"POST",body:"{}"}));
+    for(const bad of [{...running,canForceCancel:false},{...running,status:"completed" as const},{...running,forceCancelRequested:true}])await expect(stopAnalysis(bad,true)).rejects.toThrow("queue-changed");
+    expect(fetch).toHaveBeenCalledOnce();
+    const html=markup({...running,forceCancelRequested:true});expect(html).toContain("종료 확인 후 다음 작업");expect(html).not.toContain("현재 계산이 반환될 때까지");
   });
 });

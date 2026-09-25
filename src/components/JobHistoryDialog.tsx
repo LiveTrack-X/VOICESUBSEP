@@ -5,6 +5,9 @@ import { cacheCleanupSelection, cleanupMediaCache, jobUrl, readHistory, sameAnal
 import { useI18n } from "../i18n";
 import { Dialog } from "./Dialog";
 import { RenderDialog } from "./RenderDialog";
+import { RecognitionPreview } from "./RecognitionPreview";
+import { AnalysisQueueControls } from "./AnalysisQueueControls";
+import { jobStageLabel } from "../jobStage";
 
 export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
   project:Project; file:File|null; onClose:()=>void; onApplyAnalysis:(result:AnalysisResult)=>void;
@@ -17,6 +20,7 @@ export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
   const [busy,setBusy]=useState(false);
   const [renderId,setRenderId]=useState<string|null>(null);
   const [analysis,setAnalysis]=useState<{item:HistoryItem;job:Job}|null>(null);
+  const inspected=useRef<string|null>(null);
   const [mediaId,setMediaId]=useState<string|null>(null);
   const [verifiedFile,setVerifiedFile]=useState<File|null>(null);
   const [confirm,setConfirm]=useState<string|null>(null);
@@ -33,6 +37,11 @@ export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
     try {
       const [history,storage]=await Promise.all([readHistory(),request<CacheInfo>("/api/cache")]);
       if(alive.current&&current===sequence.current){setItems(history.items);setCache(storage);setError("");}
+      const id=inspected.current;
+      if(id){
+        const job=await request<Job>(`/api/jobs/${id}`);
+        if(alive.current&&current===sequence.current&&inspected.current===id&&job.id===id)setAnalysis(value=>value?.job.id===id?{...value,job}:value);
+      }
     }catch(e){if(alive.current&&current===sequence.current)setError((e as Error).message);}
     finally{if(alive.current&&current===sequence.current)setLoading(false);}
   }
@@ -42,6 +51,7 @@ export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
     try{
       const job=await request<Job>(jobUrl(item));
       if(!alive.current)return;
+      inspected.current=job.id;
       setAnalysis({item,job});
       if(file&&item.projectId===project.id){
         const linked=await uploadMedia(file);
@@ -52,7 +62,7 @@ export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
   }
   async function remove(url:string){
     setBusy(true);setError("");
-    try{await request(url,{method:"DELETE"});if(alive.current){setConfirm(null);setAnalysis(null);await refresh();}}
+    try{await request(url,{method:"DELETE"});if(alive.current){setConfirm(null);setAnalysis(null);inspected.current=null;await refresh();}}
     catch(e){if(alive.current)setError((e as Error).message);}
     finally{if(alive.current)setBusy(false);}
   }
@@ -100,6 +110,8 @@ export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
     {items.length>count&&<button onClick={()=>setCount(value=>value+30)}>{t("더 보기")}</button>}
     {analysis&&<section className="export-section">
       <h3>{t("분석 결과 확인")}</h3><p>{analysis.item.mediaName} · {t(statusLabel[analysis.job.status])}</p>
+      {(analysis.job.status==="running"||analysis.job.status==="queued")&&<><progress value={analysis.job.progress} max={1}/><p>{Math.round(analysis.job.progress*100)}% · {t(jobStageLabel(analysis.job.stage))}</p><RecognitionPreview job={analysis.job}/></>}
+      <AnalysisQueueControls key={analysis.job.id} job={analysis.job} showCancel onUpdated={job=>{setAnalysis(value=>value?.job.id===job.id?{...value,job}:value);void refresh();}}/>
       {analysis.job.error&&<p className="error-box">{analysis.job.error}</p>}
       {analysis.job.result&&<><p>{t("자막 {captions}개 · 감지된 인물 {speakers}명",{captions:analysis.job.result.captions.length,speakers:analysis.job.result.speakers.length})}</p>
         <p>{t("같은 프로젝트와 원본 파일이 연결된 경우에만 결과를 적용할 수 있습니다.")}</p>

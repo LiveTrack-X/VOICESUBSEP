@@ -1,4 +1,6 @@
 import { translationMessages } from "./i18n-translation";
+import { editReviewMessages } from "./i18n-edit-review";
+import { mediaIdentityMessages } from "./i18n-media-identity";
 import { vstMessages } from "./i18n-vst";
 import { settingsMessages } from "./i18n-settings";
 import { workspaceMessages } from "./i18n-workspace";
@@ -20,8 +22,12 @@ import { themeMessages } from "./i18n-theme";
 import { cacheMessages } from "./i18n-cache";
 import { backgroundMessages } from "./i18n-background";
 import { queueMessages } from "./i18n-queue";
+import { yttMessages } from "./i18n-ytt";
 
 export const extraMessages: Record<string, readonly [string, string, string, string]> = {
+  ...yttMessages,
+  ...editReviewMessages,
+  ...mediaIdentityMessages,
   ...queueMessages,
   ...backgroundMessages,
   ...cacheMessages,

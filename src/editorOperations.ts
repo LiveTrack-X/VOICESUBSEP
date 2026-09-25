@@ -11,6 +11,26 @@ function validText(text: string): void {
     throw new Error("지원하지 않는 제어 문자가 있습니다.");
 }
 
+/** Content review certifies the actual text, identity and interval, not merely
+ * the cue ID. Styling and explicit review actions do not invalidate it. */
+export function editCaption(caption: Caption, change: Partial<Caption>): Caption {
+  if (Object.entries(change).every(([key, value]) => Object.is(caption[key as keyof Caption], value))) return caption;
+  const next = { ...caption, ...change };
+  const textChanged = next.text !== caption.text;
+  const timeChanged = next.start !== caption.start || next.end !== caption.end;
+  const speakerChanged = next.speakerId !== caption.speakerId;
+  if (textChanged) validText(next.text);
+  if (!textChanged && !timeChanged && !speakerChanged) return next;
+  const reasons = new Set(next.reasons);
+  if (textChanged || speakerChanged) reasons.add("edited");
+  if (timeChanged) reasons.add("timing");
+  if (speakerChanged) {
+    if (next.speakerId === null) reasons.add("unassigned");
+    else reasons.delete("unassigned");
+  }
+  return { ...next, ...(textChanged || timeChanged ? { words: undefined } : {}), reasons: [...reasons], reviewed: false };
+}
+
 export function addCaption(project: Project, time: number, text: string, id: string = crypto.randomUUID()): Project {
   if (project.captions.length >= MAX_CAPTIONS) throw new Error(CAPTION_LIMIT_ERROR);
   validText(text);
@@ -33,8 +53,8 @@ export function splitCaption(project: Project, id: string, time: number, newId: 
   const index = Math.max(1, Math.min(words.length - 1,
     Math.round(words.length * (splitAt - caption.start) / (caption.end - caption.start))));
   return { ...project, captions: project.captions.flatMap((item) => item.id === id ? [
-    { ...item, end: splitAt, text: words.slice(0, index).join(" "), words: undefined },
-    { ...item, id: newId, start: splitAt, text: words.slice(index).join(" "), words: undefined },
+    editCaption(item, { end: splitAt, text: words.slice(0, index).join(" ") }),
+    editCaption(item, { id: newId, start: splitAt, text: words.slice(index).join(" ") }),
   ] : [item]) };
 }
 
@@ -45,9 +65,9 @@ export function mergeCaptions(project: Project, firstId: string, secondId: strin
   const text = `${first.text} ${second.text}`;
   validText(text);
   return { ...project, captions: project.captions.filter((item) => item.id !== secondId).map((item) =>
-    item.id === firstId ? { ...item, start: Math.min(first.start, second.start), end: Math.max(first.end, second.end),
-      text, words: undefined, reasons: [...new Set([...first.reasons, ...second.reasons])],
-      reviewed: first.reviewed && second.reviewed } : item) };
+    item.id === firstId ? editCaption(item, { start: Math.min(first.start, second.start), end: Math.max(first.end, second.end),
+      text, reasons: [...new Set([...first.reasons, ...second.reasons])],
+      reviewed: first.reviewed && second.reviewed }) : item) };
 }
 
 export type BulkCaptionAction = { kind: "speaker"; speakerId: string | null } |
@@ -70,7 +90,7 @@ export function bulkEditCaptions(project: Project, ids: ReadonlySet<string>, act
       : caption.reasons.filter((reason) => reason !== "unassigned");
     if (caption.speakerId === action.speakerId && reasons.join() === caption.reasons.join()) return [caption];
     changed = true;
-    return [{ ...caption, speakerId: action.speakerId, reasons }];
+    return [editCaption(caption, { speakerId: action.speakerId, reasons })];
   });
   return changed ? { ...project, captions } : project;
 }
@@ -86,7 +106,7 @@ export function replaceCaptionText(project: Project, ids: ReadonlySet<string>, f
     if (text === caption.text) return caption;
     changed = true;
     // Existing translations retain their sourceText and are consequently marked stale.
-    return { ...caption, text, words: undefined, reviewed: false };
+    return editCaption(caption, { text });
   });
   return changed ? { ...project, captions } : project;
 }

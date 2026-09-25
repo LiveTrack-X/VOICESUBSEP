@@ -230,3 +230,34 @@ describe("per-plugin automatic latency compensation evidence", () => {
     expect(() => checkedPreview({ ...result, report: { ...report, plugins: [{ reportedLatencySamples: 2718 }] } })).toThrow();
   });
 });
+
+describe("verified residual latency reports",()=>{
+  const measurement={status:"corrected",reason:"consistent",measuredSamples:2238,appliedSamples:2238,confidence:.98,matchedWindows:7,examinedWindows:7,maxSearchSamples:12000};
+  const report={sampleRate:48000,latencyCompensation:"plugin-reported+verified-residual",plugins:[{pluginName:"Effect",reportedLatencySamples:1024,residualMeasurement:measurement}],
+    totalReportedLatencySamples:1024,compensatedLatencySamples:1024,totalMeasuredResidualSamples:2238,totalCompensatedLatencySamples:3262};
+  const preview={id:"measured",status:"completed",originalUrl:"/api/vst/previews/measured/original",processedUrl:"/api/vst/previews/measured/processed",report};
+  it("shows reported and measured extra delay separately and totals them once",()=>{
+    const summary=vstLatencySummary(checkedPreview(preview));
+    expect(summary?.residualChecked).toBe(true);
+    expect(summary?.plugins[0].samples).toBe(1024);
+    expect(summary?.plugins[0].residual?.appliedSamples).toBe(2238);
+    expect(summary?.totalSamples).toBe(3262);
+  });
+  it("retains uncertainty without claiming an extra correction",()=>{
+    const uncertain={...measurement,status:"uncertain",reason:"ambiguous",measuredSamples:null,appliedSamples:0,matchedWindows:0,confidence:0};
+    const summary=vstLatencySummary(checkedPreview({...preview,report:{...report,plugins:[{...report.plugins[0],residualMeasurement:uncertain}],totalMeasuredResidualSamples:0,totalCompensatedLatencySamples:1024}}));
+    expect(summary?.plugins[0].residual?.status).toBe("uncertain");
+    expect(summary?.totalSamples).toBe(1024);
+  });
+  it.each([
+    {status:"unknown"},{status:"uncertain"},{status:"verified"},{confidence:.89},{confidence:NaN},{confidence:2},
+    {matchedWindows:2},{matchedWindows:8},{examinedWindows:6},{maxSearchSamples:24000},
+    {measuredSamples:2000},{appliedSamples:-1},{appliedSamples:12000},{appliedSamples:true},
+  ])("rejects invalid correction evidence %j",change=>{
+    expect(()=>checkedPreview({...preview,report:{...report,plugins:[{...report.plugins[0],residualMeasurement:{...measurement,...change}}]}})).toThrow();
+  });
+  it.each([{totalCompensatedLatencySamples:2238},{totalMeasuredResidualSamples:0},{compensatedLatencySamples:0},{totalReportedLatencySamples:undefined},
+    {plugins:[{pluginName:"Missing",reportedLatencySamples:1024}]}, {plugins:[]}])("rejects contradictory totals or absent measurement %j",change=>{
+    expect(()=>checkedPreview({...preview,report:{...report,...change}})).toThrow();
+  });
+});

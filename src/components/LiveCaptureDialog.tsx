@@ -9,6 +9,7 @@ import { effectiveAnalysisDevice, loadAnalysisPreferences } from "../settings";
 import { ASR_LANGUAGES, languageName } from "../languages";
 import { getLiveResult, liveHistory, LiveSession, liveSourceFile, liveTerminal, type LiveState } from "../liveSession";
 import type { InputLevel } from "../livePcm";
+import { loadCapturePreferences, saveCapturePreferences, type CapturePreferences, type CapturePreferencesStatus } from "../capturePreferences";
 import "./live-capture.css";
 
 const sourceNames: Record<RecordingSource, string> = { mix: "합친 소리", microphone: "마이크", system: "시스템 소리" };
@@ -29,15 +30,22 @@ export function LiveCaptureDialog({ onClose, onUse, onLiveResult, speakerCount =
   const [history,setHistory] = useState<LiveState[]>([]), [historyError,setHistoryError] = useState(false);
   const [visibleHistory,setVisibleHistory] = useState(10);
   const live = useRef<LiveSession|null>(null);
-  const [mode,setMode] = useState<CaptureMode>("microphone"), [device,setDevice] = useState("");
+  const [initialCapturePreferences] = useState(loadCapturePreferences);
+  const [capturePreferences,setCapturePreferences] = useState(initialCapturePreferences.settings);
+  const [captureStorageStatus,setCaptureStorageStatus] = useState<CapturePreferencesStatus>(initialCapturePreferences.status);
+  const {mode,deviceId:device,deviceLabel:selectedLabel}=capturePreferences;
   const [microphones,setMicrophones] = useState(emptyMicrophones), [sessions,setSessions] = useState<Recording[]>([]);
-  const [deviceBusy,setDeviceBusy] = useState(false), [selectedLabel,setSelectedLabel] = useState("");
+  const [deviceBusy,setDeviceBusy] = useState(false);
   const [busy,setBusy] = useState(false), [active,setActive] = useState(false), [elapsed,setElapsed] = useState(0);
   const [error,setError] = useState("");
   const [visibleSessions,setVisibleSessions] = useState(25);
   const capture = useRef<LiveCapture | null>(null), alive = useRef(true);
   const discovery = useRef<MicrophoneDiscovery | null>(null);
   const missingDevice = mode !== "system" && selectedMicrophoneMissing(microphones, device);
+  function chooseCapturePreferences(next:CapturePreferences) {
+    setCapturePreferences(next);
+    setCaptureStorageStatus(saveCapturePreferences(next).ok?"saved":"unavailable");
+  }
   const liveDevice=effectiveAnalysisDevice(preferences.device,health?!!health.gpu?.available:undefined);
   const liveBlock=analysisBlockReason(health,true);
   const preparing=liveState?.status==="loading"&&!liveFailed;
@@ -192,9 +200,12 @@ export function LiveCaptureDialog({ onClose, onUse, onLiveResult, speakerCount =
       {ready&&!active&&<p role="status">{t("엔진이 준비되었습니다. 아래 시작 버튼을 누르면 장치에 접근하고 녹음합니다.")}</p>}
     </section>}
     <p>{t("녹음은 이 앱에 1초 단위로 저장됩니다. 창이 비정상 종료되면 마지막 조각 일부는 빠질 수 있습니다.")}</p>
-    <div className="capture-options"><label>{t("녹음 소스")}<select value={mode} disabled={active||busy||deviceBusy} onChange={e=>setMode(e.target.value as CaptureMode)}><option value="microphone">{t("마이크")}</option><option value="system">{t("시스템 소리")}</option><option value="both">{t("마이크 + 시스템 소리")}</option></select></label>
-      {mode!=="system"&&<label>{t("입력 장치")}<select aria-label={t("입력 장치")} value={device} disabled={active||busy||deviceBusy} onChange={e=>{setDevice(e.target.value);setSelectedLabel(microphones.devices.find(d=>d.deviceId===e.target.value)?.label??"");}}><option value="">{t("기본 입력 · 녹음 시작 시 시스템 설정 사용")}{microphones.defaultLabel?` — ${microphones.defaultLabel}`:""}</option>{microphones.devices.map(d=><option key={d.deviceId} value={d.deviceId}>{d.label}</option>)}{device&&!microphones.devices.some(d=>d.deviceId===device)&&<option value={device}>{t("연결 해제된 선택 장치")}: {selectedLabel}</option>}</select></label>}
+    <div className="capture-options"><label>{t("녹음 소스")}<select value={mode} disabled={active||busy||deviceBusy} onChange={e=>chooseCapturePreferences({...capturePreferences,mode:e.target.value as CaptureMode})}><option value="microphone">{t("마이크")}</option><option value="system">{t("시스템 소리")}</option><option value="both">{t("마이크 + 시스템 소리")}</option></select></label>
+      {mode!=="system"&&<label>{t("입력 장치")}<select aria-label={t("입력 장치")} value={device} disabled={active||busy||deviceBusy} onChange={e=>chooseCapturePreferences({...capturePreferences,deviceId:e.target.value,deviceLabel:microphones.devices.find(d=>d.deviceId===e.target.value)?.label??""})}><option value="">{t("기본 입력 · 녹음 시작 시 시스템 설정 사용")}{microphones.defaultLabel?` — ${microphones.defaultLabel}`:""}</option>{microphones.devices.map(d=><option key={d.deviceId} value={d.deviceId}>{d.label}</option>)}{device&&!microphones.devices.some(d=>d.deviceId===device)&&<option value={device}>{t(missingDevice?"연결 해제된 선택 장치":"저장된 선택 장치")}: {selectedLabel||device}</option>}</select></label>}
     </div>
+    {captureStorageStatus==="saved"&&<p className="inline-status" role="status">{t("녹음 소스와 마이크 선택을 이 기기에 저장했습니다.")}</p>}
+    {captureStorageStatus==="invalid"&&<p className="error-box" role="status">{t("저장된 녹음 소스 설정을 읽을 수 없어 기본값을 표시합니다. 시작 전에 소스와 마이크를 확인하고 직접 선택하세요.")}</p>}
+    {captureStorageStatus==="unavailable"&&<p className="error-box" role="status">{t("녹음 소스 설정을 저장하거나 불러오지 못했습니다. 현재 선택은 사용할 수 있지만 다음에 복원되지 않을 수 있습니다.")}</p>}
     {mode!=="system"&&<>
       <button type="button" disabled={active||busy||deviceBusy||!navigator.mediaDevices?.getUserMedia} onClick={()=>void refreshDevices()}>{t("마이크 권한 확인·장치 새로고침")}</button>
       <p>{t("장치 이름 확인을 위해 잠깐 마이크 권한을 요청합니다. 이 확인 과정에서는 녹음 파일을 만들지 않으며 확인 후 마이크를 해제합니다.")}</p>

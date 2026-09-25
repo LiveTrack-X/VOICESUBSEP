@@ -8,11 +8,16 @@ Start with the [0.3.1 release record](releases/v0.3.1.md) for downloads and veri
 
 **0.3.1을 공개했습니다.** 연속 스크롤·테마/언어 조작·인물 색 발언록·미리보기 배치·로컬 Whisper AUTO 언어 유지·백그라운드 작업 상태·대기열/캐시 조작을 개선했습니다. 정확한 범위·파일은 [릴리즈 기록](releases/v0.3.1.md)을 확인하세요.
 
+**0.3.2 is under source validation, not published or installed.** Current feature/user guides mark its new behavior explicitly. The [0.3.2 preparation record](releases/v0.3.2.md) covers isolated force-stop, source identity, editing correctness, capture preferences and measured VST residual delay. The 0.3.1 release and its evidence remain unchanged.
+
+**0.3.2는 소스 검증 중이며 미게시·미설치 상태입니다.** 현행 기능·사용자 가이드에서 새 동작에 버전을 표시합니다. 분석 격리·강제 종료, 원본 식별, 편집 정합성, 녹음 선호, VST 잔여 지연은 [0.3.2 준비 기록](releases/v0.3.2.md)을 확인하세요. 0.3.1 릴리즈와 당시 증거는 변경하지 않습니다.
+
 ## Users / 사용자
 
 | Purpose / 목적 | Document / 문서 |
 | --- | --- |
 | 0.3.1 publication, verified installer and checksums / 0.3.1 게시 상태·설치 검증·체크섬 | [0.3.1 release record / 릴리즈 기록](releases/v0.3.1.md) |
+| 0.3.2 changes being validated; not a download / 0.3.2 검증 중 변경·다운로드 아님 | [0.3.2 preparation record / 준비 기록](releases/v0.3.2.md) |
 | Small EXE, speed limit, retry/cache, manual fallback / 작은 EXE·속도 제한·재시도·캐시·수동 대안 | [Online installer / 온라인 설치](ONLINE-INSTALLER.md) |
 | Install, analyze, edit, export and recover / 설치·분석·편집·출력·복구 | [User guide / 사용자 가이드](USER-GUIDE.md) |
 | Features and boundaries / 기능과 한계 | [README](../README.md) |
@@ -21,6 +26,7 @@ Start with the [0.3.1 release record](releases/v0.3.1.md) for downloads and veri
 | Source/output time, UI languages and original transcripts / 원본·출력 시간·화면 언어·원문 | [Cuts and languages / 컷·언어](CUTS-AND-LANGUAGES.md) |
 | File/OBS mix, individual/solo preview and sample peaks / 파일·OBS 믹스·개별/솔로 미리듣기·샘플 피크 | [Audio mixer / 오디오 믹서](AUDIO-MIXER.md) |
 | External VST3 chains and latency / 외부 VST3 체인·지연 | [VST chain / VST 체인](VST-CHAIN.md) |
+| 0.3.2 YTT styled CC scope and YouTube verification limits / 0.3.2 YTT 스타일 CC 범위·YouTube 검증 한계 | [YouTube captions / YouTube 자막](YOUTUBE-CAPTIONS.md) |
 | Settings backup and diagnostics / 설정 백업·진단 | [Settings and logs / 설정·로그](SETTINGS-AND-LOGS.md) |
 | Optional Groq/xAI/Gemini speech recognition, keys and transmission / 선택적 Groq·xAI·Gemini 음성 인식·키·전송 | [Advanced providers / 고급 공급자](ADVANCED-PROVIDERS.md) |
 | Optional cloud speaker intervals and limits / 선택적 클라우드 화자 구간·한도 | [Deepgram diarization / Deepgram 화자 구분](DEEPGRAM-DIARIZATION.md) |
@@ -33,6 +39,7 @@ Start with the [0.3.1 release record](releases/v0.3.1.md) for downloads and veri
 - [Qwen source-only runtime, alignment and distribution audit / Qwen 개발 환경·정렬·배포 감사](QWEN-RUNTIME.md)
 - [Dependency notices and distribution obligations / 의존성 고지·재배포 의무](BUNDLED-NOTICES.md)
 - [0.3.1 runtime, installer and release evidence / 0.3.1 실행환경·설치·릴리즈 증거](releases/v0.3.1.md)
+- [0.3.2 source validation and remaining acceptance / 0.3.2 소스 검증·남은 수용 확인](releases/v0.3.2.md)
 - [Design system / 디자인 시스템](design/DESIGN-SYSTEM.md)
 
 ## Historical evidence and proposals / 과거 증거·설계 제안

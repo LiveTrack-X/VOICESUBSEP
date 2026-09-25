@@ -18,7 +18,7 @@ import { formatTime, parseTime, resolveCaptionStyle, type Caption, type Project 
 import { readableSpeakerColor } from "../speakerColor";
 import { THEME_PALETTES, useTheme } from "../theme";
 import { CaptionStyleDialog } from "./CaptionStyleDialog";
-import { addCaption, splitCaption, mergeCaptions, bulkEditCaptions, replaceCaptionText,
+import { addCaption, editCaption, splitCaption, mergeCaptions, bulkEditCaptions, replaceCaptionText,
   replacementCount, nextCaptionToReview, MAX_CAPTION_TEXT,
   type BulkCaptionAction } from "../editorOperations";
 import { useCaptionVirtualList } from "../useCaptionVirtualList";
@@ -45,6 +45,7 @@ const reasonLabels: Record<string, string> = {
   speaker_count: "인원 확인",
   timing: "시간 확인",
   speaker_boundary: "경계 보정",
+  edited: "수동 수정",
 };
 export function CaptionEditor({
   project,
@@ -169,7 +170,7 @@ export function CaptionEditor({
   function edit(id: string, change: Partial<Caption>) {
     run((p) => ({
       ...p,
-      captions: p.captions.map((c) => (c.id === id ? { ...c, ...change } : c)),
+      captions: p.captions.map((c) => (c.id === id ? editCaption(c, change) : c)),
     }));
   }
   function editTime(
@@ -186,7 +187,7 @@ export function CaptionEditor({
         throw new Error(t("종료 시간은 시작 시간보다 뒤여야 합니다."));
       if (project.mediaName && project.duration > 0 && end > project.duration)
         throw new Error(t("자막 시간은 연결된 미디어 길이 안에 있어야 합니다."));
-      if (parsed !== c[field]) { edit(c.id, { [field]: parsed, words: undefined }); setRowReveal({ id: c.id }); }
+      if (parsed !== c[field]) { edit(c.id, { [field]: parsed }); setRowReveal({ id: c.id }); }
     } catch (error) {
       input.value = formatTime(c[field]);
       onError(t((error as Error).message));
@@ -423,7 +424,7 @@ export function CaptionEditor({
                   rows={density === "compact" ? 1 : 2}
                   maxLength={MAX_CAPTION_TEXT}
                   onChange={(e) =>
-                    edit(c.id, { text: e.target.value, words: undefined })
+                    edit(c.id, { text: e.target.value })
                   }
                 />
                 {c.reasons.length > 0 && (

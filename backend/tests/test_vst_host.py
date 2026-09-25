@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
 from pathlib import Path
 import subprocess
 import sys
@@ -9,6 +10,12 @@ import wave
 import pytest
 
 from voicesubsep import vst_host as host
+
+
+@pytest.fixture(autouse=True)
+def isolated_vst_lock(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "local"))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
 
 
 def wav(path: Path, frames: int = 3000) -> Path:
@@ -158,6 +165,19 @@ def test_worker_busy_never_starts_second_native_process(fake_worker):
     finally:
         host._WORKER_LOCK.release()
     assert not processes
+
+
+def test_os_lock_busy_is_a_vst_error_and_releases_thread_lock(monkeypatch):
+    @contextmanager
+    def unavailable():
+        raise RuntimeError("Another VST operation is running. Wait for it to finish or cancel it first.")
+        yield
+    monkeypatch.setattr(host,"vst_process_lock",unavailable)
+    monkeypatch.setattr(host,"_run_worker_locked",lambda *args,**kwargs:pytest.fail("A busy OS slot cannot spawn a worker"))
+    with pytest.raises(host.VSTError,match="Another VST operation"):
+        host._run_worker({},timeout=1,cancelled=lambda:False)
+    assert host._WORKER_LOCK.acquire(blocking=False)
+    host._WORKER_LOCK.release()
 
 
 def test_failed_sample_count_does_not_replace_existing_output(tmp_path, plugin, monkeypatch):

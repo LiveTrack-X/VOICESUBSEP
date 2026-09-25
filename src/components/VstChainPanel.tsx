@@ -281,13 +281,18 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
       {preview?.status === "failed" && <p className="error-box" role="alert">{preview.error ?? t("비교 음성 생성에 실패했습니다.")}</p>}
       {preview?.status === "completed" && <div className="vst-preview-audio"><label>{t("원본 음성")}<audio ref={originalAudio} controls preload="metadata" src={preview.originalUrl} onPlay={() => processedAudio.current?.pause()} /></label>
         <label>{t("VST 처리 음성")}<audio ref={processedAudio} controls preload="metadata" src={preview.processedUrl} onPlay={() => originalAudio.current?.pause()} /></label>
-        {latency && <section className="vst-latency-report" aria-label={t("플러그인 보고 지연 · 자동 보정")}>
-          <strong>{t("플러그인 보고 지연 · 자동 보정")}</strong>
-          <ul>{latency.plugins.map((plugin, index) => <li key={index}><span>{plugin.name}</span><span>{t("{samples} 샘플 / {ms} ms", { samples: plugin.samples, ms: plugin.milliseconds.toFixed(2) })}</span></li>)}</ul>
+        {latency && <section className="vst-latency-report" aria-label={t("플러그인 지연 확인 · 자동 보정")}>
+          <strong>{t("플러그인 지연 확인 · 자동 보정")}</strong>
+          <ul>{latency.plugins.map((plugin, index) => <li key={index}><span>{plugin.name}</span><span>
+            {t("보고 지연: {samples} 샘플 / {ms} ms", { samples: plugin.samples, ms: plugin.milliseconds.toFixed(2) })}
+            {plugin.residual&&<><br/><small>{plugin.residual.status==="uncertain"?t("실측 불확실 · 추가 보정 안 함"):plugin.residual.status==="verified"?
+              t("실측 추가 지연 없음 · {windows}개 구간 확인",{windows:plugin.residual.matchedWindows}):
+              t("실측 추가 보정: {samples} 샘플 / {ms} ms · {windows}개 구간",{samples:plugin.residual.appliedSamples,ms:(plugin.residual.appliedSamples/48).toFixed(2),windows:plugin.residual.matchedWindows})}</small></>}
+          </span></li>)}</ul>
           <p><strong>{t("총 보정 지연")}</strong><span>{t("{samples} 샘플 / {ms} ms", { samples: latency.totalSamples, ms: latency.totalMilliseconds.toFixed(2) })}</span></p>
-          <small>{t("플러그인이 보고한 지연을 기준으로 보정했습니다. 실제 지연을 잘못 보고하는 플러그인은 추가 확인이 필요합니다.")}</small>
+          <small>{t(latency.residualChecked?"보고 지연을 먼저 보정한 뒤, 최대 ±250ms 범위에서 여러 구간의 잔여 지연을 확인합니다. 충분히 일치하는 양의 지연만 추가 보정하며 무음·주기음·게이트·가변 지연은 불확실할 수 있습니다. 이번 음원과 설정에 대한 확인이며 모든 구간의 싱크를 보장하지 않습니다.":"플러그인이 보고한 지연을 기준으로 보정했습니다. 실제 지연을 잘못 보고하는 플러그인은 추가 확인이 필요합니다.")}</small>
         </section>}
-        {preview.report?.warnings?.map((warning, index) => <p className="info-box" key={index}>{warning}</p>)}
+        {preview.report?.warnings?.map((warning, index) => <p className="info-box" key={index}>{t(warning==="Some residual delays could not be verified. No additional shift was guessed for those effects."?"일부 잔여 지연을 확인하지 못했습니다. 해당 효과는 추측으로 추가 이동하지 않았습니다.":warning)}</p>)}
         <small>{t("음성 인식 결과가 좋아지는지는 별도로 비교해야 합니다. 소음이 줄어도 인식률이 낮아질 수 있습니다.")}</small>
       </div>}
     </>}

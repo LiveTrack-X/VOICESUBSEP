@@ -10,7 +10,13 @@
 
 **v0.3.1 Windows 프리뷰를 공개했습니다.** [작은 온라인 설치 EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.1/VOICESUBSEP-0.3.1-Online-Setup-x64.exe) 하나로 시작하세요. 검증·설치·체크섬은 [릴리즈 기록](docs/releases/v0.3.1.md), 구현 범위와 한계는 [기능 현황](docs/FEATURE-STATUS.md)에 있습니다.
 
+**0.3.2 source is under validation; it is not published or installed yet.** It adds isolated analysis force-stop/priority controls, refreshed job history, SHA256-bound original relinking and pre-render verification, renewed review after manual edits, exact transcript-to-caption selection, remembered recording inputs and guarded VST residual-delay measurement. These changes are not in the 0.3.1 download above. See the [0.3.2 preparation record](docs/releases/v0.3.2.md) for current evidence and limits.
+
+**0.3.2 소스는 검증 중이며 아직 게시·설치하지 않았습니다.** 분석 전용 프로세스 강제 종료·우선 실행, 작업 이력 갱신, SHA256 기반 원본 재연결·렌더 직전 검증, 직접 수정 후 재검수, 발언록에서 정확한 자막 선택, 녹음 입력 기억, 신뢰도 조건을 둔 VST 잔여 지연 측정을 추가했습니다. 위 0.3.1 다운로드에는 이번 변경이 없습니다. 현재 증거와 한계는 [0.3.2 준비 기록](docs/releases/v0.3.2.md)을 확인하세요.
+
 Read [dependency notices and distribution obligations / 의존성 고지·재배포 의무](docs/BUNDLED-NOTICES.md) before redistributing. Public source access does not grant a permissive app license. / 재배포 전 고지를 확인하세요. 소스 공개가 앱에 자유로운 재배포 라이선스를 부여하지는 않습니다.
+
+**0.3.2 YTT export, under validation:** the source now exports speaker-name colors and subtitle styles to CC files on the original or cut-edited timeline. YouTube upload/playback is unverified; advanced animation/karaoke is outside the initial scope. / **0.3.2 YTT 출력 검증 중:** 인물 이름 색·자막 스타일을 원본 또는 컷 적용 시간의 CC 파일로 출력하는 소스를 추가했습니다. YouTube 업로드·재생은 미검증이며 고급 애니메이션·노래방 효과는 첫 범위에서 제외합니다. [Guide / 안내](docs/YOUTUBE-CAPTIONS.md).
 
 ## Install / 설치
 
@@ -106,6 +112,6 @@ npm run desktop:test
 npm run desktop:smoke
 ```
 
-Automated checks do not establish transcription accuracy, device recording quality, or installer deployment. [Release evidence](docs/releases/v0.3.1.md) separates those scopes. Source data defaults to `data/` (`VOICESUBSEP_DATA_DIR`); the upload limit defaults to 8 GiB (`VOICESUBSEP_MAX_UPLOAD_BYTES`). Desktop data lives outside the install folder. Third-party [notices and redistribution obligations](docs/BUNDLED-NOTICES.md) remain separate from app functionality.
+Automated checks do not establish transcription accuracy, device recording quality, or installer deployment. [Release evidence](docs/releases/v0.3.2.md) separates those scopes. Source data defaults to `data/` (`VOICESUBSEP_DATA_DIR`). **0.3.2 removes the fixed source-media upload cap and ignores the retired `VOICESUBSEP_MAX_UPLOAD_BYTES` setting.** Uploads still spool to disk and copy/hash in bounded blocks; available disk space, filesystem limits and media validity still matter. Project JSON, live recording and provider limits are separate and unchanged. Desktop data lives outside the install folder. Third-party [notices and redistribution obligations](docs/BUNDLED-NOTICES.md) remain separate from app functionality.
 
-자동 검사는 인식 정확도·장치 녹음 품질·설치 배포를 대신 입증하지 않습니다. [릴리즈 증거](docs/releases/v0.3.1.md)에서 범위를 구분합니다. 개발 데이터는 기본 `data/`(`VOICESUBSEP_DATA_DIR`), 업로드 제한은 기본 8GiB(`VOICESUBSEP_MAX_UPLOAD_BYTES`)입니다. 설치형 데이터는 설치 폴더 밖에 남습니다. 외부 의존성의 [고지·재배포 의무](docs/BUNDLED-NOTICES.md)는 앱 기능과 별도로 확인합니다.
+자동 검사는 인식 정확도·장치 녹음 품질·설치 배포를 대신 입증하지 않습니다. [릴리즈 증거](docs/releases/v0.3.2.md)에서 범위를 구분합니다. 개발 데이터는 기본 `data/`(`VOICESUBSEP_DATA_DIR`)입니다. **0.3.2는 원본 미디어 업로드의 고정 용량 상한을 없애고 기존 `VOICESUBSEP_MAX_UPLOAD_BYTES`를 무시합니다.** 디스크 임시 저장과 작은 블록의 복사·해시 계산은 유지하며 실제 여유 공간·파일시스템·미디어 유효성 제약은 남습니다. 프로젝트 JSON·라이브 녹음·공급자별 제한은 별개로 유지합니다. 설치형 데이터는 설치 폴더 밖에 남으며 외부 의존성의 [고지·재배포 의무](docs/BUNDLED-NOTICES.md)는 앱 기능과 별도로 확인합니다.

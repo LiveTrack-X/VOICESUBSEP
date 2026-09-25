@@ -14,6 +14,7 @@ from .jobs import timestamp
 from .rendering import FORMATS, RenderCancelled, render_media
 from .storage import Storage, new_id, valid_id
 from .diagnostics import Diagnostics
+from .media_identity import verify_snapshot_media, verify_snapshot_source
 
 Renderer = Callable[..., dict[str, Any]]
 TERMINAL = {"completed", "failed", "cancelled"}
@@ -86,12 +87,17 @@ class RenderJobManager:
             # cancellation. Keep the shared data lock until that cleanup ends.
             self._thread.join()
 
+    def _validate_submission_sources(self, request: dict) -> None:
+        metadata, _ = self.storage.get_media(request["mediaId"])
+        verify_snapshot_media(request.get("projectSnapshot"), metadata)
+
     def submit(self, request: dict) -> str:
         with self._mutex:
             if self._thread is None or not self._thread.is_alive() or self._stopping.is_set():
                 raise RuntimeError("The render worker is not available.")
             if self._queue.full() or sum(record["status"] not in TERMINAL for record in self._jobs.values()) >= 8:
                 raise OverflowError("The export queue is full (8 jobs). Wait for an export to finish.")
+            self._validate_submission_sources(request)
             job_id = new_id()
             saved_request = copy.deepcopy(request)
             snapshot = saved_request.pop("projectSnapshot", None)
@@ -189,7 +195,11 @@ class RenderJobManager:
 
         try:
             metadata, source = self.storage.get_media(request["mediaId"])
+            snapshot = self.snapshot(job_id)
+            if request.get("hasSnapshot") and snapshot is None:
+                raise ValueError("The saved export snapshot is missing or corrupt. Start a new export from the project.")
             destination = self.storage.contained(self.folder(job_id) / f"edited.{request['format']}")
+            verify_snapshot_source(snapshot, metadata, source, event.is_set)
             result = self.renderer(source, destination, keep_ranges=request["keepRanges"], format=request["format"],
                                    audio_track=request["audioTrack"], progress=progress, cancelled=event.is_set,
                                    **({"frame_rate": request["frameRate"]} if request.get("frameRate", "30") != "30" else {}))

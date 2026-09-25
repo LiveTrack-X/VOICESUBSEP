@@ -56,8 +56,12 @@ def register_live_routes(app, manager: LiveManager, storage, jobs):
     @app.post("/api/live/sessions", status_code=202)
     def create_live(payload: LiveRequest, request: Request):
         with storage.media_lock:
-            if any(row["status"] in {"queued", "running"} for row in jobs.history()):
-                raise HTTPException(409, "파일 분석이 끝난 뒤 라이브 세션을 시작하세요. 로컬 모델은 동시에 실행하지 않습니다.")
+            try:
+                jobs.require_idle()
+            except PermissionError as exc:
+                raise HTTPException(409, str(exc)) from None
+            except RuntimeError as exc:
+                raise HTTPException(503, str(exc)) from None
             return public(invoke(lambda: manager.create(payload.model_dump())), request)
 
     @app.get("/api/live/sessions")

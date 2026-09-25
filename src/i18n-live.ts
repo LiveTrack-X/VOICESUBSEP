@@ -1,4 +1,8 @@
 export const liveMessages: Record<string, readonly [string, string, string, string]> = {
+  "저장된 선택 장치": ["Saved selected device", "保存済みの選択デバイス", "已保存的所选设备", "Dispositivo seleccionado guardado"],
+  "녹음 소스와 마이크 선택을 이 기기에 저장했습니다.": ["Recording source and microphone selection are saved on this device.", "録音ソースとマイクの選択をこの端末に保存しました。", "录音来源和麦克风选择已保存在此设备上。", "La fuente de grabación y el micrófono seleccionados están guardados en este dispositivo."],
+  "저장된 녹음 소스 설정을 읽을 수 없어 기본값을 표시합니다. 시작 전에 소스와 마이크를 확인하고 직접 선택하세요.": ["Saved recording preferences could not be read, so defaults are shown. Check and select the source and microphone before starting.", "保存された録音設定を読み込めないため初期値を表示しています。開始前にソースとマイクを確認して選び直してください。", "无法读取已保存的录音设置，现显示默认值。开始前请检查并选择录音来源和麦克风。", "No se pudieron leer las preferencias guardadas; se muestran los valores predeterminados. Comprueba y selecciona la fuente y el micrófono antes de empezar."],
+  "녹음 소스 설정을 저장하거나 불러오지 못했습니다. 현재 선택은 사용할 수 있지만 다음에 복원되지 않을 수 있습니다.": ["Recording preferences could not be saved or loaded. You can use the current selection, but it may not be restored next time.", "録音設定を保存または読み込めませんでした。現在の選択は使用できますが、次回復元できない場合があります。", "无法保存或加载录音设置。当前选择仍可使用，但下次可能无法恢复。", "No se pudieron guardar o cargar las preferencias de grabación. Puedes usar la selección actual, pero quizá no se restaure la próxima vez."],
   "준비 중": ["Preparing", "準備中", "准备中", "Preparando"],
   "인식 중": ["Recognizing", "認識中", "识别中", "Reconociendo"],
   "마무리 중": ["Finalizing", "完了処理中", "正在完成", "Finalizando"],

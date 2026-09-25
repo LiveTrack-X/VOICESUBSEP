@@ -5,6 +5,7 @@ const labels:Record<string,string>={
   failed:"아래 오류 내용을 확인하세요.",
   cancelled:"작업이 취소되었습니다.",
   "cancellation requested":"현재 처리 단계가 끝나면 취소합니다.",
+  "force cancellation requested":"분석 전용 프로세스를 종료하고 있습니다. 종료 확인 후 다음 작업을 시작합니다.",
   interrupted:"서버가 중단되어 분석을 완료하지 못했습니다.",
 };
 export function jobStageLabel(stage:string):string{return Object.hasOwn(labels,stage)?labels[stage]:stage;}

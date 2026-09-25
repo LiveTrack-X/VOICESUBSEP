@@ -42,7 +42,7 @@ export function BackgroundJobDialog({snapshot,project,file,onClose,onApply,onRet
     {job&&<section className="analysis-job">
       <strong>{t(labels[job.status])} · {Math.round(job.progress*100)}%</strong><progress value={job.progress} max={1}/><p>{t(jobStageLabel(job.stage))}</p>
       <RecognitionPreview job={job}/>{job.error&&<p className="error-box">{job.error}</p>}
-      <AnalysisQueueControls key={job.id} job={job} onUpdated={onRetry}/>
+      <AnalysisQueueControls key={job.id} job={job} onUpdated={onRetry} showCancel/>
       {job.result?.warnings.map((warning,index)=><p key={index} className="info-box">{warning}</p>)}
       {job.result&&<>
         <p>{t("자막 {captions}개 · 감지된 인물 {speakers}명",{captions:job.result.captions.length,speakers:job.result.speakers.length})}</p>

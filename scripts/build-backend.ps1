@@ -19,6 +19,18 @@ if sys.version_info[:3] == (3, 12, 0):
 '@
 & $pythonExe -c $pythonCheck
 if ($LASTEXITCODE -ne 0) { throw 'The project Python runtime is not suitable for a frozen desktop build.' }
+# --copy-metadata must describe this release, not an older editable install.
+$metadataCheck = @'
+import importlib.metadata as metadata
+from pathlib import Path
+import sys, tomllib
+text = (Path(sys.argv[1]) / 'backend' / 'pyproject.toml').read_text(encoding='utf-8')
+expected = tomllib.loads(text)['project']['version']
+if metadata.version('voicesubsep') != expected:
+    raise SystemExit('Refresh local package metadata before bundling: uv pip install --python .venv/Scripts/python.exe --no-deps --no-build-isolation --offline -e ./backend')
+'@
+& $pythonExe -c $metadataCheck $projectRoot
+if ($LASTEXITCODE -ne 0) { throw 'The installed project metadata does not match the release version.' }
 $ffmpegExe = (Get-Command ffmpeg -ErrorAction Stop).Source
 $ffprobeExe = (Get-Command ffprobe -ErrorAction Stop).Source
 $sitePackages = Join-Path $projectRoot '.venv/Lib/site-packages'

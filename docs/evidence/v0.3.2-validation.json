@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "appVersion": "0.3.2",
+  "status": "source-verified-package-validation-in-progress",
+  "tests": {
+    "backendPassed": 905,
+    "backendSkipped": 1,
+    "backendBatches": [
+      {
+        "passed": 887,
+        "skipped": 1,
+        "scope": "all tests before the separate multipart test file was added"
+      },
+      {
+        "passed": 18,
+        "skipped": 0,
+        "scope": "new test_media_upload.py; disjoint from prior batch"
+      }
+    ],
+    "webPassed": 644,
+    "nodePassed": 70,
+    "typecheckAndWebBuild": true
+  },
+  "browserQa": {
+    "environment": "isolated local web UI with synthetic projects and owned worker fixtures",
+    "sameStartTranscriptSelectsExactCaption": true,
+    "textEditClearsReviewed": true,
+    "renamedIdenticalContentPreservesCuts": true,
+    "differentContentRequiresNewProject": true,
+    "legacyFirstBindingRequiresConfirmation": true,
+    "captureModeSurvivesDialogReopen": true,
+    "forceStopOwnedWorkerAndDescendant": true,
+    "priorityOrder": [
+      "chosen-C",
+      "waiting-B"
+    ],
+    "selectedHistoryRefreshes": true,
+    "actualUserJobsTouched": false,
+    "physicalRecordingStarted": false,
+    "uploadAfterSizeCapRemoval": true,
+    "consoleErrors": 0,
+    "ytt": {
+      "source": {
+        "captions": 3,
+        "startMs": 500,
+        "endMs": 1500,
+        "sizeBytes": 1013
+      },
+      "edited": {
+        "captions": 3,
+        "startMs": 300,
+        "endMs": 1300,
+        "sizeBytes": 1013
+      },
+      "speakerColorsAndFontSizeAndTopPositionAndBackground": true,
+      "cutEvidenceGate": {
+        "issues": 2,
+        "saveEnabled": false
+      },
+      "consoleErrors": 0,
+      "youtubeUploadVerified": false
+    }
+  },
+  "mediaUpload": {
+    "fixedSizeLimitRemoved": true,
+    "retiredEnvironmentIgnored": true,
+    "frontendCacheSizePreflightRemoved": true,
+    "nineGiBDeclarationWithSmallFixtureAccepted": true,
+    "actualNineGiBTransferred": false,
+    "diskSpoolFailureAndCancellationCleanupTests": true,
+    "separateJsonLiveProviderLimitsUnchanged": true
+  },
+  "processParentExit": {
+    "platform": "Windows",
+    "modelInferenceRun": false,
+    "providerCallRun": false,
+    "parentForcedExit": true,
+    "analysisWorkerExited": true,
+    "descendantExited": true,
+    "elapsedAfterParentExit": 0.016,
+    "passed": true
+  },
+  "desktopSmoke": {
+    "passed": true,
+    "restart": true,
+    "sandbox": true,
+    "unicodeUpload": true
+  },
+  "realVst": {
+    "passed": true,
+    "originalSha256": "f74d4a750c38eeff74226b84a24f297bb56d11cd154a94f1a0084faf21565a44",
+    "visiblePluginWindow": false,
+    "report": {
+      "inputFrames": 576000,
+      "sampleRate": 48000,
+      "channels": 2,
+      "flushFrames": 96000,
+      "totalReportedLatencySamples": 2238,
+      "compensatedLatencySamples": 2238,
+      "totalMeasuredResidualSamples": 0,
+      "inputPeak": 0.2141178548336029,
+      "outputFrames": 576000,
+      "outputPeak": 0.211231529712677,
+      "clippedSamples": 0,
+      "plugins": [
+        {
+          "pluginName": "Clear",
+          "parameters": {
+            "ambience_gain": -12.0,
+            "ambience_solo": false,
+            "ambience_mute": false,
+            "ambience_diff": false,
+            "voice_gain": 0.0,
+            "voice_solo": false,
+            "voice_mute": false,
+            "voice_diff": false,
+            "voice_reverb_gain": -6.0,
+            "voice_reverb_solo": false,
+            "voice_reverb_mute": false,
+            "voice_reverb_diff": false,
+            "mono_or_stereo": false,
+            "ecomode": true,
+            "minimode": false,
+            "bypass": false,
+            "program": "0. Default"
+          },
+          "reportedLatencyBeforeProcessingSamples": 1636,
+          "reportedLatencySamples": 2238,
+          "residualMeasurement": {
+            "status": "verified",
+            "reason": "consistent",
+            "measuredSamples": 0,
+            "appliedSamples": 0,
+            "confidence": 0.999567,
+            "matchedWindows": 7,
+            "examinedWindows": 7,
+            "maxSearchSamples": 12000
+          }
+        },
+        {
+          "pluginName": "RX 10 Voice De-noise",
+          "parameters": {
+            "threshold_1": -70.0,
+            "threshold_2": -70.0,
+            "threshold_3": -70.0,
+            "threshold_4": -70.0,
+            "threshold_5": -70.0,
+            "threshold_6": -70.0,
+            "master_threshold": 0.0,
+            "reduction": 6.0,
+            "adaptive_mode": true,
+            "optimize_for": "Dialogue",
+            "filter_type": "Gentle",
+            "input_gain_db": 0.0,
+            "output_gain_db": 0.0,
+            "global_bypass": false
+          },
+          "reportedLatencyBeforeProcessingSamples": 0,
+          "reportedLatencySamples": 0,
+          "residualMeasurement": {
+            "status": "verified",
+            "reason": "consistent",
+            "measuredSamples": 0,
+            "appliedSamples": 0,
+            "confidence": 0.981071,
+            "matchedWindows": 7,
+            "examinedWindows": 7,
+            "maxSearchSamples": 12000
+          }
+        }
+      ],
+      "bypassed": false,
+      "warnings": [],
+      "latencyCompensation": "plugin-reported+verified-residual",
+      "totalCompensatedLatencySamples": 2238
+    }
+  },
+  "limits": [
+    "No actual YouTube upload or player rendering verified.",
+    "No physical microphone/system capture, paid provider request or user recording accuracy test.",
+    "No giant user file was copied for limit validation.",
+    "Force stop verifies owned Windows process cleanup, not a GPU driver hard-hang deadline."
+  ]
+}

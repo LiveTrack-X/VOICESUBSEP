@@ -33,12 +33,19 @@ export type VstInspection = {
 };
 export type VstStatus = { available: boolean; version: string | null; issue: string | null };
 export type VstPlugins = { plugins: { path: string; name: string }[]; roots: string[] };
-export type VstPluginReport = { pluginName: string; reportedLatencySamples?: number; [key: string]: unknown };
+export type VstResidualMeasurement = {
+  status: "verified" | "corrected" | "uncertain";
+  reason: string; measuredSamples: number | null; appliedSamples: number; confidence: number;
+  matchedWindows: number; examinedWindows: number; maxSearchSamples: number;
+};
+export type VstPluginReport = { pluginName: string; reportedLatencySamples?: number; residualMeasurement?: VstResidualMeasurement; [key: string]: unknown };
 export type VstReport = {
   warnings?: string[];
   sampleRate?: number;
   plugins?: VstPluginReport[];
   totalReportedLatencySamples?: number;
+  totalMeasuredResidualSamples?: number;
+  totalCompensatedLatencySamples?: number;
   latencyCompensation?: string;
   [key: string]: unknown;
 };
@@ -190,9 +197,26 @@ export function checkedPreview(value: unknown): VstPreview {
       if (!Array.isArray(report.plugins) || report.plugins.length > MAX_VST_SLOTS) return fail();
       for (const plugin of report.plugins) {
         if (!record(plugin) || !safeText(plugin.pluginName, 512) || (plugin.reportedLatencySamples !== undefined && !validSamples(plugin.reportedLatencySamples, 480_000))) return fail();
+        if (plugin.residualMeasurement !== undefined) {
+          const m=plugin.residualMeasurement;
+          if (!record(m) || !["verified","corrected","uncertain"].includes(String(m.status)) || !safeText(m.reason,128) ||
+              !validSamples(m.appliedSamples,11_999) || typeof m.confidence!=="number" || !Number.isFinite(m.confidence) || m.confidence<0 || m.confidence>1 ||
+              !validSamples(m.matchedWindows,7) || !validSamples(m.examinedWindows,7) || (m.matchedWindows as number)>(m.examinedWindows as number) || m.maxSearchSamples!==12_000) return fail();
+          if (m.status==="uncertain") {if(m.appliedSamples!==0||m.measuredSamples!==null)return fail();}
+          else if(m.measuredSamples!==m.appliedSamples || m.confidence<.9 || (m.matchedWindows as number)<3 ||
+                  (m.status==="verified"?m.appliedSamples!==0:m.appliedSamples===0))return fail();
+        }
       }
       if (report.totalReportedLatencySamples !== undefined && report.plugins.every((plugin) => plugin.reportedLatencySamples !== undefined) &&
         report.plugins.reduce((sum, plugin) => sum + plugin.reportedLatencySamples, 0) !== report.totalReportedLatencySamples) return fail();
+    }
+    if(report.latencyCompensation==="plugin-reported+verified-residual") {
+      if(report.sampleRate!==48000 || !Array.isArray(report.plugins) || !report.plugins.length ||
+          report.plugins.some(plugin=>!plugin.residualMeasurement||plugin.reportedLatencySamples===undefined) ||
+          !validSamples(report.totalReportedLatencySamples,480_000) || !validSamples(report.totalMeasuredResidualSamples,47_996) || !validSamples(report.totalCompensatedLatencySamples,527_996) ||
+          report.compensatedLatencySamples!==report.totalReportedLatencySamples ||
+          report.plugins.reduce((sum,plugin)=>sum+plugin.residualMeasurement.appliedSamples,0)!==report.totalMeasuredResidualSamples ||
+          (report.totalReportedLatencySamples as number)+(report.totalMeasuredResidualSamples as number)!==report.totalCompensatedLatencySamples) return fail();
     }
   }
   for (const key of ["originalUrl", "processedUrl"]) {
@@ -205,16 +229,21 @@ export function checkedPreview(value: unknown): VstPreview {
 
 /** Display a compensation claim only when a completed report supplies consistent per-plugin evidence. */
 export function vstLatencySummary(preview: VstPreview | null): {
-  plugins: { name: string; samples: number; milliseconds: number }[];
+  plugins: { name: string; samples: number; milliseconds: number; residual?: VstResidualMeasurement }[];
   totalSamples: number;
   totalMilliseconds: number;
+  residualChecked?: boolean;
 } | null {
   const report = preview?.report;
-  if (preview?.status !== "completed" || report?.latencyCompensation !== "plugin-reported" || report.sampleRate !== 48000 ||
+  if (preview?.status !== "completed" || !["plugin-reported","plugin-reported+verified-residual"].includes(report?.latencyCompensation??"") || report?.sampleRate !== 48000 ||
     !report.plugins?.length || report.totalReportedLatencySamples === undefined || report.plugins.some((plugin) => plugin.reportedLatencySamples === undefined)) return null;
+  const measured=report.latencyCompensation==="plugin-reported+verified-residual";
+  const totalSamples=measured?report.totalCompensatedLatencySamples!:report.totalReportedLatencySamples;
   return {
-    plugins: report.plugins.map((plugin) => ({ name: plugin.pluginName, samples: plugin.reportedLatencySamples!, milliseconds: plugin.reportedLatencySamples! / report.sampleRate! * 1000 })),
-    totalSamples: report.totalReportedLatencySamples,
-    totalMilliseconds: report.totalReportedLatencySamples / report.sampleRate * 1000,
+    plugins: report.plugins.map((plugin) => ({ name: plugin.pluginName, samples: plugin.reportedLatencySamples!, milliseconds: plugin.reportedLatencySamples! / report.sampleRate! * 1000,
+      ...(measured?{residual:plugin.residualMeasurement}:{}) })),
+    totalSamples,
+    totalMilliseconds: totalSamples / report.sampleRate * 1000,
+    ...(measured?{residualChecked:true}:{}),
   };
 }

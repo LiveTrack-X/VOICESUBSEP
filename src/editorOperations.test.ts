@@ -62,7 +62,7 @@ describe("bulk subtitle editing and literal replacement", () => {
     const project = fixture(); project.captions[0]!.speakerId = null; project.captions[0]!.reasons = ["unassigned", "overlap"];
     project.captions[0]!.words = [{ start: 0, end: 1, text: "hello" }];
     const next = bulkEditCaptions(project, new Set(["a", "missing"]), { kind: "speaker", speakerId: project.speakers[1]!.id });
-    expect(next.captions[0]).toMatchObject({ speakerId: project.speakers[1]!.id, reasons: ["overlap"], words: project.captions[0]!.words });
+    expect(next.captions[0]).toMatchObject({ speakerId: project.speakers[1]!.id, reasons: ["overlap", "edited"], words: project.captions[0]!.words });
     expect(next.captions[1]).toBe(project.captions[1]);
     expect(() => bulkEditCaptions(project, new Set(["a"]), { kind: "speaker", speakerId: "missing" })).toThrow(/존재하지/);
   });

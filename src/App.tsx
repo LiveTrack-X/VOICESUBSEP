@@ -28,7 +28,7 @@ import {
   MAX_PROJECT_BYTES,
   type Project,
 } from "./domain";
-import { download, type AnalysisResult } from "./api";
+import { download, uploadMedia, type AnalysisResult, type MediaInfo } from "./api";
 import { useProject } from "./useProject";
 import { Sidebar } from "./components/Sidebar";
 import { MediaPlayer, type MediaPlayerHandle } from "./components/MediaPlayer";
@@ -50,11 +50,13 @@ import { LiveCaptureDialog } from "./components/LiveCaptureDialog";
 import { JobHistoryDialog } from "./components/JobHistoryDialog";
 import { ProjectRecoveryDialog } from "./components/ProjectRecoveryDialog";
 import { exportAss, exportSpeakerSrtZip } from "./subtitle-export";
+import { YttExportPanel } from "./components/YttExportPanel";
 import { saveBlob } from "./recordingStore";
 import { buildKeepSpans, projectForEditedExport } from "./cuts";
 import { useI18n } from "./i18n";
 import { useBackgroundJob } from "./backgroundJob";
 import { BackgroundJobStatus, BackgroundJobDialog } from "./components/BackgroundJobStatus";
+import { bindProjectMedia, mediaLinkDecision, MediaSelectionGuard, sameMediaIdentity, uploadedMediaIdentity, type MediaIdentity } from "./mediaIdentity";
 
 export default function App() {
   const {t} = useI18n();
@@ -72,9 +74,13 @@ export default function App() {
   const [editedPreview, setEditedPreview] = useState(false);
   const [projectSession, setProjectSession] = useState(0);
   const [notice, setNotice] = useState("");
+  const [mediaVerifying, setMediaVerifying] = useState(false);
+  const mediaSelection = useRef(new MediaSelectionGuard());
+  const connectedIdentity = useRef<{file:File;identity:MediaIdentity}|null>(null);
   const [confirm, setConfirm] = useState<{
     message: string;
     action: () => void;
+    continueLabel?: string;
   } | null>(null);
   const mediaInput = useRef<HTMLInputElement>(null);
   const analyzeAfterMedia = useRef(false);
@@ -84,6 +90,7 @@ export default function App() {
   const playerRef = useRef<MediaPlayerHandle>(null);
   const projectRef = useRef(project);
   projectRef.current = project;
+  useEffect(()=>()=>mediaSelection.current.cancel(),[]);
   useEffect(() => {
     const input = mediaInput.current;
     const cancel = () => { analyzeAfterMedia.current = false; };
@@ -98,12 +105,12 @@ export default function App() {
     return captions;
   },[project,editedPreview]);
   useEffect(() => {
-    if (file && file.name !== project.mediaName) {
+    if (file && (connectedIdentity.current?.file !== file || !sameMediaIdentity(project.mediaIdentity,connectedIdentity.current?.identity))) {
       setFile(null);
       setPlaying(false);
       setNotice(t("복원된 프로젝트의 원본 미디어를 다시 연결하세요."));
     }
-  }, [project.mediaName, file]);
+  }, [project.mediaIdentity, file]);
   useEffect(() => {
     if (!file) {
       setSource(null);
@@ -198,12 +205,16 @@ export default function App() {
     return f.text();
   }
   function changeProject(next: Project) {
+    mediaSelection.current.cancel();
+    connectedIdentity.current=null;
     videoRef.current?.pause();
     analyzeAfterMedia.current = false;
     // A project switch ends the entire editor session, including retained input
     // drafts and media callbacks. Even reopening the same project starts fresh.
     flushSync(() => {
       replace(next);
+      setMediaVerifying(false);
+      setConfirm(null);
       setProjectSession((session) => session + 1);
       setFile(null);
       setSource(null);
@@ -218,13 +229,76 @@ export default function App() {
     });
   }
   function guarded(message: string, action: () => void) {
-    if (project.captions.length || project.notes.length || project.cuts?.length || project.documents?.items.length || project.audioMix?.tracks.length)
+    const current=projectRef.current;
+    if (current.captions.length || current.notes.length || current.cuts?.length || current.documents?.items.length || current.audioMix?.tracks.length)
       setConfirm({ message, action });
     else action();
   }
   function chooseMedia(analyze = false) {
     analyzeAfterMedia.current = analyze;
     mediaInput.current?.click();
+  }
+  function connectVerifiedFile(selectedFile:File,media:MediaInfo,analyze:boolean,allowLegacy=false) {
+    const identity=uploadedMediaIdentity(media,selectedFile.size);
+    // Update the project before connecting its File, so undo can disconnect a
+    // different identity without ever silently playing it as the old source.
+    const next=parseProject(JSON.stringify(bindProjectMedia(projectRef.current,media,selectedFile.name,allowLegacy)));
+    connectedIdentity.current={file:selectedFile,identity};
+    flushSync(()=>{update(next);setFile(selectedFile);setTime(0);setPlaying(false);});
+    setNotice(t("원본 파일을 확인하고 연결했습니다."));
+    if(analyze)setDialog("analysis");
+  }
+  async function selectMedia(selectedFile:File,analyze:boolean) {
+    const token=mediaSelection.current.begin(projectRef.current.id);
+    setMediaVerifying(true);setNotice("");
+    try {
+      const media=await uploadMedia(selectedFile);
+      if(!mediaSelection.current.current(token,projectRef.current.id))return;
+      const identity=uploadedMediaIdentity(media,selectedFile.size);
+      const decision=mediaLinkDecision(projectRef.current,identity);
+      const action=(newProject=false,allowLegacy=false)=>{
+        if(!mediaSelection.current.current(token,projectRef.current.id))return;
+        try {
+          if(newProject){
+            const next=bindProjectMedia({...createProject(projectRef.current.speakerCount),name:selectedFile.name.replace(/\.[^.]+$/u,"")||selectedFile.name},media,selectedFile.name);
+            changeProject(parseProject(JSON.stringify(next)));
+            connectedIdentity.current={file:selectedFile,identity};setFile(selectedFile);
+            if(analyze)setDialog("analysis");
+          } else connectVerifiedFile(selectedFile,media,analyze,allowLegacy);
+        }catch(error){setNotice(t((error as Error).message));}
+      };
+      if(decision==="different")setConfirm({
+        message:t("선택한 파일은 프로젝트에 등록된 원본과 내용이 다릅니다. 기존 자막·메모·컷을 재사용하지 않고 새 프로젝트로 시작합니다. 현재 작업이 필요하면 먼저 저장하세요."),
+        continueLabel:t("이 파일로 새 프로젝트 시작"),action:()=>action(true),
+      });
+      else if(decision==="legacy")setConfirm({
+        message:t("이 프로젝트에는 원본 해시가 없어 같은 원본인지 자동 확인할 수 없습니다. 선택한 파일이 원본인지 직접 확인하세요. 계속하면 기존 자막·메모·컷 시간을 유지하고 이 파일을 앞으로의 원본 기준으로 등록합니다."),
+        continueLabel:t("원본으로 확인하고 연결"),action:()=>action(false,true),
+      });
+      else action();
+    }catch(error){if(mediaSelection.current.current(token,projectRef.current.id))setNotice(t((error as Error).message));}
+    finally{if(mediaSelection.current.current(token,projectRef.current.id))setMediaVerifying(false);}
+  }
+  async function openRecording(recording:File,result?:AnalysisResult) {
+    const token=mediaSelection.current.begin(projectRef.current.id);
+    setDialog(null);setMediaVerifying(true);setNotice("");
+    try {
+      const media=await uploadMedia(recording);
+      if(!mediaSelection.current.current(token,projectRef.current.id))return;
+      const identity=uploadedMediaIdentity(media,recording.size);
+      const next=parseProject(JSON.stringify(bindProjectMedia({
+        ...createProject(projectRef.current.speakerCount),name:recording.name.replace(/\.[^.]+$/u,"")||recording.name,
+      },media,recording.name)));
+      if(result){next.captions=result.captions;next.speakers=result.speakers;next.duration=result.duration;}
+      const valid=parseProject(JSON.stringify(next));
+      guarded(t("녹음으로 새 프로젝트를 시작합니다. 현재 작업은 먼저 파일로 저장해 두세요."),()=>{
+        if(!mediaSelection.current.current(token,projectRef.current.id))return;
+        changeProject(valid);connectedIdentity.current={file:recording,identity};setFile(recording);
+        if(result)setNotice(t("분석 결과를 적용했습니다. 목소리를 확인해 인물 이름을 지정하세요."));
+        else setDialog("analysis");
+      });
+    }catch(error){if(mediaSelection.current.current(token,projectRef.current.id))setNotice(t((error as Error).message));}
+    finally{if(mediaSelection.current.current(token,projectRef.current.id))setMediaVerifying(false);}
   }
   function applyAnalysis(result: AnalysisResult) {
     try {
@@ -376,7 +450,7 @@ export default function App() {
           project={project}
           update={update}
           hasMedia={!!file}
-          busy={dialog === "analysis"}
+          busy={dialog === "analysis" || mediaVerifying}
           onMedia={() => chooseMedia()}
           onAnalyze={() => file ? setDialog("analysis") : chooseMedia(true)}
         />
@@ -464,6 +538,7 @@ export default function App() {
         <span>{t("로컬 작업")}<span className="status-dot">·</span>v{version}
         </span>
         <BackgroundJobStatus snapshot={background.snapshot} onOpen={()=>setDialog("background")} onDismiss={background.dismiss}/>
+        {mediaVerifying&&<span role="status">{t("원본 파일 확인 중… 큰 파일은 시간이 걸릴 수 있습니다.")} <button onClick={()=>{mediaSelection.current.cancel();setMediaVerifying(false);}}>{t("연결 취소")}</button></span>}
       </footer>
       <input
         className="sr-only"
@@ -477,25 +552,7 @@ export default function App() {
           analyzeAfterMedia.current = false;
           e.target.value = "";
           if (!f) return;
-          const action = () => {
-            setFile(f);
-            setTime(0);
-            setPlaying(false);
-            update((p) => ({ ...p, mediaName: f.name, ...(p.mediaName && p.mediaName !== f.name && p.schemaVersion===2 ? {cuts:[]} : {}) }));
-            if(project.mediaName!==f.name)setEditedPreview(false);
-            if(analyze)setDialog("analysis");
-          };
-          if (
-            project.mediaName &&
-            project.mediaName !== f.name &&
-            (project.captions.length || project.notes.length || project.cuts?.length)
-          )
-            setConfirm({
-              message:
-                t("다른 미디어를 연결하면 컷 구간을 초기화합니다. 자막·메모 시간은 유지되므로 같은 원본인지 확인하세요."),
-              action,
-            });
-          else action();
+          void selectMedia(f,analyze);
         }}
       />
       <input
@@ -572,7 +629,7 @@ export default function App() {
                 confirm.action();
                 setConfirm(null);
               }}
-            >{t("계속")}</button>
+            >{confirm.continueLabel??t("계속")}</button>
           </div>
         </Dialog>
       )}
@@ -589,7 +646,7 @@ export default function App() {
       {dialog === "background" && <BackgroundJobDialog snapshot={background.snapshot} project={project} file={file} onClose={()=>setDialog(null)} onApply={applyAnalysis} onRetry={background.retry}/>}
       {dialog === "export" && (
         <Dialog title={t("자막과 노트 내보내기")} onClose={() => setDialog(null)}>
-          <p className="dialog-intro">{t("편집기에 맞는 형식을 선택하세요. 모든 시간은 원본 기준입니다.")}</p>
+          <p className="dialog-intro">{t("편집기에 맞는 형식을 선택하세요. SRT·ASS·노트는 원본 시간이며, YTT는 시간 기준을 선택할 수 있습니다.")}</p>
           <div className="export-section">
             <h3>{t("자막")}</h3>
             <button
@@ -623,6 +680,7 @@ export default function App() {
             </div>
             <p>{t("인물별 파일은 각각 가져와 트랙에 배치하세요. 색상과 위치는 편집기에서 지정합니다.")}</p>
           </div>
+          <YttExportPanel project={project}/>
           <div className="export-section">
             <h3>{t("편집 노트")}</h3>
             <button
@@ -653,26 +711,7 @@ export default function App() {
       {dialog === "documents" && <DocumentsDialog project={project} update={update} onClose={()=>setDialog(null)} onSource={(position,id)=>preview(position,id)}/>}
       {dialog === "history" && <JobHistoryDialog project={project} file={file} onClose={()=>setDialog(null)} onApplyAnalysis={applyAnalysis}/>}
       {dialog === "recovery" && <ProjectRecoveryDialog onClose={()=>setDialog(null)} onRestore={next=>{setDialog(null);guarded(t("복구본을 엽니다. 현재 작업은 먼저 파일로 저장해 두세요."),()=>changeProject(next));}}/>}
-      {dialog === "live" && <LiveCaptureDialog speakerCount={project.speakerCount} onClose={()=>setDialog(null)} onLiveResult={(recording,result)=>{
-        // Validate before leaving the recorder so a malformed result cannot
-        // replace the current project or discard the recoverable recording.
-        const next = parseProject(JSON.stringify({
-          ...createProject(project.speakerCount),
-          name: recording.name.replace(/\.[^.]+$/,""), mediaName: recording.name,
-          duration: result.duration, captions: result.captions, speakers: result.speakers,
-        }));
-        setDialog(null);
-        guarded(t("녹음으로 새 프로젝트를 시작합니다. 현재 작업은 먼저 파일로 저장해 두세요."),()=>{
-          changeProject(next); setFile(recording);
-          setNotice(t("분석 결과를 적용했습니다. 목소리를 확인해 인물 이름을 지정하세요."));
-        });
-      }} onUse={recording=>{
-        setDialog(null);
-        guarded(t("녹음으로 새 프로젝트를 시작합니다. 현재 작업은 먼저 파일로 저장해 두세요."),()=>{
-          changeProject({...createProject(),name:recording.name.replace(/\.[^.]+$/,""),mediaName:recording.name});
-          setFile(recording);setDialog("analysis");
-        });
-      }}/>}
+      {dialog === "live" && <LiveCaptureDialog speakerCount={project.speakerCount} onClose={()=>setDialog(null)} onLiveResult={(recording,result)=>{void openRecording(recording,result);}} onUse={recording=>{void openRecording(recording);}}/>}
       {dialog === "render" && <RenderDialog project={project} file={file} onClose={()=>setDialog(null)}/>}
     </div>
   );

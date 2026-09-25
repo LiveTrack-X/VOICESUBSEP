@@ -1,9 +1,10 @@
 import { parseDocuments, type ProjectDocuments } from "./documents";
 import { parseAudioMix, type AudioMixPlan } from "./audioMixer";
+import { parseMediaIdentity, type MediaIdentity } from "./mediaIdentity";
 /** Portable editing data. All times are seconds on the original source media. */
 export type Mode = "standard" | "overlap";
 export type ReviewReason =
-  "overlap" | "unassigned" | "speaker_count" | "timing" | "speaker_boundary";
+  "overlap" | "unassigned" | "speaker_count" | "timing" | "speaker_boundary" | "edited";
 export type CaptionStyle = {
   fontFamily: "sans" | "serif" | "mono";
   fontSize: number;
@@ -85,6 +86,7 @@ export type Project = {
   id: string;
   name: string;
   mediaName: string | null;
+  mediaIdentity?: MediaIdentity;
   duration: number;
   mode: Mode;
   speakerCount: number;
@@ -110,6 +112,7 @@ const REASONS: ReviewReason[] = [
   "speaker_count",
   "timing",
   "speaker_boundary",
+  "edited",
 ];
 const TAGS: NoteTag[] = ["edit", "highlight", "subtitle", "check"];
 
@@ -360,6 +363,7 @@ export function parseProject(text: string): Project {
     "id",
     "name",
     "mediaName",
+    "mediaIdentity",
     "duration",
     "mode",
     "speakerCount",
@@ -553,6 +557,7 @@ export function parseProject(text: string): Project {
     updatedAt,
   };
   if (cuts !== undefined) project.cuts = cuts;
+  if (root.mediaIdentity !== undefined) project.mediaIdentity = parseMediaIdentity(root.mediaIdentity);
   if (root.documents !== undefined) project.documents = parseDocuments(root.documents);
   if (root.audioMix !== undefined) project.audioMix = parseAudioMix(root.audioMix);
   return project;

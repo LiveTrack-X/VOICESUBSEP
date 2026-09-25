@@ -25,6 +25,7 @@ import { DiarizationSettings } from "./DiarizationSettings";
 import type { BackgroundJobPointer } from "../backgroundJob";
 import { AnalysisQueueControls } from "./AnalysisQueueControls";
 import { jobStageLabel } from "../jobStage";
+import { assertProjectMedia } from "../mediaIdentity";
 
 export function AnalysisDialog({
   file,
@@ -132,6 +133,7 @@ export function AnalysisDialog({
           );
         const m = await uploadMedia(file);
         if (alive) {
+          assertProjectMedia(project, m);
           setMedia(m);
           mediaReady.current?.(m.duration);
           setTrack(m.audioTracks[0]?.index ?? 0);
@@ -202,6 +204,7 @@ export function AnalysisDialog({
     setError("");
     const requestedAt = new Date().toISOString();
     try {
+      assertProjectMedia(project, media);
       const { id } = await request<{ id: string }>("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -5,17 +5,22 @@ import { safeFilename, type Project } from "../domain";
 import { useI18n } from "../i18n";
 import { downloadDocumentBytes, downloadDocumentXlsx, reportTime } from "../documentExports";
 import { saveDocumentPdf, supportsDirectPdf } from "../documentPdf";
-import { buildTranscriptDocument, DOCX_MIME, exportTranscriptDocx, exportTranscriptHtml, exportTranscriptTxt, exportTranscriptXlsx } from "../transcriptDocument";
+import { buildTranscriptDocument, DOCX_MIME, exportTranscriptDocx, exportTranscriptHtml, exportTranscriptTxt, exportTranscriptXlsx, type TranscriptTurn } from "../transcriptDocument";
 import { readableSpeakerColor } from "../speakerColor";
 import { useTranscriptScroll } from "../useTranscriptScroll";
 import "./transcript-document.css";
 
 export type TranscriptDocumentPanelProps = {
   project: Project;
-  onSeek?: (seconds: number) => void;
+  onSeek?: (seconds: number, captionId: string) => void;
   onPrint?: (html: string) => void;
   onExportingChange?: (exporting: boolean) => void;
 };
+/** A timestamp is not a unique cue identity when people speak simultaneously. */
+export function TranscriptSeekButton({turn,onSeek,label}:{turn:TranscriptTurn;onSeek:NonNullable<TranscriptDocumentPanelProps["onSeek"]>;label:string}) {
+  const captionId=turn.ids[0];
+  return <button className="transcript-seek" disabled={!captionId} onClick={()=>{if(captionId)onSeek(turn.start,captionId);}} aria-label={label} title={reportTime(turn.start)}><Play size={12}/></button>;
+}
 const speakerStyle = (color: string | null): CSSProperties => ({
   "--speaker-marker": color ?? "#667085",
   "--speaker-name-light": readableSpeakerColor(color),
@@ -73,7 +78,7 @@ export function TranscriptDocumentPanel({ project, onSeek, onPrint, onExportingC
       {!turns.length && <p>{t("분석한 대사가 없습니다. 녹음 또는 미디어를 먼저 분석하세요.")}</p>}
       {range.before > 0 && <div aria-hidden="true" style={{ height: range.before }}/>}
       {turns.map((turn, index) => <p key={turn.ids[0]} className="transcript-turn" data-transcript-index={range.start + index} role="listitem" aria-posinset={range.start + index + 1} aria-setsize={transcript.turns.length}>
-        {onSeek && <button className="transcript-seek" onClick={() => onSeek(turn.start)} aria-label={t("이 발언으로 이동")} title={reportTime(turn.start)}><Play size={12}/></button>}
+        {onSeek && <TranscriptSeekButton turn={turn} onSeek={onSeek} label={t("이 발언으로 이동")}/>}
         {timestamps && <span className="transcript-time">[{reportTime(turn.start)} – {reportTime(turn.end)}] </span>}
         <strong className="transcript-speaker" style={speakerStyle(turn.color)}>{turn.speaker}: </strong><span>{turn.text}</span>
       </p>)}

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import asyncio
+import hashlib
 import shutil
 import subprocess
 import sys
@@ -11,6 +13,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.datastructures import UploadFile
 
 from voicesubsep.app import create_app
 from voicesubsep.storage import Storage, new_id
@@ -98,21 +101,107 @@ def test_real_media_probe_range_and_selected_stream(tmp_path, actual_media):
         assert "request" not in done
 
 
-def test_media_rejects_invalid_and_oversized_files(tmp_path):
-    with client_for(tmp_path, probe=fake_probe, max_upload_bytes=10) as client:
+def test_media_rejects_unsupported_and_empty_files(tmp_path):
+    with client_for(tmp_path, probe=fake_probe) as client:
         assert client.post("/api/media", files={"file": ("file.html", b"hi")}).status_code == 415
         assert client.post("/api/media", files={"file": ("file.wav", b"")}).status_code == 422
-        assert client.post("/api/media", files={"file": ("file.wav", b"a" * 11)}).status_code == 413
         assert list((tmp_path / "data" / "media").iterdir()) == []
 
 
-def test_streaming_body_limit_before_multipart_parser(tmp_path):
-    with client_for(tmp_path, probe=fake_probe, max_upload_bytes=10) as client:
+@pytest.mark.parametrize("legacy_limit", ["10", "0", "not-a-size"])
+def test_media_ignores_retired_size_setting_but_control_bodies_remain_bounded(tmp_path, monkeypatch, legacy_limit):
+    monkeypatch.setenv("VOICESUBSEP_MAX_UPLOAD_BYTES", legacy_limit)
+    with client_for(tmp_path, probe=fake_probe) as client:
         body = b'--test\r\nContent-Disposition: form-data; name="file"; filename="x.wav"\r\n\r\n' + b"x" * 70000 + b"\r\n--test--\r\n"
         response = client.post("/api/media", content=iter([body[:100], body[100:]]), headers={"Content-Type": "multipart/form-data; boundary=test"})
-        assert response.status_code == 413
-        assert list((tmp_path / "data" / "media").iterdir()) == []
+        assert response.status_code == 201, response.text
+        assert response.json()["bytes"] == 70000
         assert client.post("/api/jobs", content=b"x" * 70000, headers={"Content-Type": "application/json"}).status_code == 413
+        assert client.post("/api/renders", content=b"x" * (8 * 1024**2 + 65537), headers={"Content-Type": "application/json"}).status_code == 413
+
+
+def test_media_declared_size_above_old_limit_is_not_rejected(tmp_path):
+    # Small fixture with a large declaration exercises the header policy without
+    # allocating/uploading 8 GiB. It is not a physical large-file endurance test.
+    with client_for(tmp_path, probe=fake_probe) as client:
+        response = client.post("/api/media", files={"file": ("x.wav", b"fixture")},
+                               headers={"Content-Length": str(9 * 1024**3)})
+        assert response.status_code == 201, response.text
+        assert response.json()["bytes"] == 7
+        for invalid in ("-1", "invalid"):
+            assert client.post("/api/media", files={"file": ("x.wav", b"fixture")},
+                               headers={"Content-Length": invalid}).status_code == 400
+
+
+def test_real_cache_endpoint_and_upload_remain_usable_without_capacity_field(tmp_path, monkeypatch):
+    monkeypatch.setenv("VOICESUBSEP_MAX_UPLOAD_BYTES", "1")
+    with client_for(tmp_path, probe=fake_probe) as client:
+        before = client.get("/api/cache")
+        assert before.status_code == 200, before.text
+        assert "maxUploadBytes" not in before.json()
+        assert before.json()["items"] == []
+        media = upload(client, content=b"more than the retired one-byte setting")
+        after = client.get("/api/cache")
+        assert after.status_code == 200, after.text
+        assert "maxUploadBytes" not in after.json()
+        assert after.json()["bytes"] == media["bytes"]
+        assert after.json()["items"][0]["id"] == media["id"]
+        assert client.get(media["url"]).content == b"more than the retired one-byte setting"
+
+
+def test_media_copy_spools_and_reads_bounded_blocks_with_matching_hash(tmp_path, monkeypatch):
+    content = b"01234567" * (400 * 1024)
+    original_read, calls = UploadFile.read, []
+
+    async def read(file, size=-1):
+        calls.append((size, getattr(file.file, "_rolled", False)))
+        assert size == 1024 * 1024
+        return await original_read(file, size)
+
+    monkeypatch.setattr(UploadFile, "read", read)
+    with client_for(tmp_path, probe=fake_probe) as client:
+        media = upload(client, content=content)
+        assert media["bytes"] == len(content)
+        assert media["sha256"] == hashlib.sha256(content).hexdigest()
+        assert len(calls) >= 4 and all(rolled for _, rolled in calls)
+        assert client.get(media["url"], headers={"Range": "bytes=0-7"}).content == b"01234567"
+
+
+def test_media_disk_failure_returns_507_and_cleans_partial_copy(tmp_path, monkeypatch):
+    original_open = Path.open
+    def open_file(path, mode="r", *args, **kwargs):
+        if path.name == "source.wav" and mode == "xb":
+            raise OSError(28, "synthetic disk full")
+        return original_open(path, mode, *args, **kwargs)
+    with client_for(tmp_path, probe=fake_probe) as client:
+        monkeypatch.setattr(Path, "open", open_file)
+        response = client.post("/api/media", files={"file": ("x.wav", b"fixture")})
+        assert response.status_code == 507
+        assert list((tmp_path / "data" / "media").iterdir()) == []
+
+
+@pytest.mark.parametrize("cancel_during_close", [False, True])
+def test_cancelled_media_copy_closes_upload_and_removes_partial_folder(tmp_path, cancel_during_close):
+    app = create_app(data_dir=tmp_path / "data", probe=fake_probe)
+    endpoint = next(route.endpoint for route in app.routes if getattr(route, "path", "") == "/api/media" and "POST" in route.methods)
+    class InterruptedUpload:
+        filename = "x.wav"
+        reads, closed = 0, False
+        async def read(self, size):
+            assert size == 1024 * 1024
+            self.reads += 1
+            if self.reads == 1:
+                return b"partial file"
+            raise asyncio.CancelledError()
+        async def close(self):
+            self.closed = True
+            if cancel_during_close:
+                raise asyncio.CancelledError()
+    file = InterruptedUpload()
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(endpoint(file))
+    assert file.closed
+    assert list((tmp_path / "data" / "media").iterdir()) == []
 
 
 def test_actual_invalid_media_is_rejected(tmp_path):
