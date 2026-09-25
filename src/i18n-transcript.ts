@@ -1,0 +1,15 @@
+export const transcriptMessages: Record<string, readonly [string, string, string, string]> = {
+  "발언록": ["Transcript", "発言録", "发言记录", "Transcripción"],
+  "발언 내용": ["Spoken words", "発言内容", "发言内容", "Intervenciones"],
+  "문서 언어": ["Document language", "文書の言語", "文档语言", "Idioma del documento"],
+  "시간 표시": ["Show timestamps", "時刻を表示", "显示时间戳", "Mostrar marcas de tiempo"],
+  "선택한 언어의 저장된 번역을 사용하며 이 화면에서 번역을 생성하지 않습니다.": ["Uses saved translations in the selected language. This view does not generate translations.", "選択した言語の保存済み翻訳を使います。この画面では翻訳を生成しません。", "使用所选语言的已有译文，此视图不会生成翻译。", "Utiliza las traducciones guardadas en el idioma elegido. Esta vista no genera traducciones."],
+  "자막 원문을 시간순으로 정리한 발언록입니다. 자동 요약이나 문장 재작성은 하지 않습니다.": ["A chronological transcript of your captions. No automatic summarization or rewriting is performed.", "字幕原文を時系列で並べた発言録です。自動要約や文章の書き換えは行いません。", "按时间顺序整理字幕原文，不会自动总结或改写。", "Transcripción cronológica de los subtítulos. No se resume ni se reescribe automáticamente."],
+  "인접한 같은 인물의 자막만 줄바꿈으로 묶습니다. 겹친 발화와 긴 침묵은 분리합니다.": ["Only adjacent captions by the same speaker are grouped with line breaks. Overlaps and long pauses stay separate.", "隣接する同じ話者の字幕だけを改行でまとめます。同時発話や長い無音は分けます。", "仅用换行合并同一说话人的相邻字幕。重叠发言和长停顿保持分开。", "Solo se agrupan con saltos de línea los subtítulos contiguos del mismo hablante. Se separan los solapamientos y las pausas largas."],
+  "번역이 없거나 원문이 수정된 대사는 원문으로 포함됩니다.": ["Lines without a current translation are included in the original language.", "翻訳がない、または原文が変更された発言は原文で含まれます。", "没有有效译文的发言将保留原文。", "Las intervenciones sin una traducción vigente se incluyen en su idioma original."],
+  "Word 문서 (.docx)": ["Word document (.docx)", "Word文書 (.docx)", "Word 文档 (.docx)", "Documento Word (.docx)"],
+  "텍스트 (.txt)": ["Text (.txt)", "テキスト (.txt)", "文本 (.txt)", "Texto (.txt)"],
+  "HTML 보고서": ["HTML report", "HTMLレポート", "HTML 报告", "Informe HTML"],
+  "이 발언으로 이동": ["Go to this utterance", "この発言へ移動", "跳转到此发言", "Ir a esta intervención"],
+  "화면은 100개 발언씩 표시하며, 내보내기는 전체 발언을 포함합니다.": ["The preview shows 100 utterances per page; exports include all utterances.", "画面には100件ずつ表示します。書き出しには全発言が含まれます。", "预览每页显示100条发言，导出包含全部发言。", "La vista previa muestra 100 intervenciones por página; las exportaciones incluyen todas."],
+};

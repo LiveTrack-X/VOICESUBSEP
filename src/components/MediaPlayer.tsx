@@ -3,6 +3,8 @@ import {
   useImperativeHandle,
   useRef,
   useState,
+  useId,
+  type CSSProperties,
   type RefObject,
 } from "react";
 import {
@@ -14,12 +16,15 @@ import {
   Maximize,
   Minimize,
   Repeat2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { formatTime, type Caption, type Speaker } from "../domain";
 import { CaptionOverlay, captionAppearance } from "./CaptionOverlay";
 import { useMediaFullscreen } from "./useMediaFullscreen";
 import { sourceToOutput, outputToSource, type KeepSpan } from "../cuts";
 import { useI18n } from "../i18n";
+import { parsePreviewLayout, PREVIEW_LAYOUT_KEY, previewHeight } from "../previewLayout";
 import "./media-fullscreen.css";
 
 export type MediaPlayerHandle = {
@@ -63,12 +68,25 @@ export function MediaPlayer({
   const playbackTime = keepSpans ? (sourceToOutput(time,keepSpans) ?? keepSpans.find(s=>s.sourceStart>time)?.outputStart ?? playbackDuration) : time;
   const [error, setError] = useState("");
   const [loop, setLoop] = useState(false);
+  const [audioOnly, setAudioOnly] = useState(false);
+  const [layout, setLayout] = useState(() => {
+    try { return parsePreviewLayout(localStorage.getItem(PREVIEW_LAYOUT_KEY)); }
+    catch { return parsePreviewLayout(null); }
+  });
+  const previewId = useId();
+  const kind = !source ? "empty" : audioOnly ? "audio" : "video";
+  const height = previewHeight(layout, kind);
+  useEffect(() => {
+    try { localStorage.setItem(PREVIEW_LAYOUT_KEY, JSON.stringify({ version: 1, ...layout })); }
+    catch { /* Preview controls still work when storage is unavailable. */ }
+  }, [layout]);
   const container = useRef<HTMLDivElement>(null);
   const fullscreen = useMediaFullscreen(container);
   const pendingSeek = useRef<{ source: string; time: number } | null>(null);
   useEffect(() => {
     setError("");
     setLoop(false);
+    setAudioOnly(false);
     pendingSeek.current = null;
   }, [source]);
   function playableSource(value:number) {
@@ -160,18 +178,34 @@ export function MediaPlayer({
     .slice(0, 4);
   return (
     <section
-      className={`media-player${fullscreen.expanded ? " media-player-expanded" : ""}`}
+      className={`media-player media-kind-${kind}${layout.collapsed ? " preview-collapsed" : ""}${layout.height !== null ? " preview-custom-height" : ""}${fullscreen.expanded ? " media-player-expanded" : ""}`}
+      style={{ "--preview-height": `${height}px` } as CSSProperties}
       ref={container}
       aria-label={t("미디어 미리보기")}
       role={fullscreen.expanded ? "dialog" : undefined}
       aria-modal={fullscreen.expanded || undefined}
     >
+      <div className="preview-layout-toolbar" hidden={fullscreen.expanded}>
+        <span>{t("미디어 미리보기")}</span>
+        <label className="preview-height-control" title={t("미리보기 높이")}>
+          <input type="range" aria-label={t("미리보기 높이")} min={48} max={360} step={8}
+            value={Math.max(48, height)} disabled={layout.collapsed}
+            onChange={event => setLayout(value => ({ ...value, height: Number(event.target.value) }))} />
+        </label>
+        <button onClick={() => setLayout({ height: null, collapsed: false })} title={t("미리보기 크기 자동 조절")}>{t("자동")}</button>
+        <button aria-expanded={!layout.collapsed} aria-controls={previewId}
+          title={t("화면만 접고 재생 제어는 유지합니다.")}
+          onClick={() => setLayout(value => ({ ...value, collapsed: !value.collapsed }))}>
+          {layout.collapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+          {t(layout.collapsed ? "미리보기 펼치기" : "미리보기 접기")}
+        </button>
+      </div>
       <div className="media-expand-toolbar" hidden={!fullscreen.expanded}>
         <span>{fullscreen.nativeFullscreen ? t("전체 화면 미리보기") : t("앱 안에서 확대 미리보기")}</span>
         <button data-fullscreen-exit aria-label={t("확대 미리보기 닫기")} onClick={fullscreen.close}>
           <Minimize size={16} />{t("닫기 · Esc")}</button>
       </div>
-      <div className="video-stage">
+      <div className="video-stage" id={previewId}>
         {source ? (
           <video
             ref={videoRef}
@@ -179,6 +213,7 @@ export function MediaPlayer({
             preload="metadata"
             onLoadedMetadata={(e) => {
               const media = e.currentTarget;
+              setAudioOnly(media.videoWidth === 0 && media.videoHeight === 0);
               const value = media.duration;
               if (Number.isFinite(value)) onDuration(value);
               const pending = pendingSeek.current;
@@ -214,7 +249,7 @@ export function MediaPlayer({
             <span className="play-circle">
               <Play size={29} fill="currentColor" />
             </span>
-            <span>{t("영상을 불러와 편집을 시작하세요")}</span>
+            <span>{t("영상·오디오 불러오기")}</span>
           </button>
         )}
         {source && active.length > 0 && (
@@ -222,12 +257,8 @@ export function MediaPlayer({
             captionAppearance(c, speakers.find((s) => s.id === c.speakerId), t("미배정")),
           )} />
         )}
-        {error && (
-          <div className="media-error" role="alert">
-            {error}
-          </div>
-        )}
       </div>
+      {error && <p className="media-playback-error" role="alert">{error}</p>}
       <div className="player-controls">
         <input
           aria-label={t("재생 위치")}

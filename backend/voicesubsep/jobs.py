@@ -6,15 +6,19 @@ import copy
 import math
 import queue
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
 from .storage import Storage, new_id, valid_id
 from .diagnostics import Diagnostics
+from .cloud_credentials import ProviderCredentials
+from .recognition_preview import PREVIEW_MAX_LINES, preview_line, preview_options
 
 Analyzer = Callable[..., dict[str, Any]]
 TERMINAL = {"completed", "failed", "cancelled"}
+PROGRESS_SAVE_INTERVAL = 1.0
 
 
 def timestamp() -> str:
@@ -28,12 +32,15 @@ def default_analyzer(media_path: Path, **kwargs: Any) -> dict[str, Any]:
 
 
 class JobManager:
-    def __init__(self, storage: Storage, analyzer: Analyzer | None = None, *, diagnostics: Diagnostics | None = None):
+    def __init__(self, storage: Storage, analyzer: Analyzer | None = None, *, diagnostics: Diagnostics | None = None,
+                 provider_credentials: ProviderCredentials | None = None):
         self.storage = storage
         self.diagnostics = diagnostics
+        self.provider_credentials = provider_credentials
         self.analyzer = analyzer or default_analyzer
         self._jobs: dict[str, dict[str, Any]] = {}
         self._cancellations: dict[str, threading.Event] = {}
+        self._provider_keys: dict[str, Callable[[], str]] = {}
         self._queue: queue.Queue[str | None] = queue.Queue()
         self._mutex = threading.RLock()
         self._stopping = threading.Event()
@@ -79,9 +86,10 @@ class JobManager:
             self._thread.join(timeout=5)
         # A still-running native model call retains the lock until its worker exits.
 
-    def _update(self, record: dict[str, Any], **changes: Any) -> None:
+    def _update(self, record: dict[str, Any], *, persist: bool = True, **changes: Any) -> None:
         candidate = {**record, **changes, "updatedAt": timestamp()}
-        self.storage.write_json(self.storage.job_path(record["id"]), candidate)
+        if persist:
+            self.storage.write_json(self.storage.job_path(record["id"]), candidate)
         record.clear()
         record.update(candidate)
 
@@ -92,11 +100,21 @@ class JobManager:
             if sum(j["status"] not in TERMINAL for j in self._jobs.values()) >= 32:
                 raise OverflowError("The analysis queue is full (32 jobs). Wait for existing jobs to finish.")
             job_id = new_id()
+            provider_key = None
+            if request.get("asrProvider", "local") != "local":
+                if self.provider_credentials is None:
+                    raise RuntimeError("클라우드 API 키를 먼저 등록하세요.")
+                try:
+                    provider_key = self.provider_credentials.bind_provider_key(request["asrProvider"])
+                except ValueError:
+                    raise RuntimeError("클라우드 API 키를 먼저 등록하세요.") from None
             record = {"id": job_id, "status": "queued", "stage": "queued", "progress": 0.0,
                       "request": request, "createdAt": timestamp(), "updatedAt": timestamp()}
             self.storage.write_json(self.storage.job_path(job_id), record)
             self._jobs[job_id] = record
             self._cancellations[job_id] = threading.Event()
+            if provider_key is not None:
+                self._provider_keys[job_id] = provider_key
             self._queue.put(job_id)
             return job_id
 
@@ -105,7 +123,9 @@ class JobManager:
             record = self._jobs.get(job_id)
             if record is None:
                 raise KeyError(job_id)
-            return copy.deepcopy({key: record[key] for key in ("id", "status", "stage", "progress", "error", "result") if key in record})
+            return copy.deepcopy({key: record[key] for key in (
+                "id", "status", "stage", "progress", "error", "result", "createdAt", "updatedAt",
+                "recognitionPreview") if key in record})
 
     def history(self) -> list[dict]:
         with self._mutex:
@@ -127,6 +147,7 @@ class JobManager:
                 raise PermissionError("Cancel the running job before removing its history.")
             self.storage.job_path(job_id).unlink(missing_ok=True)
             del self._jobs[job_id]
+            self._provider_keys.pop(job_id, None)
             # Cancelled queue entries remain harmless tombstones until drained.
 
     def cancel(self, job_id: str) -> dict[str, Any]:
@@ -146,22 +167,44 @@ class JobManager:
     def _run(self, job_id: str) -> None:
         with self._mutex:
             if job_id not in self._jobs:
+                self._provider_keys.pop(job_id, None)
                 return
             record = self._jobs[job_id]
             event = self._cancellations[job_id]
             if record["status"] != "queued" or event.is_set():
+                self._provider_keys.pop(job_id, None)
                 return
             self._update(record, status="running", stage="preparing", progress=0.01)
             request = dict(record["request"])
 
+        last_progress_save = time.monotonic()
+
+        def recognition_preview(text: str) -> None:
+            line = preview_line(text)
+            if not line:
+                return
+            with self._mutex:
+                if record["status"] != "running" or event.is_set():
+                    return
+                lines = [*record.get("recognitionPreview", {}).get("lines", []), line][-PREVIEW_MAX_LINES:]
+                # The following progress report persists this snapshot at most once
+                # per second. API polling sees each completed segment immediately.
+                self._update(record, persist=False, recognitionPreview={"lines": lines, "updatedAt": timestamp()})
+
         def progress(stage: str, fraction: float) -> None:
+            nonlocal last_progress_save
             with self._mutex:
                 if record["status"] != "running" or event.is_set():
                     return
                 fraction = float(fraction)
                 if not math.isfinite(fraction):
                     return
-                self._update(record, stage=str(stage)[:512], progress=min(0.99, max(0.0, fraction)))
+                stage = str(stage)[:512]
+                now = time.monotonic()
+                persist = stage != record.get("stage") or now - last_progress_save >= PROGRESS_SAVE_INTERVAL
+                self._update(record, persist=persist, stage=stage, progress=min(0.99, max(0.0, fraction)))
+                if persist:
+                    last_progress_save = now
 
         try:
             _, media_path = self.storage.get_media(request["mediaId"])
@@ -172,12 +215,25 @@ class JobManager:
                 diarization=request["diarization"],
                 **({"preprocessing": request["preprocessing"]} if request.get("preprocessing") is not None else {}),
             )
+            provider = request.get("asrProvider", "local")
+            if provider != "local":
+                if self.provider_credentials is None:
+                    raise RuntimeError("클라우드 API 키를 먼저 등록하세요.")
+                provider_key = self._provider_keys.get(job_id)
+                if provider_key is None:
+                    raise RuntimeError("클라우드 API 키를 먼저 등록하세요.")
+                provider_key()
+                options.update(asr_provider=provider, provider_model=request.get("providerModel"),
+                               cloud_consent=request.get("cloudConsent", False),
+                               get_provider_key=provider_key)
             if request.get("trackSpeakers"):
                 from .multitrack import analyze_tracks
                 result = analyze_tracks(self.analyzer, media_path, selections=request["trackSpeakers"],
-                                        options=options, progress=progress, cancelled=event.is_set)
+                                        options=options, progress=progress, cancelled=event.is_set,
+                                        recognition_preview=recognition_preview)
             else:
-                result = self.analyzer(media_path, **options, progress=progress, cancelled=event.is_set)
+                result = self.analyzer(media_path, **options, progress=progress, cancelled=event.is_set,
+                                       **preview_options(self.analyzer, recognition_preview))
             with self._mutex:
                 # An analyzer returning a completed result wins a late cancellation race.
                 # Cancellation is reported only when the analyzer acknowledges it.
@@ -190,6 +246,9 @@ class JobManager:
                     if self.diagnostics:
                         self.diagnostics.exception("analysis", "failed", exc, jobId=job_id)
                     self._update(record, status="failed", stage="failed", error=(str(exc) or type(exc).__name__)[:3000])
+        finally:
+            with self._mutex:
+                self._provider_keys.pop(job_id, None)
 
     def _work(self) -> None:
         try:

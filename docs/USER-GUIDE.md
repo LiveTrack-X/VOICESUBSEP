@@ -1,8 +1,8 @@
 # VOICESUBSEP User Guide / 사용자 가이드
 
-For **Windows 10/11 x64, v0.2.0 Preview**. Public [release downloads](https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.2.0) require no GitHub login. The [online installer guide](ONLINE-INSTALLER.md) explains the small setup executable and its verification status; the [release record](releases/v0.2.0.md) records the app payload and tested scope.
+For **Windows 10/11 x64, v0.2.1 Preview**. Public [release downloads](https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.2.1) require no GitHub login. The [online installer guide](ONLINE-INSTALLER.md) explains the small setup executable and its verification status; the [release record](releases/v0.2.1.md) records the app payload and tested scope.
 
-대상: **Windows 10/11 x64, v0.2.0 Preview 시험 릴리즈**. 공개 [릴리즈 다운로드](https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.2.0)는 GitHub 로그인이 필요하지 않습니다. 작은 설치 EXE의 사용법·검증 상태는 [온라인 설치 안내](ONLINE-INSTALLER.md), 앱 데이터·확인 범위는 [릴리즈 기록](releases/v0.2.0.md)을 따릅니다.
+대상: **Windows 10/11 x64, v0.2.1 Preview 시험 릴리즈**. 공개 [릴리즈 다운로드](https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.2.1)는 GitHub 로그인이 필요하지 않습니다. 작은 설치 EXE의 사용법·검증 상태는 [온라인 설치 안내](ONLINE-INSTALLER.md), 앱 데이터·확인 범위는 [릴리즈 기록](releases/v0.2.1.md)을 따릅니다.
 
 Whisper transcribes **what was said**; Nemotron identifies **who spoke when**. Review both against the source. Diarization does not separate mixed voices into audio stems or reconstruct inaudible speech.
 
@@ -12,9 +12,9 @@ VOICESUBSEP은 로컬 음성 인식과 화자 구분으로 자막을 만들고, 
 
 *Install and first launch*
 
-Download `VOICESUBSEP-0.2.0-Online-Setup-x64.exe` from the release. Run it, choose a download-speed limit, and start. It downloads the existing NSIS installer plus three data parts, verifies every file and the assembled SHA256, then opens the installation wizard. Completed verified downloads are reused when you return after cancellation; resumed data is verified before use. It needs .NET Framework 4.8. If the online asset is not available or cannot be used, the seven-file manual method below remains available. Publication and exercised test paths are tracked separately in [Online Installer](ONLINE-INSTALLER.md).
+Download `VOICESUBSEP-0.2.1-Online-Setup-x64.exe` from the release. Run it, choose a download-speed limit, and start. It downloads the existing NSIS installer plus three data parts, verifies every file and the assembled SHA256, then opens the installation wizard. Completed verified downloads are reused when you return after cancellation; resumed data is verified before use. It needs .NET Framework 4.8. If the online asset is not available or cannot be used, the seven-file manual method below remains available. Publication and exercised test paths are tracked separately in [Online Installer](ONLINE-INSTALLER.md).
 
-릴리즈에서 `VOICESUBSEP-0.2.0-Online-Setup-x64.exe`를 받아 실행하고 다운로드 속도 제한을 선택한 뒤 시작합니다. 기존 NSIS 설치 프로그램과 데이터 조각 3개를 받고, 각 파일과 재조립 결과의 SHA256을 검증한 뒤 설치 마법사를 엽니다. 취소 후 다시 시작하면 검증된 완료 파일을 재사용하고 이어받은 데이터도 사용 전에 검증합니다. .NET Framework 4.8이 필요합니다. 온라인 자산이 아직 없거나 사용할 수 없다면 아래 기존 7개 파일 수동 방식을 사용할 수 있습니다. 게시·실제 시험 상태는 [온라인 설치 안내](ONLINE-INSTALLER.md)에 구분합니다.
+릴리즈에서 `VOICESUBSEP-0.2.1-Online-Setup-x64.exe`를 받아 실행하고 다운로드 속도 제한을 선택한 뒤 시작합니다. 기존 NSIS 설치 프로그램과 데이터 조각 3개를 받고, 각 파일과 재조립 결과의 SHA256을 검증한 뒤 설치 마법사를 엽니다. 취소 후 다시 시작하면 검증된 완료 파일을 재사용하고 이어받은 데이터도 사용 전에 검증합니다. .NET Framework 4.8이 필요합니다. 온라인 자산이 아직 없거나 사용할 수 없다면 아래 기존 7개 파일 수동 방식을 사용할 수 있습니다. 게시·실제 시험 상태는 [온라인 설치 안내](ONLINE-INSTALLER.md)에 구분합니다.
 
 The payload is about **2.42 GB** before installation. Allow **at least 16 GiB free**, plus room for models and projects; the helper checks a 12 GiB minimum on its cache drive. Speeds are 40/80 Mbps or unlimited, with 80 Mbps as default. Save project JSON, finish recording/analysis/rendering, and close the old app before installing. This unsigned Preview may trigger Windows trust warnings; check the official source and checksums. The source-code ZIP is not an installer. Read the [dependency notices](BUNDLED-NOTICES.md) before redistribution.
 
@@ -22,9 +22,9 @@ The payload is about **2.42 GB** before installation. Allow **at least 16 GiB fr
 
 **Manual fallback / 수동 설치 대안**
 
-Download these seven files into one folder: the Offline Setup EXE, `.part001`, `.part002`, `.part003`, `installer-manifest.json`, `SHA256SUMS.txt`, and `Assemble-Installer.ps1`. Run the command below to verify and assemble `voicesubsep-0.2.0-x64.nsis.7z`, then manually run the colocated EXE. Do not extract the 7z yourself. A failed hash check must be resolved before installation. The assembly script does not launch the installer.
+Download these seven files into one folder: the Offline Setup EXE, `.part001`, `.part002`, `.part003`, `installer-manifest.json`, `SHA256SUMS.txt`, and `Assemble-Installer.ps1`. Run the command below to verify and assemble `voicesubsep-0.2.1-x64.nsis.7z`, then manually run the colocated EXE. Do not extract the 7z yourself. A failed hash check must be resolved before installation. The assembly script does not launch the installer.
 
-기존 자산 7개를 같은 폴더에 받습니다: Offline Setup EXE, `.part001`, `.part002`, `.part003`, `installer-manifest.json`, `SHA256SUMS.txt`, `Assemble-Installer.ps1`. 아래 명령으로 검증·재조립한 `voicesubsep-0.2.0-x64.nsis.7z`와 같은 폴더의 EXE를 직접 실행합니다. 7z를 직접 압축 해제할 필요는 없습니다. 해시 검증에 실패하면 해당 파일을 다시 확인한 뒤 설치하세요. 조립 스크립트는 설치기를 자동 실행하지 않습니다.
+기존 자산 7개를 같은 폴더에 받습니다: Offline Setup EXE, `.part001`, `.part002`, `.part003`, `installer-manifest.json`, `SHA256SUMS.txt`, `Assemble-Installer.ps1`. 아래 명령으로 검증·재조립한 `voicesubsep-0.2.1-x64.nsis.7z`와 같은 폴더의 EXE를 직접 실행합니다. 7z를 직접 압축 해제할 필요는 없습니다. 해시 검증에 실패하면 해당 파일을 다시 확인한 뒤 설치하세요. 조립 스크립트는 설치기를 자동 실행하지 않습니다.
 
 ```powershell
 powershell -NoProfile -File .\Assemble-Installer.ps1
@@ -41,6 +41,10 @@ The installed app includes Python, FFmpeg, speech-analysis libraries and CUDA ru
 ## 2. 원본 열기와 프로젝트 관리
 
 *Open media and manage projects*
+
+Use the three **Workspace** buttons below the header: **Subtitles & video** for the timeline editor, **Interviews & minutes** to open document editing, and **Recording** to open microphone/system capture and recovery. These are entry points into the same project: switching does not reset captions, notes or speakers. Closing document/recording windows returns to editing. To start a different recording as a new project, use the separate **New project** action or the recorder's explicit analysis action.
+
+상단의 작업 모드에서 **자막·영상 편집 / 인터뷰·회의록 / 녹음**을 선택합니다. 편집은 타임라인, 인터뷰·회의록은 문서 창, 녹음은 마이크·시스템 소리 녹음 및 복구 창을 엽니다. 같은 프로젝트를 사용하므로 전환만으로 자막·메모·인물을 초기화하지 않으며, 문서·녹음 창을 닫으면 편집으로 돌아갑니다. 다른 자료를 새 프로젝트로 시작하려면 별도의 `새로` 또는 녹음 결과의 `새 프로젝트로 분석`을 사용하세요.
 
 Open video or MP3/M4A/WAV/FLAC audio; preview support depends on the codec even when analysis is possible. The default upload limit is 8 GiB. Start unrelated work with **New project**, which resets speakers and edits. Merely replacing the media can keep captions and notes.
 
@@ -82,9 +86,13 @@ OBS 등에 인물별 마이크가 분리되어 있다면 최대 8개 트랙을 �
 
 Click a timeline caption to seek and reveal its row. Edit text, timing, speaker, name/color/style and review status; add time-linked notes. Collapse/resize the timeline or use compact/focus mode. Captions are paged in groups of 100, with bulk speaker/review/delete and literal find/replace. Load a summarized waveform and drag caption boundaries. See [detailed editing workflows](EDITING-WORKFLOWS.md).
 
+In v0.2.1, wide layouts place a compact preview beside the main caption editor. Use the height slider or hide the picture while retaining playback. Notes start collapsed; choosing a timeline note opens its card. Windows up to 1000 px wide start in subtitle focus view, with a separate saved preference from wider windows. Show all panels to access collapsible project settings. The timeline is temporarily folded in narrow/focus views. The desktop window can be narrowed to 480 px. These changes do not clear projects, names or notes.
+
 타임라인의 자막을 클릭하면 해당 시간과 자막으로 이동합니다. 인물 이름·색상·기본 자막 스타일을 정하고 필요한 자막은 개별 스타일로 바꿀 수 있습니다. 시작·끝 시간, 내용, 인물을 수정하고 검수 완료로 표시합니다. 메모도 시간과 연결해 타임라인에서 확인합니다.
 
 타임라인 접기·높이 조절, 촘촘한 자막 목록과 자막 집중 보기를 사용해 편집 공간을 확보할 수 있습니다. 긴 목록은 100행씩 표시하며, 일괄 인물 지정·검수·삭제와 문자열 찾기/바꾸기를 제공합니다. `파형 불러오기`로 선택 트랙의 요약 파형을 표시하고 자막 경계 손잡이를 조절할 수 있습니다. 상세 조작은 [편집 워크플로](EDITING-WORKFLOWS.md#많은-자막을-검수하기)에 있습니다.
+
+v0.2.1은 넓은 화면에서 작은 미리보기 옆에 자막 편집기를 크게 둡니다. 미리보기 높이를 조절하거나 화면만 접고 재생 컨트롤을 유지할 수 있습니다. 메모는 기본으로 접히며 타임라인에서 선택하면 해당 카드가 열립니다. 너비 1000px 이하에서는 자막 집중 보기로 시작하고, 좁은 창과 넓은 창의 선호를 따로 기억합니다. `전체 패널 보기`에서 접을 수 있는 프로젝트 설정에 접근합니다. 좁은 창·집중 보기의 타임라인 접힘은 임시입니다. 설치형 창은 너비 480px까지 줄일 수 있으며 프로젝트·인물 이름·메모를 지우지 않습니다.
 
 ## 5. 간단한 컷과 출력
 
@@ -113,13 +121,21 @@ MP4는 원본 프레임률·30·60fps를 선택합니다. `원본`도 탐지된 
 
 The UI supports Korean, English, Japanese, Simplified Chinese and Spanish; it does not translate existing names or original captions. Speech recognition language is independent. For subtitle translation, prepare local Ollama and a text model yourself, then choose target language/model/GPU-auto or CPU, review, and apply. The app does not install/start Ollama or pull models. Translations preserve source timing and are stored separately. Editing the source makes old translations stale; missing/stale translations block translated export. See the [translation contract](CUTS-AND-LANGUAGES.md#로컬-자막-번역).
 
+Advanced settings can instead use a Groq/xAI text model with your session API key and explicit text-transmission confirmation. The same source/translation review rules apply; the local GPU/CPU option applies only to Ollama. See [advanced providers](ADVANCED-PROVIDERS.md).
+
 화면 언어는 한국어·일본어·영어·중국어 간체·스페인어를 지원합니다. 화면 언어를 바꿔도 자막 원문이나 인물 이름은 바꾸지 않습니다. 음성 인식 언어는 별도로 AUTO/직접 선택합니다.
 
 자막 번역에는 같은 컴퓨터에서 실행 중인 Ollama와 준비된 텍스트 모델이 필요합니다. 앱이 Ollama를 설치·시작하거나 모델을 자동으로 받지 않습니다. `자막 번역`에서 대상 언어와 모델, GPU 자동/CPU를 선택하고 결과를 검토한 뒤 적용합니다. 원문과 시간은 보존하고 번역을 별도로 저장합니다. 원문이 바뀌면 번역을 다시 확인해야 하며 누락·오래된 번역이 있으면 번역 자막 내보내기를 막습니다. 세부 규칙은 [번역 계약](CUTS-AND-LANGUAGES.md#로컬-자막-번역)을 참고하세요.
 
+고급 설정에서는 세션 API 키와 명시적 텍스트 전송 확인을 거쳐 Groq·xAI 텍스트 모델을 대신 사용할 수 있습니다. 원문·번역 검수 규칙은 동일하며 GPU/CPU 선택은 로컬 Ollama에만 적용합니다. [고급 공급자 설정](ADVANCED-PROVIDERS.md)을 확인하세요.
+
 ## 7. 인터뷰와 회의록
 
 *Interviews and meeting minutes*
+
+The default **Transcript** tab produces a chronological document like `Minjun: Let's start.` directly from the current captions. It does not need Ollama or a paid API. Save an editable Word `.docx`, UTF-8 `.txt`, HTML, or open print preview for PDF. Timestamps are optional. Speaker names and original utterances come from your edited project; review recognition errors in the caption editor before exporting. Q&A tagging and AI summaries are separate tabs.
+
+기본 **발언록** 탭은 `청둥찌덕: 오늘 이야기할 내용은…`처럼 현재 자막을 인물별 발언 순서로 정리합니다. Ollama나 유료 API 없이 바로 만들며, Word `.docx`·UTF-8 `.txt`·HTML 저장과 PDF용 인쇄 미리보기를 지원합니다. 시간 표시는 선택입니다. 프로젝트의 인물 이름과 원문을 사용하므로 인식 오류는 자막 편집기에서 고친 뒤 출력하세요. 문답 분류와 AI 회의 요약은 별도 탭입니다.
 
 Assign interviewer/respondent/participant roles and question/answer/other caption tags. Timestamps return to the source. Write summaries/discussions/decisions/actions manually with evidence captions, or use a prepared local Ollama model for drafts. Review owners, dates, proposals versus decisions, jokes and reversals; generated items are never automatically confirmed. Changed evidence text, timing or speaker requires review. Store documents in project JSON and export Markdown.
 
@@ -127,13 +143,32 @@ Assign interviewer/respondent/participant roles and question/answer/other captio
 
 회의록에는 요약·논의·결정·할 일을 수동으로 작성하고 근거 자막을 연결할 수 있습니다. 준비된 로컬 Ollama 모델이 있으면 초안 생성을 사용할 수 있습니다. 결과는 검토 후 직접 추가하며 자동 확정하지 않습니다. 담당자·기한, 제안과 결정, 농담과 번복을 원문과 비교하세요. 근거 자막의 내용·시간·인물이 바뀌면 재확인이 필요합니다. 문서는 프로젝트 JSON에 저장하고 Markdown으로 내보낼 수 있습니다. 자세한 한계는 [근거 문서 안내](EDITING-WORKFLOWS.md#인터뷰와-근거가-있는-회의록)에 있습니다.
 
+Groq/xAI text generation is also optional through advanced settings; it transmits the selected transcript text after confirmation. Keep draft items separate from verified statements. Generated drafts must be added or discarded before exporting a document.
+
+고급 설정에서 Groq·xAI 텍스트 생성을 선택할 수도 있으며, 확인 후 선택한 전사 텍스트를 보냅니다. 생성 초안은 확인된 사실과 구분해 검토하세요. 생성한 초안을 문서에 추가하거나 버린 뒤 내보낼 수 있습니다.
+
+| Output / 출력 | Contents / 내용 |
+| --- | --- |
+| HTML report / HTML 보고서 | Standalone offline report with names, source times, Q/A or minutes and evidence / 이름·원본 시간·문답 또는 회의 항목·근거를 담은 독립 보고서 |
+| PDF through print / 인쇄를 통한 PDF | Open report preview, then choose Save as PDF in the print dialog; the browser/app must support printing / 보고서 미리보기에서 인쇄를 열고 PDF 저장 선택, 브라우저·앱의 인쇄 기능 필요 |
+| Excel `.xlsx` / Excel 통합문서 | Interview: report + transcript; minutes: report + transcript + actions + evidence / 인터뷰는 보고서·전체 대사, 회의록은 보고서·전체 대사·할 일·근거 시트 |
+| Markdown / Markdown 문서 | Editable plain-text document / 수정 가능한 텍스트 문서 |
+
+Reports show pending review and stale evidence. Export timestamps are not the meeting date. Original media times are retained; cuts do not rewrite report evidence times. Save project JSON as well to continue editing. PDF printing does not automatically save a file, and an embedded browser without printing can still download HTML/XLSX.
+
+보고서에는 검수 대기·변경된 근거 상태를 표시합니다. 내보낸 시각을 회의 일시로 표시하지 않으며, 원본 미디어 시간은 컷편집 뒤에도 유지합니다. 편집을 계속하려면 프로젝트 JSON도 보관하세요. PDF는 자동 파일 저장이 아니며, 인쇄를 지원하지 않는 내장 브라우저에서는 HTML·XLSX를 내려받을 수 있습니다.
+
 ## 8. 마이크·시스템 소리 녹음
 
 *Microphone and system audio recording*
 
+Use **Microphone permission / refresh devices** to reveal available device names. The temporary permission stream is released after enumeration; this does not start a saved recording. Refresh after attaching an interface or changing permissions. If a fixed input disappears, choose a device again; the app does not silently switch to the OS default. Default input follows the OS default. Individual WASAPI playback-endpoint selection is not yet implemented.
+
+**마이크 권한 확인·장치 새로고침**으로 사용 가능한 장치 이름을 확인합니다. 권한 확인용 임시 스트림은 목록 조회 뒤 해제하며 저장 녹음을 시작하지 않습니다. 오인페 연결이나 권한 변경 뒤 다시 새로고침하세요. 고정 입력이 사라지면 장치를 다시 선택해야 하며 OS 기본 장치로 자동 전환하지 않습니다. `기본 입력 장치`는 OS 기본값을 따릅니다. 개별 WASAPI 재생 출력 선택은 아직 구현되지 않았습니다.
+
 Choose microphone/system/both and explicitly approve capture. System output may include calls, games and notifications; shared video is not stored in the recording. Support depends on the browser, OS and shared source. Approximately one-second chunks are saved locally. After stopping, download source files/mix/metadata or open the mix in a new project for analysis. **This is post-recording analysis, not live transcription.** Stable streaming speaker IDs, automatic device reconnection and external clock-drift correction are not implemented. Completed chunks may survive interruptions, but the last unwritten chunk and playability of every interrupted file are not guaranteed. Sessions are limited to 2 GiB across all sources and available browser storage.
 
-`라이브 녹음·복구`에서 마이크·시스템 소리·둘 다 중 하나를 선택합니다. 시작 버튼을 누른 뒤 권한 요청과 소리 공유 대상을 확인하세요. 시스템 소리에는 게임·통화·알림 등이 함께 들어갈 수 있습니다. 화면 공유 허가를 사용하더라도 저장 파일에는 오디오만 넣습니다. 브라우저·OS·선택 대상에 따라 시스템 소리 공유가 지원되지 않을 수 있습니다.
+상단 `녹음`을 눌러 연 `라이브 녹음·복구` 창에서 마이크·시스템 소리·둘 다 중 하나를 선택합니다. 시작 버튼을 누른 뒤 권한 요청과 소리 공유 대상을 확인하세요. 시스템 소리에는 게임·통화·알림 등이 함께 들어갈 수 있습니다. 화면 공유 허가를 사용하더라도 저장 파일에는 오디오만 넣습니다. 브라우저·OS·선택 대상에 따라 시스템 소리 공유가 지원되지 않을 수 있습니다.
 
 약 1초 단위로 기기의 브라우저 저장소에 보관합니다. 녹음을 종료하면 소스별 파일·혼합본·메타데이터를 내려받거나 혼합본을 `새 프로젝트로 분석`할 수 있습니다. **녹음 종료 후 분석이며 실시간 자막 생성은 아닙니다.** 스트리밍 화자 고정, 장치 자동 재연결, 외부 오디오 드리프트 보정은 없습니다.
 
@@ -170,8 +205,12 @@ Autosave Recovery lists current/previous/damaged JSON; download before restoring
 
 *App updates*
 
-**The v0.2.0 Preview has no update feed or code signature; in-app updating is `unconfigured`.** Public downloads and the online bootstrap do not configure electron-updater. Install a supplied newer setup manually. The future configured flow is check → download → save and restart, with no automatic download/install-on-quit. Back up project JSON before replacement; consult version-specific evidence for tested migration paths.
+**The v0.2.1 Preview has no update feed or code signature; in-app updating is `unconfigured`.** Public downloads and the online bootstrap do not configure electron-updater. Install a supplied newer setup manually. The future configured flow is check → download → save and restart, with no automatic download/install-on-quit. Back up project JSON before replacement; consult version-specific evidence for tested migration paths.
 
-**이번 v0.2.0 Preview는 업데이트 feed와 코드 서명이 없어 인앱 업데이트가 `unconfigured`입니다.** 공개 다운로드나 온라인 설치기는 electron-updater를 설정하지 않습니다. 이후 버전은 제공된 새 설치 파일로 교체합니다.
+**이번 v0.2.1 Preview는 업데이트 feed와 코드 서명이 없어 인앱 업데이트가 `unconfigured`입니다.** 공개 다운로드나 온라인 설치기는 electron-updater를 설정하지 않습니다. 이후 버전은 제공된 새 설치 파일로 교체합니다.
 
-향후 feed가 구성된 설치형에서는 `앱 업데이트`에서 확인 → 다운로드 → 저장 후 다시 시작을 각각 선택하는 구조입니다. 자동 다운로드·종료 시 자동 설치는 하지 않습니다. 브라우저 개발 화면에서는 설치형 업데이트를 사용할 수 없습니다. GitHub 게시와 feed 연결은 별개이며 버전별 실제 검증 여부는 [릴리즈 기록](releases/v0.2.0.md)을 따릅니다. 프로젝트·모델 캐시를 유지하도록 구성하지만 수동 교체 전 별도 프로젝트 백업을 권장합니다.
+The app and Python backend report version 0.2.1. During analysis, the latest two completed recognition segments appear as a draft. Elapsed time also updates before the first segment; a ticking timer alone is not evidence of new recognition activity. Draft text is not applied to captions until the completed result is explicitly applied. See the [release scope](releases/v0.2.1.md).
+
+앱과 Python 백엔드는 0.2.1을 표시합니다. 분석 중 최근 인식 구간 두 개를 초안으로 보여주며 첫 구간 전에도 경과 시간을 표시합니다. 시간 증가만으로 새 인식 결과가 생성되었다고 판단하지 않습니다. 초안은 자막을 자동으로 바꾸지 않으며 완료 후 결과 적용을 눌러야 합니다. [릴리즈 범위](releases/v0.2.1.md)를 참고하세요.
+
+향후 feed가 구성된 설치형에서는 `앱 업데이트`에서 확인 → 다운로드 → 저장 후 다시 시작을 각각 선택하는 구조입니다. 자동 다운로드·종료 시 자동 설치는 하지 않습니다. 브라우저 개발 화면에서는 설치형 업데이트를 사용할 수 없습니다. GitHub 게시와 feed 연결은 별개이며 버전별 실제 검증 여부는 [릴리즈 기록](releases/v0.2.1.md)을 따릅니다. 프로젝트·모델 캐시를 유지하도록 구성하지만 수동 교체 전 별도 프로젝트 백업을 권장합니다.

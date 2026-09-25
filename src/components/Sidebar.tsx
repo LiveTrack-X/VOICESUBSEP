@@ -1,8 +1,11 @@
 import { useI18n, LOCALES, localeNames, type Locale } from "../i18n";
 import { useState } from "react";
-import { AudioLines, Film, Info, Upload, Palette } from "lucide-react";
+import { createPortal } from "react-dom";
+import { AudioLines, Film, Info, Upload, Palette, ChevronDown, ChevronUp } from "lucide-react";
 import { DEFAULT_CAPTION_STYLE, type Project } from "../domain";
 import { CaptionStyleDialog } from "./CaptionStyleDialog";
+import { Dialog } from "./Dialog";
+import { assignAllCaptionsToSpeaker, editableSpeakers } from "../speakerOperations";
 
 export function Sidebar({
   project,
@@ -21,15 +24,18 @@ export function Sidebar({
 }) {
   const { t, locale, setLocale } = useI18n();
   const [styleSpeakerId, setStyleSpeakerId] = useState<string | null>(null);
+  const [settingsExpanded, setSettingsExpanded] = useState(false);
+  const [mergeTarget, setMergeTarget] = useState<string | null>(null);
   const styleSpeaker = project.speakers.find((s) => s.id === styleSpeakerId);
-  const visibleSpeakers = project.speakers.filter(
-    (s, i) =>
-      i < project.speakerCount ||
-      project.captions.some((c) => c.speakerId === s.id),
-  );
+  const visibleSpeakers = editableSpeakers(project);
+  const mergeSpeaker = visibleSpeakers.find(speaker => speaker.id === mergeTarget);
   const assignedSpeakerCount = new Set(project.captions.map(c=>c.speakerId).filter(id=>id!==null)).size;
+  const unassignedCount = project.captions.filter(caption => caption.speakerId === null).length;
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${settingsExpanded ? " sidebar-expanded" : ""}`}>
+      <button className="sidebar-compact-toggle" aria-expanded={settingsExpanded} onClick={() => setSettingsExpanded(value => !value)}>
+        {settingsExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}{t("프로젝트 설정·인물")}
+      </button>
       <h2>{t('프로젝트')}</h2>
       <div className="sidebar-section"><label htmlFor="ui-language">{t("앱 화면 언어")}</label><select id="ui-language" aria-label={t("앱 화면 언어")} value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>{LOCALES.map((code) => <option key={code} value={code}>{localeNames[code]}</option>)}</select><p className="setting-hint">{t("음성 인식 언어와 별도로 설정합니다.")}</p></div>
       <div className="sidebar-section media-section">
@@ -40,7 +46,7 @@ export function Sidebar({
             {hasMedia ? t("연결된 미디어") : project.mediaName ? t("원본 미디어 다시 연결") : t("미디어 불러오기")}
           </strong>
           <span>{project.mediaName ?? t("영상·음성 파일을 선택하세요")}</span>
-          <small>{t(hasMedia ? "원본 파일은 이 기기에서 처리합니다" : project.mediaName ? "저장된 자막은 유지되며, 원본 파일 연결이 필요합니다." : "원본 파일은 이 기기에서 처리합니다")}</small>
+          <small>{t(hasMedia ? "분석 방식은 음성 분석 창에서 선택합니다" : project.mediaName ? "저장된 자막은 유지되며, 원본 파일 연결이 필요합니다." : "분석 방식은 음성 분석 창에서 선택합니다")}</small>
         </button>
       </div>
       <div className="sidebar-section">
@@ -92,8 +98,9 @@ export function Sidebar({
           : t("예상 인원은 다음 분석의 검수 기준이며, 감지된 인물을 강제로 합치지 않습니다.")}</p>
       </div>
       <div className="sidebar-section speaker-names">
-        <label>{t('인물 이름 · 색상')}</label>
+        <label>{project.captions.length > 0 ? t("현재 자막 인물 · {count}명", { count: assignedSpeakerCount }) : t("분석 전 인물 이름 · 색상")}</label>
         <p className="setting-hint">{t('색상과 자막 스타일을 인물별로 정하세요.')}</p>
+        {unassignedCount > 0 && <p className="setting-hint">{t("미배정 자막 {count}개", { count: unassignedCount })}</p>}
         {visibleSpeakers.map((s, i) => (
           <div className="speaker-name" key={s.id}>
             <input
@@ -136,6 +143,11 @@ export function Sidebar({
             </button>
           </div>
         ))}
+        {project.speakerCount === 1 && assignedSpeakerCount > 1 && (
+          <button className="merge-speakers-button" disabled={busy} onClick={() => setMergeTarget(visibleSpeakers[0]?.id ?? null)}>
+            {t("현재 자막을 1명으로 합치기")}
+          </button>
+        )}
       </div>
       <button
         className="primary analyze-button"
@@ -148,7 +160,7 @@ export function Sidebar({
         <p className="setting-hint">
           <Upload size={13} />{t('저장된 자막은 유지됩니다. 재생할 원본을 다시 연결하세요.')}</p>
       )}
-      {styleSpeaker && (
+      {styleSpeaker && createPortal(
         <CaptionStyleDialog
           key={`${project.id}-${styleSpeaker.id}`}
           title={t("{name} · 기본 자막 스타일", { name: styleSpeaker.name || t("인물") })}
@@ -166,7 +178,27 @@ export function Sidebar({
               : s),
           }))}
           onClose={() => setStyleSpeakerId(null)}
-        />
+        />, document.body,
+      )}
+      {mergeTarget !== null && createPortal(
+        <Dialog title={t("현재 자막을 1명으로 합치기")} onClose={() => setMergeTarget(null)}>
+          <p>{t("미배정을 포함한 자막 {count}개를 선택한 인물로 배정합니다. 텍스트·시간·노트는 유지되며 실행 취소로 되돌릴 수 있습니다.", { count: project.captions.length })}</p>
+          <label className="speaker-merge-target">{t("합칠 인물")}
+            <select value={mergeTarget} onChange={event => setMergeTarget(event.target.value)}>
+              {visibleSpeakers.map(speaker => <option key={speaker.id} value={speaker.id}>{speaker.name || t("인물")}</option>)}
+            </select>
+          </label>
+          <p className="setting-hint">{t("인물 기본 스타일은 선택한 인물을 따르고, 자막 개별 스타일은 유지됩니다.")}</p>
+          <div className="dialog-actions">
+            <button onClick={() => setMergeTarget(null)}>{t("취소")}</button>
+            <button className="primary speaker-merge-confirm" disabled={busy || !mergeSpeaker} onClick={() => {
+              if (!mergeSpeaker) return;
+              const target = mergeSpeaker.id;
+              update(previous => assignAllCaptionsToSpeaker(previous, target));
+              setMergeTarget(null);
+            }}>{t("{name}으로 {count}개 배정", { name: mergeSpeaker?.name || t("인물"), count: project.captions.length })}</button>
+          </div>
+        </Dialog>, document.body,
       )}
     </aside>
   );

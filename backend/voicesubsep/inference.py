@@ -21,6 +21,7 @@ import wave
 
 from .model_cache import resolve_nemotron_model, resolve_whisper_model
 from .asr_windows import speaker_change_clips
+from .recognition_preview import RecognitionPreview
 
 
 class AnalysisCancelled(Exception):
@@ -217,7 +218,8 @@ def _release_memory() -> None:
 
 def _transcribe(path: Path, *, model_name: str, language: str, device: str,
                 duration: float, progress: Progress, cancelled: Cancelled,
-                clip_timestamps: list[float] | None = None) -> list[dict]:
+                clip_timestamps: list[float] | None = None,
+                recognition_preview: RecognitionPreview | None = None) -> list[dict]:
     _checkpoint(cancelled)
     if device == "cuda":
         from .gpu_runtime import ensure_cuda_runtime
@@ -254,6 +256,8 @@ def _transcribe(path: Path, *, model_name: str, language: str, device: str,
                     item["probability"] = min(1.0, max(0.0, probability))
                 words.append(item)
             records.append({"start": segment.start, "end": segment.end, "text": segment.text, "words": words})
+            if recognition_preview is not None:
+                recognition_preview(segment.text)
             last_progress = max(last_progress, min(0.64, 0.17 + 0.47 * max(0.0, segment.end) / duration))
             progress("대사 전사", last_progress)
         _checkpoint(cancelled)
@@ -597,13 +601,25 @@ def build_result(records: list[dict], diarization_segments: list[dict] | None, *
 def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int,
             whisper_model: str, language: str, device: str, diarization: bool,
             progress: Progress, cancelled: Cancelled, speaker_boundary_ms: int = 500,
-            preprocessing: dict | None = None) -> dict:
+            preprocessing: dict | None = None,
+            recognition_preview: RecognitionPreview | None = None,
+            asr_provider: str = "local", provider_model: str | None = None,
+            cloud_consent: bool = False, get_provider_key: Callable[[], str] | None = None) -> dict:
     _checkpoint(cancelled)
     _validate_speaker_boundary_ms(speaker_boundary_ms)
     if mode not in {"standard", "overlap"} or device not in {"cpu", "cuda"}:
         raise RuntimeError("지원하지 않는 분석 모드 또는 장치입니다.")
     if whisper_model not in WHISPER_MODELS or isinstance(speaker_count, bool) or not 1 <= speaker_count <= 4:
         raise RuntimeError("지원하지 않는 Whisper 모델 또는 설정 인원입니다.")
+    if asr_provider != "local":
+        from .cloud_asr import validate_cloud_options
+
+        validate_cloud_options(asr_provider, provider_model, cloud_consent)
+        if get_provider_key is None:
+            raise RuntimeError("클라우드 API 키를 먼저 등록하세요.")
+        get_provider_key()  # Fail before extraction/model work if the session key was removed.
+    elif provider_model is not None:
+        raise RuntimeError("로컬 분석에는 클라우드 모델을 사용할 수 없습니다.")
     if isinstance(audio_track, bool) or not isinstance(audio_track, int) or audio_track < 0:
         raise RuntimeError("오디오 트랙 인덱스가 유효하지 않습니다.")
     if not media_path.is_file():
@@ -616,7 +632,8 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
     if any(not isinstance(item, dict) for item in chain):
         raise RuntimeError("VST 체인 항목이 유효하지 않습니다.")
     enabled_chain = [item for item in chain if item.get("enabled", True)]
-    _whisper_class()
+    if asr_provider == "local":
+        _whisper_class()
     if diarization:
         _nemotron_classes()  # Fail before extraction/ASR if requested engine is missing.
     progress("선택한 오디오 트랙 확인", 0.02)
@@ -666,14 +683,28 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
                             cancelled=cancelled) if diarization else None
         _checkpoint(cancelled)
         clips = speaker_change_clips(diarized, duration) if diarized is not None else None
-        records = _transcribe(asr_path, model_name=whisper_model, language=language, device=device,
-                              duration=duration, clip_timestamps=clips,
-                              progress=mapped_progress(diarization_end if diarization else engine_start, 0.94, 0.10, 0.64),
-                              cancelled=cancelled)
+        asr_progress = mapped_progress(diarization_end if diarization else engine_start, 0.94, 0.10, 0.64)
+        if asr_provider == "local":
+            records = _transcribe(asr_path, model_name=whisper_model, language=language, device=device,
+                                  duration=duration, clip_timestamps=clips, progress=asr_progress,
+                                  **({"recognition_preview": recognition_preview} if recognition_preview is not None else {}),
+                                  cancelled=cancelled)
+        else:
+            from .cloud_asr import transcribe_cloud, CloudASRCancelled
+
+            try:
+                records = transcribe_cloud(asr_path, provider=asr_provider, model=provider_model,
+                                           language=language, consent=cloud_consent, get_key=get_provider_key,
+                                           progress=asr_progress, cancelled=cancelled,
+                                           recognition_preview=recognition_preview)
+            except CloudASRCancelled as exc:
+                raise AnalysisCancelled(str(exc)) from None
         _checkpoint(cancelled)
         progress("단어·화자 시간 연결 및 검수 표시", 0.96)
         result = build_result(records, diarized, duration=duration, speaker_count=speaker_count, mode=mode,
                               speaker_boundary_ms=speaker_boundary_ms, cancelled=cancelled)
+        if asr_provider != "local":
+            result["warnings"].append(f"{asr_provider} 클라우드에서 선택한 트랙의 음성을 전사했습니다. 화자 구분을 선택한 경우 Nemotron은 이 기기에서 실행했습니다.")
         if channels > 1:
             result["warnings"].insert(0, f"선택한 오디오 트랙 #{audio_track}의 {channels}개 채널을 분석용 모노로 변환했습니다. 원본과 다른 트랙은 보존했습니다.")
         if preprocessing_report is not None:

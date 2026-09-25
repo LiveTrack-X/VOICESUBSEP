@@ -11,8 +11,6 @@ import {
   CheckCircle2,
   RefreshCw,
   Settings2,
-  BookOpenText,
-  Mic,
   History,
   ArchiveRestore,
   X,
@@ -38,6 +36,7 @@ import { CaptionEditor } from "./components/CaptionEditor";
 import { NotesPanel } from "./components/NotesPanel";
 import { Timeline } from "./components/Timeline";
 import { EditorWorkspace } from "./components/EditorWorkspace";
+import { WorkspaceModeSwitcher, workspaceModeForDialog } from "./components/WorkspaceModeSwitcher";
 import { Dialog } from "./components/Dialog";
 import { AnalysisDialog } from "./components/AnalysisDialog";
 import { UpdateDialog } from "./components/UpdateDialog";
@@ -368,6 +367,10 @@ export default function App() {
             <Download size={16} />{t("내보내기")}</button>
         </div>
       </header>
+      <WorkspaceModeSwitcher
+        mode={workspaceModeForDialog(dialog)}
+        onSelect={mode => setDialog(mode === "documents" ? "documents" : mode === "recording" ? "live" : null)}
+      />
       <main className="workspace" key={`${project.id}:${projectSession}`}>
         <Sidebar
           project={project}
@@ -378,8 +381,6 @@ export default function App() {
           onAnalyze={() => file ? setDialog("analysis") : chooseMedia(true)}
         />
         <EditorWorkspace noteReveal={revealNote} tools={<>
-          <button onClick={()=>setDialog("documents")}><BookOpenText size={15}/>{t("인터뷰·회의록")}</button>
-          <button onClick={()=>setDialog("live")}><Mic size={15}/>{t("라이브 녹음·복구")}</button>
           <button onClick={()=>setDialog("history")}><History size={15}/>{t("작업 이력·저장 공간")}</button>
           <button className={recoveryWarning?"recovery-warning":""} onClick={()=>setDialog("recovery")}><ArchiveRestore size={15}/>{t("자동 저장 복구")}</button>
         </>}>

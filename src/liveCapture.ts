@@ -1,4 +1,5 @@
 import { recordingStore, type Recording, type RecordingSource, type RecordingStore } from "./recordingStore";
+import { microphoneAccessError } from "./microphoneDevices";
 
 export type CaptureMode = "microphone" | "system" | "both";
 export function recordingMime(): string {
@@ -42,8 +43,12 @@ export class LiveCapture {
       if (mode !== "system") {
         const mic = await navigator.mediaDevices.getUserMedia({ video: false, audio: {
           ...(deviceId ? { deviceId: { exact: deviceId } } : {}), echoCancellation: false, noiseSuppression: false, autoGainControl: false,
-        } });
-        this.streams.push(mic); assertStarting(); tracks.microphone = mic;
+        } }).catch(error => { throw new Error(microphoneAccessError(error)); });
+        this.streams.push(mic); assertStarting();
+        const micTrack = mic.getAudioTracks()[0];
+        const actualId = micTrack?.getSettings?.().deviceId;
+        if (!micTrack || deviceId && actualId && actualId !== deviceId) throw new Error("선택한 마이크를 사용할 수 없습니다. 장치 연결을 확인하고 목록을 새로고침한 뒤 직접 다시 선택하세요.");
+        tracks.microphone = mic;
       }
       this.context = new AudioContext();
       await this.context.resume();
@@ -108,6 +113,12 @@ export class LiveCapture {
     if (this.stopPromise) return this.stopPromise;
     this.stopping = true; this.failure ||= reason;
     this.stopPromise = (async () => {
+      let tracksReleased = false;
+      const releaseTracks = () => {
+        if (tracksReleased) return;
+        tracksReleased = true;
+        for (const stream of this.streams) for (const track of stream.getTracks()) track.stop();
+      };
       try {
         // A request already awaiting the OS chooser may still yield a stream. Wait and close it too.
         await this.startSettled;
@@ -121,10 +132,13 @@ export class LiveCapture {
             catch { this.failure ||= "녹음 장치 오류가 발생했습니다. 저장된 조각을 복구할 수 있습니다."; }
           }
         })));
+        // Encoders have delivered their final chunks (or hit the bounded stop
+        // timeout). Storage must not keep microphones or screen sharing open.
+        releaseTracks();
         await this.writes;
         if (this.recording) await this.store.finish(this.recording.id, this.failure ? "interrupted" : "stopped", this.failure || undefined, this.recording.offsets);
       } finally {
-        for (const stream of this.streams) for (const track of stream.getTracks()) track.stop();
+        releaseTracks();
         if (this.context && this.context.state !== "closed") await this.context.close();
       }
     })();

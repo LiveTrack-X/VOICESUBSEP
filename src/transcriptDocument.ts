@@ -1,0 +1,92 @@
+import { parseProject, type Project, type SubtitleLanguage } from "./domain";
+import { hasFreshTranslation } from "./translation";
+import { zipStore } from "./subtitle-export";
+import { reportTime } from "./documentExports";
+
+export type TranscriptLanguage = "original" | SubtitleLanguage;
+export type TranscriptTurn = { ids: string[]; speakerId: string | null; speaker: string; start: number; end: number; text: string; overlap: boolean };
+export type TranscriptDocument = { title: string; participants: string[]; language: TranscriptLanguage; turns: TranscriptTurn[]; fallbackCount: number; captionCount: number };
+type Label = (key: string) => string;
+export type TranscriptOptions = { timestamps?: boolean; language?: TranscriptLanguage; locale?: string; coalesce?: boolean };
+export const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const xml = (value: string) => value.replace(/[^\u0009\u000a\u000d\u0020-\ud7ff\ue000-\ufffd\u{10000}-\u{10ffff}]/gu, "")
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+
+/** Literal transcript: no network, summarization, role inference, or source mutations. */
+export function buildTranscriptDocument(project: Project, label: Label, options: TranscriptOptions = {}): TranscriptDocument {
+  const valid = parseProject(JSON.stringify(project));
+  const language = options.language ?? "original";
+  if (!["original", "ko", "en", "ja", "zh", "es"].includes(language)) throw new Error(label("지원하지 않는 번역 언어입니다."));
+  const speakers = new Map(valid.speakers.map(speaker => [speaker.id, speaker.name]));
+  // Equal start times retain their source order, including simultaneous speech.
+  const captions = valid.captions.map((caption, index) => ({ caption, index })).sort((a, b) => a.caption.start - b.caption.start || a.index - b.index);
+  const turns: TranscriptTurn[] = [];
+  let latestEnd = -1, fallbackCount = 0, captionCount = 0;
+  for (let index = 0; index < captions.length; index++) {
+    const { caption } = captions[index]!;
+    const overlap = caption.start < latestEnd || caption.end > (captions[index + 1]?.caption.start ?? Infinity);
+    latestEnd = Math.max(latestEnd, caption.end);
+    if (!caption.text.trim()) continue;
+    captionCount++;
+    const fresh = language !== "original" && hasFreshTranslation(caption, language);
+    const text = fresh ? caption.translation!.texts[language as SubtitleLanguage]! : caption.text;
+    if (language !== "original" && !fresh) fallbackCount++;
+    const previous = turns.at(-1);
+    if (options.coalesce !== false && previous && previous.ids.at(-1) === captions[index - 1]?.caption.id && caption.speakerId !== null && previous.speakerId === caption.speakerId &&
+        !previous.overlap && !overlap && caption.start >= previous.end && caption.start - previous.end <= 1.2) {
+      previous.ids.push(caption.id); previous.end = caption.end; previous.text += `\n${text}`;
+    } else {
+      turns.push({ ids: [caption.id], speakerId: caption.speakerId, speaker: speakers.get(caption.speakerId ?? "") ?? label("미배정"),
+        start: caption.start, end: caption.end, text, overlap });
+    }
+  }
+  const active = new Set(turns.map(turn => turn.speakerId));
+  const participants = valid.speakers.filter(speaker => active.has(speaker.id)).map(speaker => speaker.name);
+  if (active.has(null)) participants.push(label("미배정"));
+  return { title: valid.name, participants, language, turns, fallbackCount, captionCount };
+}
+
+function metadata(document: TranscriptDocument, label: Label): string[] {
+  return [document.title, label("발언록"), `${label("참가자")}: ${document.participants.join(", ") || "—"}`,
+    `${label("문서 언어")}: ${document.language === "original" ? label("원문") : document.language}`,
+    label("자막 원문을 시간순으로 정리한 발언록입니다. 자동 요약이나 문장 재작성은 하지 않습니다."),
+    ...(document.language !== "original" ? [label("선택한 언어의 저장된 번역을 사용하며 이 화면에서 번역을 생성하지 않습니다.")] : []),
+    ...(document.fallbackCount ? [label("번역이 없거나 원문이 수정된 대사는 원문으로 포함됩니다.")] : [])];
+}
+const prefix = (turn: TranscriptTurn, timestamps = false) => `${timestamps ? `[${reportTime(turn.start)} – ${reportTime(turn.end)}] ` : ""}${turn.speaker}: `;
+
+export function exportTranscriptTxt(project: Project, label: Label, options: TranscriptOptions = {}): string {
+  const document = buildTranscriptDocument(project, label, options);
+  return [...metadata(document, label), "", ...document.turns.map(turn => `${prefix(turn, options.timestamps)}${turn.text}\n`)].join("\n");
+}
+
+/** Standalone offline report. The shared print view accepts its main.vs-report. */
+export function exportTranscriptHtml(project: Project, label: Label, options: TranscriptOptions = {}): string {
+  const document = buildTranscriptDocument(project, label, options);
+  const locale = ["ko", "en", "ja", "zh", "es"].includes(options.locale ?? "") ? options.locale! : "ko";
+  const meta = metadata(document, label);
+  return `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>${xml(document.title)} · ${xml(label("발언록"))}</title><style>.vs-report{max-width:900px;margin:0 auto;padding:32px;font:15px/1.7 system-ui,"Malgun Gothic",sans-serif;color:#263246}.vs-report h1{overflow-wrap:anywhere}.vs-report p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 16px}.vs-report .meta,.vs-report .notice{font-size:12px;color:#637084}.vs-report .stamp{color:#637084;font-size:12px}@page{size:A4;margin:18mm}@media print{.vs-report{padding:0;font-size:11pt}}</style></head><body><main class="vs-report"><h1>${xml(document.title)}</h1><h2>${xml(label("발언록"))}</h2>${meta.slice(2).map(line => `<p class="meta">${xml(line)}</p>`).join("")}<h2>${xml(label("발언 내용"))}</h2>${document.turns.map(turn => `<p>${options.timestamps ? `<span class="stamp">[${reportTime(turn.start)} – ${reportTime(turn.end)}]</span> ` : ""}<strong>${xml(turn.speaker)}: </strong>${xml(turn.text)}</p>`).join("")}</main></body></html>`;
+}
+
+function wordText(text: string): string {
+  // Word needs explicit break/tab elements; literal newlines in w:t collapse.
+  return text.split(/(\r\n|\r|\n|\t)/).map(part => part === "\t" ? "<w:tab/>" : /^(\r\n|\r|\n)$/.test(part) ? "<w:br/>" : `<w:t xml:space="preserve">${xml(part)}</w:t>`).join("");
+}
+const run = (text: string, bold = false) => `<w:r>${bold ? "<w:rPr><w:b/></w:rPr>" : ""}${wordText(text)}</w:r>`;
+const paragraph = (content: string, style?: string) => `<w:p><w:pPr>${style ? `<w:pStyle w:val="${style}"/>` : ""}<w:spacing w:after="160"/></w:pPr>${content}</w:p>`;
+
+/** A real WordprocessingML ZIP, with no macros, links, or external assets. */
+export function exportTranscriptDocx(project: Project, label: Label, options: TranscriptOptions = {}): Uint8Array {
+  const document = buildTranscriptDocument(project, label, options), meta = metadata(document, label);
+  const body = paragraph(run(document.title), "Title") + paragraph(run(label("발언록")), "Heading1") +
+    meta.slice(2).map(line => paragraph(run(line))).join("") + paragraph(run(label("발언 내용")), "Heading1") +
+    document.turns.map(turn => paragraph(run(prefix(turn, options.timestamps), true) + run(turn.text))).join("");
+  return zipStore([
+    { name: "[Content_Types].xml", text: `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>` },
+    { name: "_rels/.rels", text: `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="document" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="core" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>` },
+    { name: "word/document.xml", text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1020" w:right="1020" w:bottom="1020" w:left="1020" w:header="480" w:footer="480" w:gutter="0"/></w:sectPr></w:body></w:document>` },
+    { name: "word/_rels/document.xml.rels", text: `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>` },
+    { name: "word/styles.xml", text: `<?xml version="1.0" encoding="UTF-8"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Malgun Gothic"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:sz w:val="36"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/></w:pPr><w:rPr><w:b/><w:sz w:val="26"/></w:rPr></w:style></w:styles>` },
+    { name: "docProps/core.xml", text: `<?xml version="1.0" encoding="UTF-8"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>${xml(document.title)}</dc:title><dc:creator>VOICESUBSEP</dc:creator></cp:coreProperties>` },
+  ]);
+}

@@ -1,4 +1,4 @@
-import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, ZoomIn, ZoomOut } from "lucide-react";
 import { formatTime, type Project } from "../domain";
 import { request, uploadMedia, type MediaInfo } from "../api";
@@ -7,7 +7,7 @@ import { resizeCaption, waveformPath } from "../timelineEditing";
 import { NoteTimelineLane } from "./NoteTimelineLane";
 import { normalizeCuts } from "../cuts";
 import { useI18n } from "../i18n";
-import { SubtitleFocusContext } from "../workspaceFocus";
+import { editableSpeakers } from "../speakerOperations";
 import "./timeline-layout.css";
 
 const LAYOUT_STORAGE_KEY = "voicesubsep-timeline-layout-v1";
@@ -60,10 +60,10 @@ export function Timeline({
   const {t}=useI18n();
   const [zoom, setZoom] = useState(1);
   const [layout, setLayout] = useState(readLayout);
-  const focused = useContext(SubtitleFocusContext);
   const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 1000px)").matches);
   const [focusExpanded, setFocusExpanded] = useState(false);
-  const compactFocus = focused && narrow;
+  // A narrow window starts compact without replacing the saved desktop layout.
+  const compactFocus = narrow;
   const collapsed = compactFocus ? !focusExpanded : layout.collapsed;
   useEffect(() => {
     const query = window.matchMedia("(max-width: 1000px)");
@@ -145,11 +145,7 @@ export function Timeline({
     ...project.captions.map((c) => c.end),
     ...project.notes.map((n) => n.end ?? n.start),
   );
-  const speakers = project.speakers.filter(
-    (s, i) =>
-      i < project.speakerCount ||
-      project.captions.some((c) => c.speakerId === s.id),
-  );
+  const speakers = editableSpeakers(project);
   const lanes = [
     ...speakers,
     ...(project.captions.some((c) => !c.speakerId)

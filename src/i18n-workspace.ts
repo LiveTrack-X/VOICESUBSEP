@@ -1,4 +1,11 @@
 export const workspaceMessages: Record<string, readonly [string, string, string, string]> = {
+  "프로젝트 설정·인물": ["Project settings and speakers", "プロジェクト設定・話者", "项目设置与说话人", "Ajustes del proyecto y hablantes"],
+  "미리보기 높이": ["Preview height", "プレビューの高さ", "预览高度", "Altura de vista previa"],
+  "미리보기 크기 자동 조절": ["Automatic preview size", "プレビューサイズを自動調整", "自动调整预览大小", "Tamaño automático de vista previa"],
+  "미리보기 펼치기": ["Show preview", "プレビューを開く", "展开预览", "Mostrar vista previa"],
+  "미리보기 접기": ["Hide preview", "プレビューを閉じる", "收起预览", "Ocultar vista previa"],
+  "화면만 접고 재생 제어는 유지합니다.": ["Hide the picture and keep playback controls.", "画面を閉じても再生操作は残ります。", "收起画面并保留播放控件。", "Oculta la imagen y conserva los controles de reproducción."],
+  "영상·오디오 불러오기": ["Open video or audio", "動画・音声を開く", "打开视频或音频", "Abrir vídeo o audio"],
   "편집 화면": ["Editor view", "編集画面", "编辑视图", "Vista de edición"],
   "메모 펼치기": ["Show notes", "メモを開く", "展开备注", "Mostrar notas"],
   "메모 접기": ["Hide notes", "メモを閉じる", "收起备注", "Ocultar notas"],

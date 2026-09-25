@@ -1,18 +1,22 @@
 # Windows Desktop and Updates / 설치형 앱과 업데이트
 
-This document describes the desktop runtime, developer builds and future update contract. For the public Preview, use the [bilingual user guide](USER-GUIDE.md) and [online installer guide](ONLINE-INSTALLER.md). The small online EXE downloads the existing installer/payload without authentication, checks every file and the assembled SHA256, then opens the original NSIS wizard. The seven-file manual method remains a fallback. See [release evidence](releases/v0.2.0.md) for actual publication and verification; downloading/assembling is not proof of a full installation or new GPU inference.
+This document describes the desktop runtime, developer builds and future update contract. For the public Preview, use the [bilingual user guide](USER-GUIDE.md) and [online installer guide](ONLINE-INSTALLER.md). The small online EXE downloads the existing installer/payload without authentication, checks every file and the assembled SHA256, then opens the original NSIS wizard. The seven-file manual method remains a fallback. See [release evidence](releases/v0.2.1.md) for actual publication and verification; downloading/assembling is not proof of a full installation or new GPU inference.
 
-이 문서는 Electron 설치형 앱의 실행·빌드·업데이트 계약입니다. **v0.2.0 설치 파일·검증·GitHub 게시·서명·feed 구성의 현재 상태는 [v0.2.0 릴리즈 기록](releases/v0.2.0.md)을 기준으로 확인합니다.** 원격 업데이트 서버 공개나 코드 서명 완료를 뜻하지 않습니다. 설치와 일반 사용은 [사용자 가이드](USER-GUIDE.md), 웹 개발 실행은 `npm start`를 참고하세요.
+이 문서는 Electron 설치형 앱의 실행·빌드·업데이트 계약입니다. **v0.2.1 설치 파일·검증·GitHub 게시·서명·feed 구성의 현재 상태는 [v0.2.1 릴리즈 기록](releases/v0.2.1.md)을 기준으로 확인합니다.** 원격 업데이트 서버 공개나 코드 서명 완료를 뜻하지 않습니다. 설치와 일반 사용은 [사용자 가이드](USER-GUIDE.md), 웹 개발 실행은 `npm start`를 참고하세요.
 
-v0.2.0은 공개 저장소의 **Windows Preview 시험 릴리즈**입니다. 작은 온라인 EXE는 로그인 없이 기존 설치 EXE와 조각 3개를 받아 각 파일·재조립 SHA256 검증 후 원래 NSIS 마법사를 엽니다. 기존 자산 7개와 `Assemble-Installer.ps1`을 이용하는 수동 설치도 유지합니다. 온라인 도우미의 실제 게시·동작·캐시는 [온라인 설치 안내](ONLINE-INSTALLER.md)를 따릅니다. 아래 빌드 명령의 `.nsis.7z`는 분할 전 로컬 산출물입니다.
+v0.2.1은 공개 저장소의 **Windows Preview 시험 릴리즈**입니다. 작은 온라인 EXE는 로그인 없이 기존 설치 EXE와 조각 3개를 받아 각 파일·재조립 SHA256 검증 후 원래 NSIS 마법사를 엽니다. 기존 자산 7개와 `Assemble-Installer.ps1`을 이용하는 수동 설치도 유지합니다. 온라인 도우미의 실제 게시·동작·캐시는 [온라인 설치 안내](ONLINE-INSTALLER.md)를 따릅니다. 아래 빌드 명령의 `.nsis.7z`는 분할 전 로컬 산출물입니다.
 
-The online helper requires Windows 10/11 x64 and .NET Framework 4.8. It defaults to 80 Mbps, with 40 Mbps/unlimited options. It checks 12 GiB free on the cache drive and recommends at least 16 GiB plus models/projects. Cache: `%LOCALAPPDATA%\VOICESUBSEP\InstallerCache\0.2.0`. Verified files are reused; partial downloads use Range when supported, while interrupted assembly restarts from verified parts. It passes no `--package-file`, preserving the original NSIS colocated-payload check. This unsigned Preview still has no in-app update feed (`unconfigured`). Read [dependency notices](BUNDLED-NOTICES.md) before redistributing.
+The online helper requires Windows 10/11 x64 and .NET Framework 4.8. It defaults to 80 Mbps, with 40 Mbps/unlimited options. It checks 12 GiB free on the cache drive and recommends at least 16 GiB plus models/projects. Cache: `%LOCALAPPDATA%\VOICESUBSEP\InstallerCache\0.2.1`. Verified files are reused; partial downloads use Range when supported, while interrupted assembly restarts from verified parts. It passes no `--package-file`, preserving the original NSIS colocated-payload check. This unsigned Preview still has no in-app update feed (`unconfigured`). Read [dependency notices](BUNDLED-NOTICES.md) before redistributing.
 
-온라인 도우미에는 Windows 10/11 x64와 .NET Framework 4.8이 필요합니다. 기본 80Mbps, 40Mbps·제한 없음 선택을 지원합니다. 캐시 드라이브 여유 공간 12GiB를 검사하고 최소 16GiB 및 모델·프로젝트 공간을 권장합니다. 캐시는 `%LOCALAPPDATA%\VOICESUBSEP\InstallerCache\0.2.0`이며 검증된 파일을 재사용합니다. 미완료 다운로드는 서버가 지원하면 Range로 이어받고 조립 중단 시에는 검증된 조각으로 처음부터 다시 조립합니다. `--package-file` 없이 실행하여 원래 NSIS의 같은 폴더 payload 검사를 유지합니다. 무서명 Preview이며 인앱 업데이트 feed는 계속 `unconfigured`입니다. 재배포 전 [의존성 고지](BUNDLED-NOTICES.md)를 확인하세요.
+온라인 도우미에는 Windows 10/11 x64와 .NET Framework 4.8이 필요합니다. 기본 80Mbps, 40Mbps·제한 없음 선택을 지원합니다. 캐시 드라이브 여유 공간 12GiB를 검사하고 최소 16GiB 및 모델·프로젝트 공간을 권장합니다. 캐시는 `%LOCALAPPDATA%\VOICESUBSEP\InstallerCache\0.2.1`이며 검증된 파일을 재사용합니다. 미완료 다운로드는 서버가 지원하면 Range로 이어받고 조립 중단 시에는 검증된 조각으로 처음부터 다시 조립합니다. `--package-file` 없이 실행하여 원래 NSIS의 같은 폴더 payload 검사를 유지합니다. 무서명 Preview이며 인앱 업데이트 feed는 계속 `unconfigured`입니다. 재배포 전 [의존성 고지](BUNDLED-NOTICES.md)를 확인하세요.
 
 ## 설치형 앱의 구조
 
 *Runtime architecture.* Electron launches the bundled Python backend on a random loopback port, exposes a stable `voicesubsep://app/` origin, and keeps user data outside the install folder. Python, FFmpeg/FFprobe, speech libraries and CUDA runtime DLLs are bundled. Model weights, a compatible NVIDIA driver, optional Ollama/text models and third-party VST3 plugins are separate. On shutdown, the app requests graceful backend cleanup, waits up to 12 seconds and terminates only its own remaining process tree. Jobs do not automatically resume after restart.
+
+The v0.2.1 app adds the responsive caption editor and sets the native window's minimum width to 480 px. Its rebuilt backend reports API version 0.2.1 and exposes a bounded draft preview as ASR segments complete. The speech-model dependencies remain the same. See [v0.2.1](releases/v0.2.1.md) for current verification and [v0.2.0](releases/v0.2.0.md) for earlier runtime evidence.
+
+v0.2.1은 좁은 창 자막 편집과 네이티브 최소 너비 480px을 지원합니다. 백엔드를 API 0.2.1로 다시 빌드하여 ASR 구간이 나올 때 제한된 길이의 초안을 제공합니다. 음성 모델 의존성은 동일합니다. 현재 검증은 [v0.2.1](releases/v0.2.1.md), 이전 런타임 증거는 [v0.2.0](releases/v0.2.0.md)을 참고하세요.
 
 - 제품명 `VOICESUBSEP`, 앱 ID `com.livetrack.voicesubsep`, Windows x64 NSIS 설치 프로그램입니다.
 - Electron이 `resources/backend/voicesubsep-server.exe`를 임의의 `127.0.0.1` 포트로 실행합니다. 이 서버 하나가 웹 편집기와 API를 제공합니다. 개발용 5173·8787 포트를 사용하지 않습니다.
@@ -75,7 +79,7 @@ v0.1.1 로컬 패키징은 `electronDist`와 `ELECTRON_BUILDER_7ZIP_PATH`, `ELEC
 
 *User-controlled updates.* **The current Preview remains unconfigured.** Making the repository public and adding an online installer do not configure electron-updater. A future configured build requires an HTTPS feed, appropriate signed/publisher configuration and real migration tests. Check, download, and restart/install are separate user actions; automatic download and install-on-quit are disabled. A URL without an actual usable feed is not an update service.
 
-**이번 v0.2.0 Preview는 feed 미구성 상태이며 아래는 향후 feed를 연결할 때의 계약입니다.** 저장소 공개와 온라인 설치기 추가만으로 electron-updater가 구성되지 않습니다. 실제 사용 가능한 HTTPS feed·서명/publisher 구성·이전 버전 이동 검증이 별도로 필요합니다.
+**이번 v0.2.1 Preview는 feed 미구성 상태이며 아래는 향후 feed를 연결할 때의 계약입니다.** 저장소 공개와 온라인 설치기 추가만으로 electron-updater가 구성되지 않습니다. 실제 사용 가능한 HTTPS feed·서명/publisher 구성·이전 버전 이동 검증이 별도로 필요합니다.
 
 자동 확인·자동 다운로드·종료 시 자동 설치는 하지 않습니다. 업데이트 확인 → 다운로드 → 저장 후 다시 시작을 각각 눌러야 합니다. `electron-updater`의 `autoDownload`와 `autoInstallOnAppQuit`은 모두 `false`입니다.
 
@@ -136,13 +140,13 @@ interface DesktopBridge {
 
 장치 권한은 기본 거부하며 녹음 기능에 필요한 요청만 별도 확인합니다. 마이크 요청은 앱의 현재 메인 창·최상위 프레임·origin과 오디오 전용 요청을 검사한 뒤 사용자의 네이티브 확인창 응답으로 허용합니다. Windows 시스템 캡처는 해당 프레임의 사용자 동작, 오디오·영상 요청을 확인하고 화면 선택창에서 명시적으로 선택한 경우에만 loopback을 제공합니다. 외부 origin과 iframe 요청, 겹친 권한 요청은 허용하지 않습니다.
 
-시스템 캡처에는 게임·통화·알림 등 전체 출력음이 섞일 수 있음을 안내합니다. 공유 권한에 필요한 화면 트랙은 최종 녹음 파일에 넣지 않습니다. 녹음은 약 1초 단위 IndexedDB 저장과 종료 후 분석이며 별도 WASAPI 워커·스트리밍 ASR 구현을 뜻하지 않습니다. 실제 마이크·시스템 소리·장시간 녹음의 장치 검증은 [릴리즈 검증 표](releases/v0.2.0.md#검증-기록)에서 확인합니다.
+시스템 캡처에는 게임·통화·알림 등 전체 출력음이 섞일 수 있음을 안내합니다. 공유 권한에 필요한 화면 트랙은 최종 녹음 파일에 넣지 않습니다. 녹음은 약 1초 단위 IndexedDB 저장과 종료 후 분석이며 별도 WASAPI 워커·스트리밍 ASR 구현을 뜻하지 않습니다. 실제 마이크·시스템 소리·장시간 녹음의 장치 검증은 [릴리즈 검증 표](releases/v0.2.1.md)에서 확인합니다.
 
 ## 검증과 한계
 
 *Evidence boundaries.* Current results are in the versioned release record. The historical v0.1.1 data below is retained for provenance and does not validate a newer installer. Developer Electron smoke uses a mock server/profile and is not proof of packaged-main behavior, actual NSIS installation, microphone capture, driver compatibility or a signed remote upgrade.
 
-**현재 v0.2.0의 검증은 [릴리즈 기록](releases/v0.2.0.md#검증-기록)에 모읍니다.** 아래는 v0.1.1 당시의 역사적 실행 기록이며 새 설치 파일의 성공 증거로 재사용하지 않습니다.
+**현재 v0.2.1의 검증은 [릴리즈 기록](releases/v0.2.1.md)에 모읍니다.** 아래는 v0.1.1 당시의 역사적 실행 기록이며 새 설치 파일의 성공 증거로 재사용하지 않습니다.
 
 ### v0.1.1 이전 검증 기록
 

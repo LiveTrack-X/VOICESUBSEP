@@ -8,6 +8,9 @@ import {
   type TranslationDevice, type TranslationRow, type TranslationStatus,
 } from "../translation";
 import { Dialog } from "./Dialog";
+import { TextProviderControls } from "./TextProviderControls";
+import { beginTextRun, cloudTextReady, type TextProvider } from "../textProviders";
+import type { CredentialState } from "../providerCredentials";
 
 const MODEL_STORAGE_KEY = "voicesubsep-translation-model";
 const PAGE_SIZE = 20;
@@ -26,6 +29,8 @@ export function TranslationDialog({ project, onClose, onApply }: {
   const [model, setModel] = useState(rememberedModel);
   const [target, setTarget] = useState<SubtitleLanguage>("en");
   const [device, setDevice] = useState<TranslationDevice>("auto");
+  const [provider, setProvider] = useState<TextProvider>("local"), [cloudModel, setCloudModel] = useState(""), [cloudConsent, setCloudConsent] = useState(false);
+  const [credential, setCredential] = useState<CredentialState>({configured:false,busy:true});
   const [retranslateAll, setRetranslateAll] = useState(false);
   const [error, setError] = useState("");
   const [running, setRunning] = useState(false);
@@ -45,6 +50,7 @@ export function TranslationDialog({ project, onClose, onApply }: {
   const configurationDisabled = running || rows.length > 0;
   const validResults = rows.length > 0 && rows.every((row) => isValidTranslationText(row.text));
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const ready = provider === "local" ? !loading && !!status?.ready && status.models.includes(model) : cloudTextReady(provider, cloudModel, cloudConsent, credential.configured, credential.busy);
 
   async function refresh() {
     statusRequest.current?.abort();
@@ -74,7 +80,7 @@ export function TranslationDialog({ project, onClose, onApply }: {
   }, []);
 
   async function start() {
-    if (running || loading || rows.length || !status?.ready || !status.models.includes(model) || !eligible) return;
+    if (running || rows.length || !ready || !eligible) return;
     const batches = preparation.batches;
     setError("");
     setRunning(true);
@@ -83,12 +89,13 @@ export function TranslationDialog({ project, onClose, onApply }: {
     setPage(0);
     setTotal(eligible);
     shouldStop.current = false;
-    try { localStorage.setItem(MODEL_STORAGE_KEY, model); } catch { /* Optional preference. */ }
+    if (provider === "local") try { localStorage.setItem(MODEL_STORAGE_KEY, model); } catch { /* Optional preference. */ }
     const completed: TranslationRow[] = [];
     try {
+      const providerOptions = await beginTextRun(provider, cloudConsent);
       for (const batch of batches) {
         if (shouldStop.current || !alive.current) break;
-        const translated = await translateBatch(batch, target, model, device);
+        const translated = await translateBatch(batch, target, provider === "local" ? model : cloudModel, device, providerOptions);
         if (!alive.current) return;
         completed.push(...translated);
         setRows([...completed]);
@@ -97,7 +104,7 @@ export function TranslationDialog({ project, onClose, onApply }: {
     } catch (error) {
       if (alive.current) setError((error as Error).message);
     } finally {
-      if (alive.current) { setRunning(false); setStopping(false); }
+      if (alive.current) { setRunning(false); setStopping(false); setCloudConsent(false); }
     }
   }
 
@@ -109,15 +116,17 @@ export function TranslationDialog({ project, onClose, onApply }: {
     setError("");
   }
 
-  return <Dialog title={t("로컬 자막 번역")} onClose={onClose} closeDisabled={running}>
+  return <Dialog title={t("자막 번역")} onClose={onClose} closeDisabled={running}>
     <p className="dialog-intro">{t("원문과 인물·시간은 유지하고, 언어별 번역을 따로 저장합니다.")}</p>
-    <p className="info-box">{t("이 기기의 Ollama 모델만 사용합니다. 모델을 자동 다운로드하지 않습니다.")}</p>
+    <TextProviderControls provider={provider} model={cloudModel} consent={cloudConsent} disabled={configurationDisabled}
+      onProviderChange={value=>{setProvider(value);setCloudModel("");setCloudConsent(false);setCredential({configured:false,busy:true});setError("");}}
+      onModelChange={value=>{setCloudModel(value);setCloudConsent(false);}} onConsentChange={setCloudConsent} onCredentialState={setCredential}/>
     <div className="form-grid">
       <label>{t("번역 언어")}<select aria-label={t("번역 언어")} value={target} disabled={configurationDisabled}
         onChange={(event) => { setTarget(event.target.value as SubtitleLanguage); setTotal(0); setStopped(false); setError(""); }}>
         {TRANSLATION_LANGUAGES.map((language) => <option key={language} value={language}>{TRANSLATION_LANGUAGE_NAMES[language]}</option>)}
       </select></label>
-      <label>{t("로컬 번역 모델")}<select aria-label={t("로컬 번역 모델")} value={model} disabled={loading || configurationDisabled}
+      {provider === "local" && <><label>{t("로컬 번역 모델")}<select aria-label={t("로컬 번역 모델")} value={model} disabled={loading || configurationDisabled}
         onChange={(event) => setModel(event.target.value)}>
         {!status?.models.length && <option value="">{t("준비된 모델 없음")}</option>}
         {status?.models.map((name) => <option key={name} value={name}>{name}</option>)}
@@ -126,13 +135,13 @@ export function TranslationDialog({ project, onClose, onApply }: {
         onChange={(event) => setDevice(event.target.value as TranslationDevice)}>
         <option value="auto">{t("자동 · 로컬 GPU 우선")}</option>
         <option value="cpu">{t("CPU만 사용")}</option>
-      </select></label>
+      </select></label></>}
     </div>
     <label className="checkbox-label"><input type="checkbox" checked={retranslateAll} disabled={configurationDisabled}
       onChange={(event) => { setRetranslateAll(event.target.checked); setTotal(0); setStopped(false); }} />{t("이미 번역된 자막도 다시 번역")}</label>
     <p className="dialog-intro">{t("기본적으로 번역이 없거나 원문이 바뀐 자막만 처리합니다. 빈 자막은 건너뜁니다.")}</p>
-    {loading && <p className="inline-status" role="status"><LoaderCircle size={18} className="spin" />{t("로컬 번역 모델을 확인하고 있습니다…")}</p>}
-    {!loading && !status?.ready && <p className="info-box" role="status">
+    {provider === "local" && loading && <p className="inline-status" role="status"><LoaderCircle size={18} className="spin" />{t("로컬 번역 모델을 확인하고 있습니다…")}</p>}
+    {provider === "local" && !loading && !status?.ready && <p className="info-box" role="status">
       {t("Ollama를 실행하고 번역 가능한 로컬 모델을 준비한 뒤 다시 확인하세요.")}
       {status?.error && <><br />{status.error}</>}
     </p>}
@@ -165,14 +174,14 @@ export function TranslationDialog({ project, onClose, onApply }: {
       {!validResults && <p className="error-box">{t("빈 번역문을 채워야 적용할 수 있습니다.")}</p>}
     </>}
     <div className="dialog-actions">
-      {!running && !rows.length && <button disabled={loading} onClick={() => void refresh()}><RefreshCw size={16} />{t("모델 다시 확인")}</button>}
+      {provider === "local" && !running && !rows.length && <button disabled={loading} onClick={() => void refresh()}><RefreshCw size={16} />{t("모델 다시 확인")}</button>}
       {!running && !!rows.length && <button onClick={clearResults}>{t("결과 지우고 다시 준비")}</button>}
       <button disabled={running} onClick={onClose}>{t("닫기")}</button>
       {running ? <button disabled={stopping} onClick={() => { shouldStop.current = true; setStopping(true); }}>{t("현재 묶음 완료 후 중지")}</button>
         : rows.length ? <button className="primary" disabled={!validResults} onClick={() => {
           try { onApply(rows, target); onClose(); } catch (error) { setError((error as Error).message); }
         }}>{t("{count}개 번역 적용", { count: rows.length })}</button>
-          : <button className="primary" disabled={loading || !status?.ready || !model || !eligible || !!preparation.error} onClick={() => void start()}>
+          : <button className="primary" disabled={!ready || !eligible || !!preparation.error} onClick={() => void start()}>
             <Languages size={16} />{t("번역 시작")}</button>}
     </div>
   </Dialog>;

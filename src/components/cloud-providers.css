@@ -1,0 +1,12 @@
+.cloud-asr-settings { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin: 12px 0; min-width: 0; }
+.cloud-asr-settings summary { cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+.cloud-provider-fields { display: flex; flex-wrap: wrap; gap: 12px; margin-block: 12px; min-width: 0; }
+.cloud-provider-fields label, .provider-credentials > label { display: flex; flex: 1 1 180px; flex-direction: column; gap: 6px; min-width: 0; }
+.cloud-provider-fields select, .provider-credentials input { width: 100%; min-width: 0; max-width: 100%; }
+.provider-credentials { min-width: 0; padding-block: 8px; }
+.provider-credential-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.provider-credential-actions button { white-space: normal; max-width: 100%; font-size: 11px; }
+.provider-credentials small, .cloud-asr-settings > small { display: block; color: #657185; font-size: 11px; line-height: 1.5; margin-top: 5px; overflow-wrap: anywhere; }
+.cloud-consent { display: flex; align-items: flex-start; gap: 7px; line-height: 1.6; margin-top: 10px; }
+.cloud-consent input { flex: 0 0 auto; margin-top: 4px; }
+.cloud-consent span { min-width: 0; overflow-wrap: anywhere; }

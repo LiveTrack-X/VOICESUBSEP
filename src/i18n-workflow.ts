@@ -1,4 +1,13 @@
 export const workflowMessages:Record<string,readonly[string,string,string,string]>={
+  "분석 방식은 음성 분석 창에서 선택합니다":["Choose processing in the analysis dialog","処理方法は音声解析画面で選択します","在音频分析窗口选择处理方式","Elige el procesamiento en el diálogo de análisis"],
+  "현재 자막 인물 · {count}명":["Current subtitle speakers · {count}","現在の字幕の話者・{count}人","当前字幕说话人 · {count}人","Hablantes actuales · {count}"],
+  "미배정 자막 {count}개":["{count} unassigned subtitles","未割り当ての字幕{count}件","{count}条未分配字幕","{count} subtítulos sin asignar"],
+  "분석 전 인물 이름 · 색상":["Speaker names & colors before analysis","解析前の話者名・色","分析前的姓名与颜色","Nombres y colores antes del análisis"],
+  "현재 자막을 1명으로 합치기":["Merge current subtitles into one speaker","現在の字幕を1人に統合","将当前字幕合并为一位说话人","Unificar los subtítulos en un hablante"],
+  "합칠 인물":["Destination speaker","統合先の話者","合并到的说话人","Hablante de destino"],
+  "미배정을 포함한 자막 {count}개를 선택한 인물로 배정합니다. 텍스트·시간·노트는 유지되며 실행 취소로 되돌릴 수 있습니다.":["Assign all {count} subtitles, including unassigned ones, to the selected speaker. Text, timing and notes are preserved. You can undo this change.","未割り当てを含む全{count}件の字幕を選択した話者に割り当てます。テキスト・時間・メモは保持され、元に戻すことができます。","将全部{count}条字幕（包括未分配字幕）分配给所选说话人。文本、时间和备注保持不变，可以撤销此操作。","Asigna los {count} subtítulos, incluidos los no asignados, al hablante seleccionado. Se conservan el texto, los tiempos y las notas. Puedes deshacer el cambio."],
+  "인물 기본 스타일은 선택한 인물을 따르고, 자막 개별 스타일은 유지됩니다.":["The selected speaker's default style applies; individual subtitle styles are preserved.","基本スタイルは選択した話者に従い、字幕ごとのスタイルは保持されます。","默认样式将采用所选说话人的样式，单条字幕的样式保持不变。","Se aplica el estilo predeterminado del hablante seleccionado y se conservan los estilos individuales."],
+  "{name}으로 {count}개 배정":["Assign {count} to {name}","{count}件を{name}に割り当て","将{count}条分配给{name}","Asignar {count} a {name}"],
   "연결된 미디어":["Connected media","接続済みメディア","已连接媒体","Archivo conectado"],
   "원본 미디어 다시 연결":["Reconnect source media","元メディアを再接続","重新连接源媒体","Reconectar archivo original"],
   "미디어 불러오기":["Open media","メディアを開く","打开媒体","Abrir archivo"],

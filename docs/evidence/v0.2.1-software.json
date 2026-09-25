@@ -1,0 +1,47 @@
+{
+  "version": "0.2.1",
+  "date": "2026-09-25",
+  "automated": {
+    "frontend": {"passed": 470, "files": 29},
+    "desktopAndDev": {"passed": 44},
+    "backend": {"passed": 748, "skipped": 1},
+    "typescriptAndProductionBuild": "passed",
+    "localDocumentationLinks": {"checked": 134, "errors": 0},
+    "docx": "Synthetic fixture: ZIP CRC and six OpenXML parts parsed; XML metacharacters, line breaks and tabs preserved",
+    "xlsx": "Synthetic fixture: ZIP CRC and nine XML/relationship parts parsed; literal formula-like text and numeric times preserved"
+  },
+  "browser": {
+    "isolatedProject": true,
+    "wide1440x940": {"captionVisibleHeightPx": 334.7, "captionWidthPx": 841.85},
+    "narrow518x778Focus": {"captionVisibleHeightPx": 274.8, "captionWidthPx": 481.6},
+    "previewCollapsedPlayback": "Caption click sought synthetic media to 3.2 seconds and started playback",
+    "fullscreenFallback": "Expanded in-page preview verified; native fullscreen unavailable in embedded browser",
+    "notes": "Timeline note selection expanded and scrolled its editing card into view",
+    "speakerModalResize": "Style dialog remained visible after resizing 1440px to 518px",
+    "speakerMerge": "Explicit merge from four assigned speakers to one and undo retained captions and notes",
+    "recognitionPreview": "Last two simulated recognition segments advanced from 1+2 to 2+3 without applying captions",
+    "cloudAsr": "Simulated Groq and xAI routes completed with local engines unavailable; explicit consent gated start",
+    "cloudText": "Simulated Groq translation completed ten captions; xAI minutes draft remained separate until explicit apply",
+    "externalPaidCalls": 0,
+    "transcript": "Default speaker: utterance view, timestamp toggle and print report content verified",
+    "microphone": "Permission-refresh controls and guidance verified; no physical capture performed"
+  },
+  "bundledBackend": {
+    "version": "0.2.1",
+    "externalPythonPathsRemoved": true,
+    "readyAndHealth": "passed",
+    "ffmpegAndFfprobe": true,
+    "whisperAndNemotronImports": true,
+    "gpuDetected": "NVIDIA GeForce RTX 3080 Ti",
+    "cleanShutdown": true,
+    "inferenceRun": false
+  },
+  "notEstablished": [
+    "Actual provider authentication, billing, speed or speech/text quality",
+    "Real microphone or audio-interface recording quality and long-session reliability",
+    "Actual Word application rendering or native PDF file save",
+    "The embedded browser did not report a download event for the DOCX button; generated DOCX structure was verified separately",
+    "In-app update feed, code signing or general ChatGPT OAuth integration",
+    "OBS live caption streaming or native arbitrary WASAPI output routing"
+  ]
+}

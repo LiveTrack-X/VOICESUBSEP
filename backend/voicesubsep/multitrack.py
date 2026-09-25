@@ -1,9 +1,11 @@
 """Sequential transcription of explicitly isolated speaker tracks."""
 from __future__ import annotations
 from .inference import AnalysisCancelled
+from .recognition_preview import preview_options
 
 
-def analyze_tracks(analyzer, media_path, *, selections, options, progress, cancelled):
+def analyze_tracks(analyzer, media_path, *, selections, options, progress, cancelled,
+                   recognition_preview=None):
     captions, speakers, warnings = [], {}, []
     duration = 0.0
     for index, selection in enumerate(selections):
@@ -12,6 +14,7 @@ def analyze_tracks(analyzer, media_path, *, selections, options, progress, cance
         track = selection["audioTrack"]
         result = analyzer(media_path, **{**options, "audio_track": track, "diarization": False,
             "speaker_count": 1, "mode": "standard", "cancelled": cancelled,
+            **preview_options(analyzer, recognition_preview),
             "progress": lambda stage, fraction: progress(f"Track {index + 1}/{len(selections)} · {stage}",
                                                          (index + fraction) / len(selections))})
         if cancelled():

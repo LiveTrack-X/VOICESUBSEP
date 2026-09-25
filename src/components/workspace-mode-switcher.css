@@ -1,0 +1,33 @@
+.workspace-mode-switcher {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 8px 18px;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+}
+.workspace-mode-label { flex-shrink: 0; color: #657185; font-size: 11px; font-weight: 600; }
+.workspace-mode-options { display: flex; flex: 1; flex-wrap: wrap; gap: 7px; min-width: 0; }
+.workspace-mode-option {
+  flex: 1 1 125px;
+  min-width: 0;
+  justify-content: flex-start;
+  padding: 7px 10px;
+  white-space: normal;
+  text-align: left;
+}
+.workspace-mode-option[aria-pressed="true"] { color: #5d3bd0; background: #f3efff; border-color: #a894ee; box-shadow: inset 0 -2px #7558ee; }
+.workspace-mode-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
+.workspace-mode-copy strong { font-size: 12px; line-height: 1.35; }
+.workspace-mode-copy small { color: #657185; font-size: 10px; line-height: 1.35; }
+@media (max-width: 680px) {
+  .workspace-mode-switcher { padding: 6px 10px; }
+  .workspace-mode-label { display: none; }
+  .workspace-mode-options { gap: 5px; }
+  .workspace-mode-option { padding: 6px; gap: 5px; }
+  .workspace-mode-option > svg { width: 15px; height: 15px; }
+  .workspace-mode-copy strong { font-size: 11px; }
+  .app-shell:has(.subtitle-focus) .workspace-mode-copy small { display: none; }
+}

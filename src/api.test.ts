@@ -46,4 +46,15 @@ describe("analysis runtime readiness", () => {
     expect(analysisBlockReason(ready, true)).toBeNull();
     expect(analysisBlockReason(ready, false)).toBeNull();
   });
+
+  it("allows cloud ASR without local Whisper or GPU but still requires selected local diarization", () => {
+    const health: Health = {...ready, engines:{whisper:false,nemotron:false}, gpu:{available:false,name:null,deviceCount:0,computeTypes:[],reason:null}};
+    for (const provider of ["groq", "xai"] as const) {
+      expect(analysisBlockReason(health, false, provider)).toBeNull();
+      expect(analysisBlockReason(health, true, provider)).toContain("Nemotron");
+      expect(analysisBlockReason({...health, engines:{whisper:false,nemotron:true}}, true, provider)).toBeNull();
+      expect(analysisBlockReason({...health, ffmpeg:false}, false, provider)).toContain("FFmpeg");
+      expect(analysisBlockReason(null, false, provider)).not.toBeNull();
+    }
+  });
 });

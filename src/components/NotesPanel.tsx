@@ -46,10 +46,13 @@ export function NotesPanel({
 }: NotesPanelProps) {
   const { t } = useI18n();
   const [focusId, setFocusId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => {
+    try { return localStorage.getItem("voicesubsep-notes-expanded-v1") === "true"; }
+    catch { return false; }
+  });
   const previousReveal = useRef<typeof reveal>(null);
   const contentId = useId();
-  // The CSS collapse applies only to narrow screens; never replace saved workspace preferences.
+  // Revealing or adding a note opens its editor without changing the project itself.
   const expandedView = expanded || Boolean(reveal && previousReveal.current !== reveal);
   const textInputs = useRef(new Map<string, HTMLTextAreaElement>());
   const cards = useRef(new Map<string, HTMLElement>());
@@ -59,6 +62,10 @@ export function NotesPanel({
   const currentTime = Number.isFinite(time)
     ? Math.max(0, Math.min(time, project.duration || MAX_TIME_SECONDS))
     : 0;
+  useEffect(() => {
+    try { localStorage.setItem("voicesubsep-notes-expanded-v1", String(expanded)); }
+    catch { /* Notes remain editable without browser storage. */ }
+  }, [expanded]);
   useLayoutEffect(() => {
     if (reveal && previousReveal.current !== reveal) setExpanded(true);
     previousReveal.current = reveal;
@@ -71,6 +78,9 @@ export function NotesPanel({
     const box = container.getBoundingClientRect();
     container.scrollTop += item.top - box.top - Math.max(0, (container.clientHeight - card.clientHeight) / 2);
     container.scrollLeft += item.left - box.left - Math.max(0, (container.clientWidth - card.clientWidth) / 2);
+    // The collapsed notes strip now lives below the main editor at every size.
+    // Bring an explicitly requested timeline note into the outer scroll viewport too.
+    card.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [reveal]);
 
   useEffect(() => {

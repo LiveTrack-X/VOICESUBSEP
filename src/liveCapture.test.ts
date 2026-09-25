@@ -99,6 +99,37 @@ describe("live capture using only simulated audio devices and storage", () => {
     expect(failure).toHaveBeenCalledOnce(); expect(store.finish).toHaveBeenCalledWith(expect.any(String), "interrupted", expect.any(String), expect.any(Object));
   });
 
+  it.each(["append", "finish"] as const)("releases input devices while %s storage is still pending, then preserves final chunks", async stage => {
+    vi.useFakeTimers();
+    const { store, chunks, rows } = fakeStore(); const capture = new LiveCapture(vi.fn(), store);
+    const recording = await capture.start("both", "");
+    let release!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    if (stage === "append") {
+      const original = store.append;
+      store.append = vi.fn(async (...args: Parameters<RecordingStore["append"]>) => { await pending; await original(...args); });
+    } else {
+      const original = store.finish;
+      store.finish = vi.fn(async (...args: Parameters<RecordingStore["finish"]>) => { await pending; await original(...args); });
+    }
+    let completed = false;
+    const stopping = capture.stop(); void stopping.then(() => { completed = true; });
+    expect(capture.stop()).toBe(stopping);
+    await vi.advanceTimersByTimeAsync(20);
+    const tracks = [...mic.tracks, ...display.tracks, ...FakeContext.instances[0].destination.stream.tracks];
+    for (const track of tracks) expect(track.stop).toHaveBeenCalledOnce();
+    expect(completed).toBe(false);
+    expect(rows.get(recording.id)?.status).toBe("recording");
+    expect(chunks).toHaveLength(stage === "append" ? 0 : 3);
+    release(); await stopping;
+    expect(chunks).toEqual(["system:0:final", "microphone:0:final", "mix:0:final"]);
+    expect(rows.get(recording.id)?.status).toBe("stopped");
+    expect(store.finish).toHaveBeenCalledOnce();
+    expect(capture.stop()).toBe(stopping);
+    for (const track of tracks) expect(track.stop).toHaveBeenCalledOnce();
+    expect(FakeContext.instances[0].close).toHaveBeenCalledOnce();
+  });
+
   it("closes a stream arriving after stop while the OS chooser was still pending", async () => {
     let choose!: (stream: FakeStream) => void;
     devices.getDisplayMedia.mockImplementation(() => new Promise<FakeStream>(resolve => { choose = resolve; }));
@@ -111,8 +142,8 @@ describe("live capture using only simulated audio devices and storage", () => {
   });
 
   it("releases already-granted display tracks when microphone permission is denied", async () => {
-    devices.getUserMedia.mockRejectedValue(new Error("Permission denied"));
-    const { store } = fakeStore(); await expect(new LiveCapture(vi.fn(), store).start("both", "")).rejects.toThrow("Permission denied");
+    devices.getUserMedia.mockRejectedValue(new DOMException("Permission denied", "NotAllowedError"));
+    const { store } = fakeStore(); await expect(new LiveCapture(vi.fn(), store).start("both", "")).rejects.toThrow("권한이 거부");
     expect(display.tracks.every(track => track.stop.mock.calls.length === 1)).toBe(true); expect(store.create).not.toHaveBeenCalled();
   });
 
@@ -120,6 +151,24 @@ describe("live capture using only simulated audio devices and storage", () => {
     display = new FakeStream([new FakeTrack("video")]); devices.getDisplayMedia.mockResolvedValue(display);
     await expect(new LiveCapture(vi.fn(), fakeStore().store).start("system", "")).rejects.toThrow("시스템 소리");
     expect(display.tracks[0].stop).toHaveBeenCalledOnce();
+  });
+  it("uses the default only when explicitly selected and never retries a missing fixed device", async () => {
+    const capture = new LiveCapture(vi.fn(), fakeStore().store);
+    await capture.start("microphone", "");
+    expect(devices.getUserMedia.mock.calls[0][0].audio.deviceId).toBeUndefined();
+    await capture.stop(); devices.getUserMedia.mockClear();
+    devices.getUserMedia.mockRejectedValue(new DOMException("Missing device", "OverconstrainedError"));
+    const { store } = fakeStore();
+    await expect(new LiveCapture(vi.fn(), store).start("microphone", "removed-device")).rejects.toThrow("다시 선택");
+    expect(devices.getUserMedia).toHaveBeenCalledOnce();
+    expect(devices.getUserMedia.mock.calls[0][0].audio.deviceId).toEqual({exact:"removed-device"});
+    expect(store.create).not.toHaveBeenCalled();
+  });
+  it("rejects a browser-returned substitute microphone and releases it before creating a recording", async () => {
+    Object.assign(mic.tracks[0], { getSettings: () => ({deviceId:"unexpected-default"}) });
+    const { store } = fakeStore();
+    await expect(new LiveCapture(vi.fn(), store).start("microphone", "chosen-fixed-device")).rejects.toThrow("다시 선택");
+    expect(mic.tracks[0].stop).toHaveBeenCalledOnce(); expect(store.create).not.toHaveBeenCalled();
   });
 
   it("preserves earlier chunks and marks interruption after storage failure", async () => {

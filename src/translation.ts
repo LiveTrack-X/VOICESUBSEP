@@ -1,5 +1,6 @@
 import { request } from "./api";
 import type { Caption, Project, SubtitleLanguage } from "./domain";
+import type { TextProviderOptions } from "./textProviders";
 
 export const TRANSLATION_LANGUAGES: readonly SubtitleLanguage[] = ["ko", "en", "ja", "zh", "es"];
 export const TRANSLATION_LANGUAGE_NAMES: Record<SubtitleLanguage, string> = {
@@ -109,12 +110,19 @@ export async function translationStatus(signal?: AbortSignal): Promise<Translati
 
 export async function translateBatch(
   captions: readonly TranslationInput[], target: SubtitleLanguage, model: string, device: TranslationDevice,
+  providerOptions?: TextProviderOptions,
 ): Promise<TranslationRow[]> {
   validateTarget(target);
+  if (providerOptions && providerOptions.provider !== "local" && !providerOptions.cloudConsent) {
+    throw new Error("클라우드 텍스트 전송과 API 비용에 동의한 뒤 시작하세요.");
+  }
+  if (providerOptions && providerOptions.provider !== "local" && !/^[a-f0-9]{32}$/.test(providerOptions.credentialGeneration ?? "")) {
+    throw new Error("API 키 상태를 확인하지 못했습니다. 분석 서버를 확인하고 다시 시도하세요.");
+  }
   const result = await request<{ target: SubtitleLanguage; model: string; captions: TranslationRow[] }>("/api/translation/batch", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model, target, device, captions }),
+    body: JSON.stringify({ model, target, device, captions, ...providerOptions }),
     signal: AbortSignal.timeout(195_000),
   });
   const sourceById = new Map(captions.map((caption) => [caption.id, caption.text]));

@@ -96,9 +96,11 @@ export function documentSourceOptions(captions: readonly Caption[], search: stri
   }
   return { captions: options, total: matches.length };
 }
-export function acceptMinutesResponse(value: unknown, captions: readonly Caption[]): MinutesItem[] {
+export function acceptMinutesResponse(value: unknown, captions: readonly Caption[], expectedProvider: "local" | "groq" | "xai" = "local"): MinutesItem[] {
   const root = record(value);
-  if (root.localOnly !== undefined && root.localOnly !== true) throw new Error("Minutes must be generated locally.");
+  if (expectedProvider === "local") {
+    if (root.localOnly !== undefined && root.localOnly !== true) throw new Error("Minutes must be generated locally.");
+  } else if (root.localOnly !== false || root.provider !== expectedProvider) throw new Error("Minutes provider does not match the explicit request.");
   if (!Array.isArray(root.items) || root.items.length > 64) throw new Error("Invalid minutes response.");
   return root.items.map(raw => {
     const item = record(raw);

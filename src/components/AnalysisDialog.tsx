@@ -17,6 +17,10 @@ import { ASR_LANGUAGES, languageName } from "../languages";
 import { VstChainPanel, type VstPanelState } from "./VstChainPanel";
 import { effectiveAnalysisDevice, loadAnalysisPreferences, saveAnalysisPreferences, type AnalysisPreferences } from "../settings";
 import { readHistory, sameAnalysisSource } from "../jobHistory";
+import { RecognitionPreview } from "./RecognitionPreview";
+import { CloudAsrSettings } from "./CloudAsrSettings";
+import { cloudAsrBlockReason, cloudAsrRequestFields, defaultAsrSelection, type AsrSelection } from "../cloudAsr";
+import type { CredentialState } from "../providerCredentials";
 
 export function AnalysisDialog({
   file,
@@ -39,6 +43,14 @@ export function AnalysisDialog({
   const [loading, setLoading] = useState(true);
   const [job, setJob] = useState<Job | null>(null);
   const [starting, setStarting] = useState(false);
+  const [asr, setAsr] = useState<AsrSelection>(defaultAsrSelection);
+  const [cloudConsent, setCloudConsent] = useState(false);
+  const [credential, setCredential] = useState<CredentialState>({ configured: false, busy: false });
+  function changeAsr(selection: AsrSelection) {
+    setCloudConsent(false);
+    if (selection.provider !== asr.provider) setCredential({ configured: false, busy: selection.provider !== "local" });
+    setAsr(selection);
+  }
   const [initialPreferences] = useState(loadAnalysisPreferences);
   const [preferences, setPreferences] = useState(initialPreferences.settings);
   const [storageFailed, setStorageFailed] = useState(initialPreferences.status === "unavailable");
@@ -53,16 +65,24 @@ export function AnalysisDialog({
     setStorageFailed(!saveAnalysisPreferences(preferences).ok);
   }, [preferences]);
   const [track, setTrack] = useState(0);
-  const [isolatedTracks,setIsolatedTracks]=useState(false);
+  const [isolatedTrackMode,setIsolatedTracks]=useState(false);
+  const isolatedTracks = asr.provider === "local" && isolatedTrackMode;
   const [trackSpeakers,setTrackSpeakers]=useState<Record<number,string>>({});
   const [vstState, setVstState] = useState<VstPanelState>({ busy: false, blocked: false });
   const mappedTracks=Object.entries(trackSpeakers).map(([audioTrack,speakerId])=>({audioTrack:Number(audioTrack),speaker:project.speakers.find(s=>s.id===speakerId)}));
   const invalidMapping=isolatedTracks&&(!mappedTracks.length||mappedTracks.length>8||mappedTracks.some(item=>!item.speaker));
-  const blockedReason = analysisBlockReason(health, diarization&&!isolatedTracks);
-  const sharedRuntimeIssue = health ? analysisBlockReason(health, false) : null;
+  const cloudBlockReason = cloudAsrBlockReason(asr, credential.configured, cloudConsent, credential.busy);
+  const blockedReason = analysisBlockReason(health, diarization&&!isolatedTracks, asr.provider) ?? cloudBlockReason;
+  const sharedRuntimeIssue = health ? analysisBlockReason(health, false, asr.provider) : null;
   const running = job?.status === "running" || job?.status === "queued";
   useEffect(() => {
     let alive = true;
+    setJob(null);
+    setCloudConsent(false);
+    setMedia(null);
+    setHealth(null);
+    setError("");
+    setLoading(true);
     void (async () => {
       try {
         const h = await request<Health>("/api/health", {
@@ -116,7 +136,7 @@ export function AnalysisDialog({
         }
       } catch (e) {
         if (alive) {
-          if (e instanceof ApiError && e.status === 404) setJob(current => current ? {...current, status:"failed", stage:"interrupted", error:t("이전 작업을 찾을 수 없습니다. 새 분석을 시작하세요.")} : current);
+          if (e instanceof ApiError && e.status === 404) setJob(current => current ? {...current, status:"failed", stage:"interrupted", updatedAt:undefined, error:t("이전 작업을 찾을 수 없습니다. 새 분석을 시작하세요.")} : current);
           setError(
             t("진행 상태 확인 실패: {error}. 다시 확인하는 중입니다.", { error: (e as Error).message }),
           );
@@ -132,13 +152,14 @@ export function AnalysisDialog({
     };
   }, [job?.id, running]);
   async function start() {
-    if (!media || loading || starting || running || vstState.busy || vstState.blocked || invalidMapping) return;
+    if (!media || loading || starting || running || vstState.busy || vstState.blocked || credential.busy || invalidMapping) return;
     if (blockedReason) {
       setError(t(blockedReason));
       return;
     }
     setStarting(true);
     setError("");
+    const requestedAt = new Date().toISOString();
     try {
       const { id } = await request<{ id: string }>("/api/jobs", {
         method: "POST",
@@ -151,24 +172,27 @@ export function AnalysisDialog({
           speakerCount: project.speakerCount,
           audioTrack: track,
           whisperModel: model,
-          language,
+          language: asr.provider === "xai" ? "auto" : language,
           device,
           diarization,
+          ...cloudAsrRequestFields(asr, credential.configured, cloudConsent),
           ...(isolatedTracks?{trackSpeakers:mappedTracks.map(item=>({audioTrack:item.audioTrack,speakerId:item.speaker!.id,name:item.speaker!.name,color:item.speaker!.color}))}:{}),
           speakerBoundaryMs,
           ...(vstState.preprocessing ? { preprocessing: vstState.preprocessing } : {}),
         }),
       });
-      setJob({ id, status: "queued", stage: "queued", progress: 0 });
+      // Server timestamps replace this local request timestamp on the first poll.
+      setJob({ id, status: "queued", stage: "queued", progress: 0, createdAt: requestedAt, updatedAt: requestedAt });
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setStarting(false);
+      setCloudConsent(false);
     }
   }
   return (
     <Dialog
-      title={t("로컬 음성 분석")}
+      title={t("음성 분석")}
       onClose={onClose}
       closeDisabled={starting || vstState.busy}
     >
@@ -183,7 +207,7 @@ export function AnalysisDialog({
             ? t("저장된 분석 설정을 읽을 수 없어 기본값을 사용합니다.")
             : t("분석 설정을 이 기기에 자동 저장했습니다.")}
       </p>
-      {!job && health && !health.engines.nemotron && !isolatedTracks && (
+      {!job && health && !health.engines.nemotron && diarization && !isolatedTracks && (
         <p className="error-box" role="status">
           <strong>{t('화자 구분 실행환경 준비 필요')}</strong>
           <br />{health.engineIssues?.nemotron?.trim() ||
@@ -201,7 +225,9 @@ export function AnalysisDialog({
       )}
       {!job && !loading && (
         <>
-          <p className="info-box">{health?.gpu?.available ? device === "cuda" ? t("{gpu} · 로컬 GPU를 우선 사용합니다.", { gpu: health.gpu.name ?? "NVIDIA GPU" }) : t("CPU · 호환 모드") : preferredDevice === "cuda" ? t("GPU를 사용할 수 없어 이번 분석에는 CPU를 사용합니다. 저장된 GPU 선호 설정은 유지됩니다.") : t("GPU를 사용할 수 없어 CPU가 선택됐습니다. {reason}", { reason: health?.gpu?.reason ?? t("서버의 GPU 실행 환경을 확인하세요.") })}</p>
+          <CloudAsrSettings selection={asr} onChange={changeAsr} consent={cloudConsent} onConsent={setCloudConsent}
+            disabled={starting || vstState.busy} credentialBusy={credential.busy} onCredentialState={state => {setCredential(state);setCloudConsent(false);}}/>
+          {(asr.provider === "local" || diarization) && <p className="info-box">{health?.gpu?.available ? device === "cuda" ? t("{gpu} · 로컬 GPU를 우선 사용합니다.", { gpu: health.gpu.name ?? "NVIDIA GPU" }) : t("CPU · 호환 모드") : preferredDevice === "cuda" ? t("GPU를 사용할 수 없어 이번 분석에는 CPU를 사용합니다. 저장된 GPU 선호 설정은 유지됩니다.") : t("GPU를 사용할 수 없어 CPU가 선택됐습니다. {reason}", { reason: health?.gpu?.reason ?? t("서버의 GPU 실행 환경을 확인하세요.") })}{asr.provider !== "local" && <><br/>{t("클라우드 음성 인식에는 이 장치를 사용하지 않습니다. 선택한 장치는 로컬 Nemotron 화자 구분에만 적용됩니다.")}</>}</p>}
           <div className="form-grid">
             <label>{t('오디오 트랙')}<select
                 aria-label={t("오디오 트랙")}
@@ -217,15 +243,16 @@ export function AnalysisDialog({
             </label>
             <label>{t('음성 언어')}<select
                 aria-label={t("음성 언어")}
-                value={language}
+                value={asr.provider === "xai" ? "auto" : language}
+                disabled={asr.provider === "xai" || starting}
                 onChange={(e) => updatePreference("language", e.target.value)}
               >
                 <option value="auto">{t('자동 감지')}</option>
                 {ASR_LANGUAGES.map((code) => <option key={code} value={code}>{languageName(code, locale)} ({code})</option>)}
               </select>
-              <small>{t("자동 감지하거나 주로 사용하는 음성 언어를 직접 선택하세요. 앱 화면 언어와 번역 언어에는 영향을 주지 않습니다.")}</small>
+              <small>{asr.provider === "xai" ? t("현재 xAI 연결은 언어를 자동 인식합니다. 저장된 로컬 언어 설정은 유지합니다.") : t("자동 감지하거나 주로 사용하는 음성 언어를 직접 선택하세요. 앱 화면 언어와 번역 언어에는 영향을 주지 않습니다.")}</small>
             </label>
-            <label>{t('Whisper 모델')}<select
+            {asr.provider === "local" && <label>{t('Whisper 모델')}<select
                 aria-label={t("Whisper 모델")}
                 value={model}
                 onChange={(e) => updatePreference("whisperModel", e.target.value as AnalysisPreferences["whisperModel"])}
@@ -234,18 +261,18 @@ export function AnalysisDialog({
                 <option value="large-v3-turbo">{t('Large v3 Turbo · 빠른 분석용')}</option>
                 <optgroup label={t("가벼운 모델")}>{["medium", "small", "base", "tiny"].map(m => <option key={m} value={m}>{m}</option>)}</optgroup>
               </select>
-            </label>
-            <label>{t('연산 장치')}<select
-                aria-label={t("연산 장치")}
+            </label>}
+            {(asr.provider === "local" || diarization) && <label>{t(asr.provider === "local" ? '연산 장치' : '화자 구분 실행 장치')}<select
+                aria-label={t(asr.provider === "local" ? "연산 장치" : "화자 구분 실행 장치")}
                 value={device}
                 onChange={(e) => updatePreference("device", e.target.value as AnalysisPreferences["device"])}
               >
                 <option value="cuda" disabled={!health?.gpu?.available}>{t('NVIDIA GPU · 우선 사용')}</option>
                 <option value="cpu">{t('CPU · 호환 모드')}</option>
               </select>
-            </label>
+            </label>}
           </div>
-          {!!media&&media.audioTracks.length>1&&<fieldset className="analysis-options" disabled={starting||vstState.busy}>
+          {asr.provider === "local" && !!media&&media.audioTracks.length>1&&<fieldset className="analysis-options" disabled={starting||vstState.busy}>
             <legend>{t("분리된 화자 트랙")}</legend>
             <label className="checkbox-label"><input type="checkbox" checked={isolatedTracks} onChange={e=>setIsolatedTracks(e.target.checked)}/>{t("OBS 등에서 따로 녹음한 트랙을 인물별로 연결")}</label>
             {isolatedTracks&&<><p>{t("각 트랙에 한 사람의 목소리만 있을 때 사용하세요. 게임·전체 채팅이 섞인 트랙은 자동 분리하지 않습니다. 선택한 트랙을 순서대로 전사하고 원본 시간에 합칩니다.")}</p>
@@ -264,7 +291,7 @@ export function AnalysisDialog({
                 name="analysis-scope"
                 checked={diarization}
                 onChange={() => updatePreference("diarization", true)}
-              />{t('인물별 자막 생성 · Whisper + Nemotron (기본)')}</label>
+              />{asr.provider === "local" ? t('인물별 자막 생성 · Whisper + Nemotron (기본)') : t('인물별 자막 생성 · 클라우드 전사 + 로컬 Nemotron')}</label>
             <label className="checkbox-label">
               <input
                 type="radio"
@@ -276,15 +303,16 @@ export function AnalysisDialog({
           {sharedRuntimeIssue && (
             <p className="error-box" role="status">{t(sharedRuntimeIssue)}</p>
           )}
+          {cloudBlockReason && <p className="info-box" role="status">{t(cloudBlockReason)}</p>}
           <p className="info-box">
             {isolatedTracks ? t("최대 8개 트랙을 선택하세요. 화자 구분 모델 대신 지정한 인물을 사용합니다.") : diarization
               ? t("자동 화자 번호를 부여합니다. 분석 후 목소리를 확인하고 이름을 지정하세요.")
               : t("전사만 생성을 선택했습니다. 자막의 화자를 편집 화면에서 직접 지정해야 합니다.")}
-            <br />{t('큰 모델은 첫 실행 시 수 GB를 다운로드해 이 기기에 보관합니다. CPU의 큰 모델은 오래 걸릴 수 있습니다. 겹쳐 말한 모든 대사의 복원을 보장하지 않습니다.')}</p>
+            {(asr.provider === "local" || diarization) && <><br />{t('큰 모델은 첫 실행 시 수 GB를 다운로드해 이 기기에 보관합니다. CPU의 큰 모델은 오래 걸릴 수 있습니다. 겹쳐 말한 모든 대사의 복원을 보장하지 않습니다.')}</>}</p>
           <VstChainPanel media={media} audioTrack={track} disabled={starting} onStateChange={setVstState} />
         </>
       )}
-      {!loading && (
+      {!job && !loading && (
         <fieldset className="analysis-options boundary-options" disabled={!diarization || isolatedTracks || starting || running}>
           <legend>{t('짧은 단어 화자 보정')}</legend>
           <label>{t('허용할 시간 차이')}<select
@@ -337,6 +365,7 @@ export function AnalysisDialog({
               interrupted: t("서버가 중단되어 분석을 완료하지 못했습니다."),
             }[job.stage] ?? job.stage}
           </p>
+          <RecognitionPreview key={job.id} job={job} />
           {job.error && <p className="error-box">{job.error}</p>}
           {job.result?.warnings.map((w, i) => (
             <p className="info-box" key={i}>
@@ -366,7 +395,7 @@ export function AnalysisDialog({
                   }),
                 );
               } catch (e) {
-                if (e instanceof ApiError && e.status === 404) setJob(current=>current?{...current,status:"failed",stage:"interrupted"}:current);
+                if (e instanceof ApiError && e.status === 404) setJob(current=>current?{...current,status:"failed",stage:"interrupted",updatedAt:undefined}:current);
                 setError((e as Error).message);
               }
             }}
@@ -384,7 +413,7 @@ export function AnalysisDialog({
             <button
               className="primary"
               disabled={
-                loading || starting || !media || !!blockedReason || vstState.busy || vstState.blocked || invalidMapping
+                loading || starting || !media || !!blockedReason || vstState.busy || vstState.blocked || credential.busy || invalidMapping
               }
               onClick={start}
             >

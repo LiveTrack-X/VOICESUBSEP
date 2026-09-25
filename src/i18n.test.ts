@@ -22,7 +22,7 @@ describe("interface translations", () => {
 
   it("covers static controls and help in localized editor components", () => {
     const missing:string[]=[];
-    for (const name of ["Sidebar", "CaptionEditor", "NotesPanel", "NoteTimelineLane", "CaptionStyleDialog", "AnalysisDialog", "UpdateDialog", "Dialog", "SettingsDialog", "VstChainPanel", "DocumentsDialog", "LiveCaptureDialog", "JobHistoryDialog", "ProjectRecoveryDialog", "Timeline", "CaptionTimelineLane"]) {
+    for (const name of ["Sidebar", "CaptionEditor", "NotesPanel", "MediaPlayer", "EditorWorkspace", "NoteTimelineLane", "CaptionStyleDialog", "AnalysisDialog", "RecognitionPreview", "WorkspaceModeSwitcher", "CloudAsrSettings", "ProviderCredentialPanel", "TranscriptDocumentPanel", "UpdateDialog", "Dialog", "SettingsDialog", "VstChainPanel", "DocumentsDialog", "LiveCaptureDialog", "JobHistoryDialog", "ProjectRecoveryDialog", "Timeline", "CaptionTimelineLane"]) {
       const source = readFileSync(new URL(`./components/${name}.tsx`, import.meta.url), "utf8");
       for (const match of source.matchAll(/\bt\((["'])(.*?)\1/g)) {
         if (/[가-힣]/.test(match[2])&&!dictionaries.en[match[2]]) missing.push(`${name}: ${match[2]}`);

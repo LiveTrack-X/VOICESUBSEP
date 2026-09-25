@@ -62,7 +62,7 @@ function crc32(bytes: Uint8Array): number {
 }
 
 /** ZIP STORE, UTF-8 names, bounded 32-bit entries; no compression dependencies. */
-function zipStore(files: { name: string; text: string }[]): Uint8Array {
+export function zipStore(files: { name: string; text: string }[]): Uint8Array {
   const entries = files.map((file) => ({ name: encoder.encode(file.name), data: encoder.encode(file.text) }));
   const size = entries.reduce((sum, file) => sum + 30 + file.name.length + file.data.length + 46 + file.name.length, 22);
   if (size > 256 * 1024 * 1024 || entries.length > 65535) throw new Error("내보내기 파일이 너무 큽니다.");

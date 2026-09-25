@@ -5,12 +5,20 @@ import { workspaceMessages } from "./i18n-workspace";
 import { editorMessages } from "./i18n-editor";
 import { timelineMessages } from "./i18n-timeline";
 import { documentMessages } from "./i18n-documents";
+import { documentExportMessages } from "./i18n-document-exports";
+import { textProviderMessages } from "./i18n-text-providers";
 import { exportMessages } from "./i18n-export";
 import { workflowMessages } from "./i18n-workflow";
 import { pipelineMessages } from "./i18n-pipeline";
 import { liveMessages } from "./i18n-live";
+import { modeMessages } from "./i18n-modes";
+import { cloudMessages } from "./i18n-cloud";
+import { transcriptMessages } from "./i18n-transcript";
 
 export const extraMessages: Record<string, readonly [string, string, string, string]> = {
+  ...transcriptMessages,
+  ...modeMessages,
+  ...cloudMessages,
   ...translationMessages,
   ...vstMessages,
   ...settingsMessages,
@@ -18,6 +26,8 @@ export const extraMessages: Record<string, readonly [string, string, string, str
   ...editorMessages,
   ...timelineMessages,
   ...documentMessages,
+  ...documentExportMessages,
+  ...textProviderMessages,
   ...exportMessages,
   ...workflowMessages,
   ...pipelineMessages,

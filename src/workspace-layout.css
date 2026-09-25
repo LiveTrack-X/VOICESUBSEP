@@ -20,42 +20,65 @@
   background: #f3efff;
   border-color: #d6c9fa;
 }
-.editor-center { padding-top: 12px; padding-bottom: 8px; }
+.editor-upper { flex-direction: column; overflow: auto; }
+.editor-center { padding-top: 8px; padding-bottom: 8px; gap: 6px; overflow: visible; flex: 1 0 auto; }
 .editor-center > .media-player:not(.media-player-expanded):not(:fullscreen) {
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto;
-  min-height: 150px;
+  flex: 0 0 auto;
+  min-height: 0;
 }
 .editor-center > .media-player:not(.media-player-expanded):not(:fullscreen) > .video-stage {
-  height: clamp(120px, 26dvh, 280px);
-  min-height: 96px;
-  flex: 1 1 auto;
+  height: var(--preview-height, 144px);
+  min-height: 0;
+  flex: 0 0 auto;
   overflow: hidden;
 }
 .editor-center > .media-player > .player-controls { flex: 0 0 auto; }
-.editor-center .video-empty { gap: 8px; }
-.editor-center .play-circle { width: 48px; height: 48px; }
-.editor-center .play-circle svg { width: 24px; }
+.editor-center .video-empty { flex-direction: row; gap: 8px; }
+.editor-center .play-circle { width: 24px; height: 24px; }
+.editor-center .play-circle svg { width: 13px; }
 .editor-center > .caption-editor {
-  min-height: 250px;
+  min-height: 0;
   /* Let toolbar height participate in intrinsic sizing. A fixed 250px basis
      previously clipped the entire list once controls wrapped on small screens. */
   flex: 1 0 auto;
+  margin-top: 0;
   border-bottom: 1px solid var(--border);
   border-radius: 7px;
 }
-.editor-center .caption-list { height: 250px; min-height: 250px; flex: 1 0 250px; }
+.editor-center .caption-list { height: 324px; min-height: 324px; flex: 1 0 324px; }
 .notes-content { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
-.notes-panel .notes-toggle { display: none; }
+.editor-upper > .notes-panel { width: 100%; height: auto; min-width: 0; flex: 0 0 auto; border-top: 1px solid var(--border); border-left: 0; }
+.notes-panel .panel-heading { padding: 6px 12px; }
+.notes-panel .notes-heading { padding: 0; }
+.notes-panel .notes-toggle { display: inline-flex; }
+.notes-panel:not(.notes-expanded) > .notes-content { display: none; }
+.notes-expanded .notes-content { max-height: 280px; }
+.notes-panel .notes-list { display: block; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.notes-panel .note-card { width: 100%; min-width: 0; }
+.notes-panel .note-body { max-width: 100%; }
+.preview-layout-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 4px 7px; min-width: 0; border-bottom: 1px solid var(--border); font-size: 10px; color: #66758a; }
+.preview-layout-toolbar[hidden] { display: none; }
+.preview-layout-toolbar > span { flex: 1; }
+.preview-layout-toolbar button { min-height: 24px; padding: 3px 5px; font-size: 10px; white-space: normal; }
+.preview-height-control { display: flex; flex: 0 1 70px; min-width: 32px; }
+.preview-height-control input { width: 100%; min-width: 0; height: 3px; padding: 0; }
+.editor-center > .preview-collapsed:not(.media-player-expanded):not(:fullscreen) > .video-stage { display: none; }
+.editor-center > .media-kind-empty:not(.media-player-expanded):not(:fullscreen) > .player-controls { display: none; }
+.media-playback-error { color: #9a3c23; font-size: 11px; margin: 0; padding: 8px; }
+.caption-editor .caption-toolbar { min-height: 38px; }
+.caption-editor .caption-columns { padding-block: 6px; }
+.caption-editor .edit-actions { padding-block: 4px; gap: 4px; }
+.caption-editor .caption-navigation { padding-block: 4px; }
+.merge-speakers-button { width: 100%; margin-top: 7px; white-space: normal; font-size: 11px; }
+.speaker-merge-target { display: flex; flex-direction: column; gap: 6px; margin-block: 16px; }
+.speaker-merge-confirm { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 .workspace:has(> .subtitle-focus) > .sidebar,
 .subtitle-focus .notes-panel,
 .subtitle-focus .subtitle-language-bar,
 .subtitle-focus .cut-panel { display: none; }
 .subtitle-focus .editor-center { min-width: 0; }
-.subtitle-focus .media-player:not(.media-player-expanded):not(:fullscreen) > .video-stage {
-  height: 120px;
-}
 .subtitle-focus .video-empty { flex-direction: row; gap: 12px; }
 .subtitle-focus .play-circle { width: 40px; height: 40px; }
 .subtitle-focus .play-circle svg { width: 20px; }
@@ -64,12 +87,12 @@
   .editor-upper { flex-direction: column; flex-wrap: nowrap; overflow-y: auto; min-width: 0; }
   .editor-center { width: 100%; min-width: 0; height: auto; flex: 1 0 auto; overflow: visible; }
   .editor-center > .caption-editor { flex: 1 0 auto; }
-  .editor-center .caption-list { flex: 1 0 250px; min-height: 250px; max-height: 55dvh; }
+  .editor-center .caption-list { flex: 1 0 324px; min-height: 324px; max-height: 65dvh; }
   .editor-upper > .notes-panel { width: 100%; height: auto; min-width: 0; flex: 0 0 auto; }
-  .notes-panel .panel-heading { padding: 8px 12px; }
+  .notes-panel .panel-heading { padding: 6px 12px; }
   .notes-panel .notes-toggle { display: inline-flex; }
   .notes-panel:not(.notes-expanded) > .notes-content { display: none; }
-  .notes-expanded .notes-content { max-height: 360px; }
+  .notes-expanded .notes-content { max-height: 280px; }
   .notes-panel .notes-list { display: block; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; }
   .notes-panel .note-card { width: 100%; min-width: 0; }
   .notes-panel .note-body { max-width: 100%; }
@@ -83,10 +106,11 @@
   .subtitle-focus .editor-center { height: auto; width: 100%; }
   .subtitle-focus .editor-center { padding-top: 6px; }
   .subtitle-focus .editor-center > .media-player:not(.media-player-expanded):not(:fullscreen) { min-height: 0; flex: 0 0 auto; }
-  .subtitle-focus .media-player:not(.media-player-expanded):not(:fullscreen) > .video-stage { height: 76px; min-height: 76px; flex: 0 0 76px; }
+  .editor-center > .media-kind-video:not(.preview-custom-height):not(.media-player-expanded):not(:fullscreen) > .video-stage { height: 96px; }
+  .editor-center > .media-kind-audio:not(.preview-custom-height):not(.media-player-expanded):not(:fullscreen) > .video-stage { height: 32px; }
   .subtitle-focus .media-player:not(.media-player-expanded):not(:fullscreen) > .player-controls { padding: 3px 10px 5px; }
   .subtitle-focus .media-player:not(.media-player-expanded):not(:fullscreen) > .player-controls > input { margin-bottom: 5px; }
-  .subtitle-focus .caption-editor { margin-top: 7px; }
+  .subtitle-focus .caption-editor { margin-top: 0; }
 }
 @media (max-width: 680px) {
   .workspace, .editor-workspace, .editor-upper { width: 100%; max-width: 100%; min-width: 0; }
@@ -96,6 +120,9 @@
   .caption-editor .tabs { min-height: 32px; }
   .caption-editor .caption-columns, .caption-editor .caption-row { grid-template-columns: 75px 65px minmax(0, 1fr) 25px; }
   .caption-editor .edit-actions select { max-width: 130px; }
+  .caption-density-compact .caption-times { grid-template-columns: 18px minmax(0, 1fr); }
+  .caption-density-compact .caption-times .seek-button { grid-row: span 2; width: 18px; min-height: 30px; }
+  .caption-density-compact .caption-times input { font-size: 9px; }
   .timeline-adjustable .timeline-heading { height: auto; min-height: 41px; flex-wrap: wrap; gap: 4px; }
   .timeline-adjustable .timeline-heading-actions { flex-shrink: 1; min-width: 0; gap: 4px; flex-wrap: wrap; }
   .timeline-adjustable .timeline-heading-actions > select { max-width: 90px; }
@@ -104,7 +131,40 @@
   .subtitle-focus .transport { height: auto; min-height: 24px; flex-wrap: wrap; }
   .subtitle-focus .time-display { flex-basis: 100%; }
 }
+/* On desktop, editing is the main pane and the preview is a small inspector.
+   Keeping the caption list beside the preview avoids stacking both heights. */
+@media (min-width: 1200px) {
+  .editor-center { display: grid; grid-template-columns: minmax(210px, 26%) minmax(0, 1fr); grid-template-rows: max-content max-content minmax(0, 1fr); gap: 8px 12px; }
+  .editor-center > .media-player { grid-column: 1; grid-row: 1; align-self: start; }
+  .editor-center > .subtitle-language-bar { grid-column: 1; grid-row: 2; align-self: start; padding: 8px; }
+  .editor-center > .cut-panel { grid-column: 1; grid-row: 3; align-self: start; padding: 8px; }
+  .editor-center > .caption-editor { grid-column: 2; grid-row: 1 / -1; min-width: 0; }
+  .editor-center .caption-list { height: 324px; flex: 1 1 324px; }
+  .editor-center .media-player:not(.media-player-expanded):not(:fullscreen) .transport { height: auto; min-height: 24px; flex-wrap: wrap; gap: 5px; }
+  .editor-center .media-player:not(.media-player-expanded):not(:fullscreen) .time-display { flex-basis: 100%; }
+  .editor-center .media-player:not(.media-player-expanded):not(:fullscreen) .transport-center { gap: 4px; }
+  .editor-center .media-player:not(.media-player-expanded):not(:fullscreen) .transport-right { gap: 4px; }
+  .editor-center .subtitle-language-bar label { flex-wrap: wrap; }
+  .editor-center .subtitle-language-bar button { margin-left: 0; }
+  .editor-center .cut-panel summary { flex-wrap: wrap; }
+  .editor-center .cut-panel summary > span { flex-basis: 100%; margin-left: 0; }
+}
 .workspace-tools{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.sidebar-compact-toggle { display: none; }
+@media (max-width: 1000px) {
+  .app-shell { height: 100dvh; min-height: 540px; }
+  .workspace { display: flex; flex-direction: column; min-height: 0; }
+  .workspace > .sidebar { width: 100%; padding: 5px 10px; flex: 0 0 auto; max-height: 44dvh; overflow-y: auto; border-bottom: 1px solid var(--border); border-right: 0; }
+  .sidebar .sidebar-compact-toggle { display: inline-flex; grid-column: 1 / -1; min-height: 27px; padding: 4px 7px; font-size: 11px; }
+  .sidebar:not(.sidebar-expanded) { display: block; }
+  .sidebar:not(.sidebar-expanded) > :not(.sidebar-compact-toggle) { display: none; }
+  .sidebar.sidebar-expanded { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .sidebar.sidebar-expanded > h2 { display: none; }
+  .sidebar.sidebar-expanded .sidebar-section { margin: 0; }
+  .sidebar.sidebar-expanded .speaker-names, .sidebar.sidebar-expanded .analyze-button { grid-column: 1 / -1; }
+  .editor-workspace { flex: 1 1 0; }
+  .editor-center { padding-top: 6px; }
+}
 .workspace-tools button{font-size:11px;gap:5px;padding:5px 7px;white-space:nowrap}
 .workspace-tools .recovery-warning{color:#a15a10;background:#fff4db}
 .workspace-view-bar{flex-wrap:wrap;gap:6px}

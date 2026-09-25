@@ -1,0 +1,37 @@
+.recognition-preview {
+  min-width: 0;
+  margin: 12px 0;
+  padding: 11px 12px;
+  border: 1px solid var(--border, #dce1eb);
+  border-radius: 8px;
+  background: #f8f7fc;
+}
+.recognition-preview header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: 12px;
+}
+.recognition-preview header span { color: #647084; font-variant-numeric: tabular-nums; }
+.dialog .recognition-preview-lines p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  margin: 7px 0;
+  line-height: 1.5;
+  font-size: 13px;
+  color: #293447;
+}
+.dialog .recognition-preview-lines .recognition-preview-waiting { color: #657185; -webkit-line-clamp: 2; }
+.recognition-preview small {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #657185;
+  overflow-wrap: anywhere;
+}

@@ -1,7 +1,11 @@
 param([string]$OutputDirectory, [switch]$SkipTests)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
-if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repo 'release/online-v0.2.0' }
+$configText = Get-Content -LiteralPath (Join-Path $repo 'installer/ReleaseConfig.cs') -Raw
+$versionMatch = [regex]::Match($configText, 'internal const string Version = "([0-9]+\.[0-9]+\.[0-9]+)";')
+if (-not $versionMatch.Success) { throw 'Missing pinned online installer version.' }
+$installerVersion = $versionMatch.Groups[1].Value
+if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repo "release/online-v$installerVersion" }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 [IO.Directory]::CreateDirectory($OutputDirectory) | Out-Null
 $compiler = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
@@ -17,7 +21,7 @@ if (-not $SkipTests) {
     & $testExe
     if ($LASTEXITCODE -ne 0) { throw 'Bootstrap tests failed.' }
 }
-$output = Join-Path $OutputDirectory 'VOICESUBSEP-0.2.0-Online-Setup-x64.exe'
+$output = Join-Path $OutputDirectory "VOICESUBSEP-$installerVersion-Online-Setup-x64.exe"
 & $compiler @common '/target:winexe' '/platform:anycpu' '/r:System.Windows.Forms.dll' '/r:System.Drawing.dll' "/win32icon:$(Join-Path $repo 'desktop/assets/icon.ico')" "/win32manifest:$(Join-Path $sources 'app.manifest')" "/out:$output" (Join-Path $sources 'BootstrapCore.cs') (Join-Path $sources 'ReleaseConfig.cs') (Join-Path $sources 'Program.cs') (Join-Path $sources 'AssemblyInfo.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Bootstrap compilation failed.' }
 $smoke = Start-Process -FilePath $output -ArgumentList '--smoke' -WindowStyle Hidden -PassThru -Wait

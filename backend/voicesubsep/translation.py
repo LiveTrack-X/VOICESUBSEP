@@ -1,9 +1,10 @@
-"""Local-only, bounded subtitle translation through an installed Ollama model.
+"""Bounded subtitle translation, using local Ollama by default.
 
 No model is pulled and no configurable remote endpoint is accepted. A request
 translates one small batch; the editor can stop between batches without losing
 already reviewed results. Requests use loopback only and known remote/cloud
 models are rejected before caption text is sent to the local Ollama service.
+Cloud text requires an explicit provider, session key and transmission consent.
 """
 from __future__ import annotations
 
@@ -13,8 +14,9 @@ import re
 import threading
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from . import cloud_text
 
 router = APIRouter(prefix="/api/translation")
 _busy = threading.Lock()
@@ -79,9 +81,16 @@ class TranslationRequest(BaseModel):
     target: Literal["ko", "en", "ja", "zh", "es"]
     captions: list[CaptionText] = Field(min_length=1, max_length=8)
     device: Literal["auto", "cpu"] = "auto"
+    provider: Literal["local", "groq", "xai"] = "local"
+    cloudConsent: bool = False
+    credentialGeneration: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
 
     @model_validator(mode="after")
     def bounded_unique_text(self):
+        if self.provider != "local":
+            cloud_text.validate_cloud_request(self.provider, self.model, self.cloudConsent)
+            if self.credentialGeneration is None:
+                raise ValueError("Confirm the current provider key before starting a cloud text run.")
         if len({c.id for c in self.captions}) != len(self.captions):
             raise ValueError("Caption IDs must be unique.")
         lengths = [text_units(c.text) for c in self.captions]
@@ -94,15 +103,17 @@ class TranslationRequest(BaseModel):
         return self
 
 
-def translate_batch(request: TranslationRequest) -> dict:
-    if request.model not in installed_models():
-        raise ValueError("Select a text model already installed in local Ollama. Downloads are never started automatically.")
-    info = ollama_json("/api/show", {"model": request.model})
-    if is_remote_model(info):
-        raise ValueError("Cloud models cannot be used for local subtitle translation.")
-    capabilities = info.get("capabilities", [])
-    if not isinstance(capabilities, list) or "completion" not in capabilities:
-        raise ValueError("The selected model does not support text generation.")
+def translate_batch(request: TranslationRequest, *, provider_key: str | None = None) -> dict:
+    capabilities = []
+    if request.provider == "local":
+        if request.model not in installed_models():
+            raise ValueError("Select a text model already installed in local Ollama. Downloads are never started automatically.")
+        info = ollama_json("/api/show", {"model": request.model})
+        if is_remote_model(info):
+            raise ValueError("Cloud models cannot be used for local subtitle translation.")
+        capabilities = info.get("capabilities", [])
+        if not isinstance(capabilities, list) or "completion" not in capabilities:
+            raise ValueError("The selected model does not support text generation.")
     schema = {"type": "object", "properties": {"captions": {"type": "array",
         "minItems": len(request.captions), "maxItems": len(request.captions),
         "items": {"type": "object", "properties": {"id": {"type": "string"}, "text": {"type": "string"}},
@@ -120,13 +131,17 @@ def translate_batch(request: TranslationRequest) -> dict:
         "format": schema, "stream": False, "options": options, "keep_alive": "1m"}
     if "thinking" in capabilities:
         body["think"] = False
-    response = ollama_json("/api/chat", body, timeout=180)
-    if is_remote_model(response):
-        raise ValueError("The Ollama response unexpectedly identifies a remote model. Translation was not accepted.")
-    if response.get("done") is not True or response.get("done_reason") == "length":
-        raise ValueError("Translation was truncated. Try fewer or shorter subtitles.")
-    message = response.get("message")
-    content = message.get("content") if isinstance(message, dict) else None
+    if request.provider == "local":
+        response = ollama_json("/api/chat", body, timeout=180)
+        if is_remote_model(response):
+            raise ValueError("The Ollama response unexpectedly identifies a remote model. Translation was not accepted.")
+        if response.get("done") is not True or response.get("done_reason") == "length":
+            raise ValueError("Translation was truncated. Try fewer or shorter subtitles.")
+        message = response.get("message")
+        content = message.get("content") if isinstance(message, dict) else None
+    else:
+        content = cloud_text.chat_json(request.provider, provider_key or "", model=request.model,
+            messages=body["messages"], schema=schema, consent=request.cloudConsent)
     if not isinstance(content, str):
         raise ValueError("The model returned no translation text.")
     try:
@@ -159,14 +174,30 @@ def translation_status():
 
 
 @router.post("/batch")
-def translation_batch(request: TranslationRequest):
+def translation_batch(request: TranslationRequest, http_request: Request = None):
     if not _busy.acquire(blocking=False):
-        raise HTTPException(429, "Another local translation batch is running. Wait for it to finish.")
+        raise HTTPException(429, "Another translation batch is running. Wait for it to finish.")
     try:
-        return translate_batch(request)
+        if request.provider == "local":
+            return translate_batch(request)
+        with cloud_text.session_key(http_request, request.provider, request.credentialGeneration) as key:
+            return translate_batch(request, provider_key=key)
     except RuntimeError as exc:
         raise HTTPException(503, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
     finally:
         _busy.release()
+
+
+@router.get("/models")
+def cloud_models(http_request: Request, provider: Literal["groq", "xai"], credentialGeneration: str):
+    try:
+        if not re.fullmatch(r"[a-f0-9]{32}", credentialGeneration):
+            raise ValueError("Confirm the current provider key before loading models.")
+        with cloud_text.session_key(http_request, provider, credentialGeneration) as key:
+            return {"provider": provider, "models": cloud_text.list_models(provider, key)}
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc

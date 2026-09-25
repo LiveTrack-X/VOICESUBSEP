@@ -1,4 +1,11 @@
 export const pipelineMessages: Record<string, readonly [string,string,string,string]> = {
+  "인식 중인 초안": ["Recognition draft","認識中の下書き","识别中的草稿","Borrador de reconocimiento"],
+  "마지막 인식 초안": ["Last recognition draft","最後の認識下書き","最近的识别草稿","Último borrador de reconocimiento"],
+  "요청 후 경과 {time}": ["Since request {time}","リクエストから {time}","请求后经过 {time}","Desde la solicitud {time}"],
+  "마지막 인식 수신 {time}": ["Last recognition received {time}","最後の認識受信 {time}","最近识别接收时间 {time}","Último reconocimiento recibido {time}"],
+  "아직 인식된 구간이 없습니다. 대기·모델 준비·화자 분석 중에는 초안이 늦게 표시될 수 있습니다.": ["No recognized segment yet. Queueing, model preparation or speaker analysis can delay the first draft.","認識された区間はまだありません。待機・モデル準備・話者解析中は下書きの表示が遅れることがあります。","尚无已识别片段。排队、模型准备或说话人分析期间，首个草稿可能延迟显示。","Aún no hay segmentos reconocidos. La espera, preparación del modelo o análisis de hablantes pueden retrasar el primer borrador."],
+  "최근 인식 구간 최대 2개입니다. 문구·인물은 미확정이며 결과 적용 전까지 자막에 넣지 않습니다.": ["Up to two recent segments. Text and speakers are provisional; nothing enters the subtitles until you apply the result.","直近の認識区間を最大2件表示します。文言・話者は未確定で、結果を適用するまで字幕に追加しません。","最多显示最近两个片段。文字和人物尚未确定，应用结果前不会加入字幕。","Hasta dos segmentos recientes. El texto y los hablantes son provisionales; no se añaden a los subtítulos hasta aplicar el resultado."],
+  "경과 시간은 대기 시간을 포함하며 인식 결과의 갱신을 뜻하지 않습니다.": ["Elapsed time includes waiting and does not indicate new recognition results.","経過時間には待機を含み、認識結果の更新を意味しません。","经过时间包含等待时间，并不代表识别结果已更新。","El tiempo transcurrido incluye la espera y no indica nuevos resultados de reconocimiento."],
   "작업 이력 및 저장 공간": ["Job history and storage","ジョブ履歴とストレージ","任务历史与存储","Historial y almacenamiento"],
   "분석과 내보내기는 창을 닫아도 계속됩니다. 완료된 결과를 여기서 다시 열 수 있습니다.": ["Analysis and exports continue when this window closes. Reopen completed results here.","ウィンドウを閉じても解析と書き出しは続きます。完了した結果をここから開けます。","关闭窗口后分析和导出会继续。可在此重新打开结果。","El análisis y la exportación continúan al cerrar la ventana. Reabre aquí los resultados."],
   "창을 닫아도 작업은 계속됩니다. 작업 이력에서 다시 열 수 있습니다.": ["The job continues after closing this window. Reopen it from job history.","閉じても処理は続きます。ジョブ履歴から再度開けます。","关闭此窗口后任务会继续，可从任务历史重新打开。","El trabajo continúa al cerrar esta ventana. Puedes abrirlo desde el historial."],

@@ -25,6 +25,8 @@ from starlette.formparsers import MultiPartException
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .diagnostics import Diagnostics
+from .cloud_credentials import ProviderCredentials
+from .cloud_asr import ASR_MODELS
 from .jobs import Analyzer, JobManager
 from .media import MEDIA_EXTENSIONS, clean_name, probe_media
 from .media_cache import MediaCache
@@ -103,9 +105,23 @@ class JobRequest(BaseModel):
     projectId: str | None = Field(default=None, min_length=1, max_length=128)
     projectName: str = Field(default="", max_length=200)
     trackSpeakers: list[TrackSpeaker] | None = Field(default=None, min_length=1, max_length=8)
+    asrProvider: Literal["local", "groq", "xai"] = "local"
+    providerModel: str | None = Field(default=None, max_length=80)
+    cloudConsent: bool = False
 
     @model_validator(mode="after")
     def unique_tracks(self):
+        if self.asrProvider != "local":
+            if not self.cloudConsent:
+                raise ValueError("Confirm audio upload to the selected cloud provider for this analysis.")
+            if self.providerModel not in ASR_MODELS[self.asrProvider]:
+                raise ValueError("Choose a supported model for the selected cloud provider.")
+            if self.trackSpeakers:
+                raise ValueError("Cloud analysis currently supports one selected audio track. Use local ASR for isolated speaker tracks.")
+            if self.asrProvider == "groq" and self.language != "auto" and len(self.language) != 2:
+                raise ValueError("Groq requires AUTO or a two-letter language code.")
+        elif self.providerModel is not None:
+            raise ValueError("A cloud model cannot be used with local analysis.")
         if self.trackSpeakers:
             if len({item.audioTrack for item in self.trackSpeakers}) != len(self.trackSpeakers):
                 raise ValueError("Select each source track only once.")
@@ -122,6 +138,12 @@ class JobRequest(BaseModel):
     @classmethod
     def canonical_model(cls, value: str) -> str:
         return "large-v3-turbo" if value == "turbo" else value
+
+
+class ProviderCredentialRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    provider: Literal["groq", "xai"]
+    key: str = Field(min_length=12, max_length=512, repr=False)
 
 
 class KeepRange(BaseModel):
@@ -164,8 +186,9 @@ def create_app(
     if limit <= 0:
         raise ValueError("VOICESUBSEP_MAX_UPLOAD_BYTES must be positive.")
     storage = Storage(root)
-    diagnostics = Diagnostics(storage, "0.2.0")
-    jobs = JobManager(storage, analyzer, diagnostics=diagnostics)
+    diagnostics = Diagnostics(storage, "0.2.1")
+    provider_credentials = ProviderCredentials()
+    jobs = JobManager(storage, analyzer, diagnostics=diagnostics, provider_credentials=provider_credentials)
     renders = RenderJobManager(storage, renderer, diagnostics=diagnostics)
     vst_previews = PreviewManager(storage, diagnostics=diagnostics)
     waveforms = Waveforms(storage)
@@ -185,17 +208,21 @@ def create_app(
                 await run_in_threadpool(vst_previews.stop)
                 await run_in_threadpool(renders.stop)
         finally:
+            provider_credentials.clear()
             await run_in_threadpool(jobs.stop)
 
-    application = FastAPI(title="VOICESUBSEP", version="0.2.0", lifespan=lifespan)
+    application = FastAPI(title="VOICESUBSEP", version="0.2.1", lifespan=lifespan)
     application.state.storage = storage
     application.state.jobs = jobs
     application.state.renders = renders
     application.state.vst_previews = vst_previews
     application.state.diagnostics = diagnostics
     application.state.media_cache = cache
+    application.state.provider_credentials = provider_credentials
     @application.exception_handler(RequestValidationError)
     async def validation_error(_request: Request, exc: RequestValidationError):
+        if _request.url.path.startswith("/api/provider-credentials"):
+            return JSONResponse({"detail": "Invalid provider credential request."}, status_code=422)
         # JSON's non-standard NaN/Infinity inputs must yield 422 rather than
         # crashing JSONResponse while echoing the invalid value back.
         return JSONResponse({"detail": [{key: error[key] for key in ("loc", "msg", "type")}
@@ -236,6 +263,23 @@ def create_app(
     @application.get("/api/diagnostics")
     def diagnostic_export():
         return JSONResponse(diagnostics.export(), headers={"Cache-Control": "no-store"})
+
+    @application.get("/api/provider-credentials")
+    def provider_status():
+        return provider_credentials.status()
+
+    @application.post("/api/provider-credentials")
+    def set_provider_credential(request: ProviderCredentialRequest):
+        try:
+            provider_credentials.set_provider_key(request.provider, request.key)
+        except ValueError:
+            raise HTTPException(400, "Invalid provider credential request.") from None
+        return provider_credentials.status()
+
+    @application.delete("/api/provider-credentials/{provider}")
+    def remove_provider_credential(provider: Literal["groq", "xai"]):
+        provider_credentials.clear(provider)
+        return provider_credentials.status()
 
     @application.get("/api/ready")
     def ready():
@@ -384,6 +428,11 @@ def create_app(
             return submit_job(request)
 
     def submit_job(request: JobRequest):
+        if request.asrProvider != "local":
+            try:
+                provider_credentials.get_provider_key(request.asrProvider)
+            except ValueError:
+                raise HTTPException(400, "Register the selected provider API key before analysis.") from None
         try:
             metadata, _ = storage.get_media(request.mediaId)
         except (ValueError, FileNotFoundError, OSError):

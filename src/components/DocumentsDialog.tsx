@@ -4,7 +4,12 @@ import { download, request } from "../api";
 import { formatTime, safeFilename, type Project } from "../domain";
 import { acceptMinutesResponse, documentBatches, documentSourceOptions, emptyDocuments, evidenceFor, evidenceIsCurrent, exportDocument, interviewTag, parseDocuments, type InterviewRole, type InterviewTag, type MinutesItem, type MinutesKind, type ProjectDocuments } from "../documents";
 import { useI18n } from "../i18n";
+import { downloadDocumentXlsx, exportDocumentHtml, exportDocumentXlsx, openDocumentPrintView } from "../documentExports";
 import type { TranslationStatus } from "../translation";
+import { TextProviderControls } from "./TextProviderControls";
+import { beginTextRun, cloudTextReady, type TextProvider } from "../textProviders";
+import type { CredentialState } from "../providerCredentials";
+import { TranscriptDocumentPanel } from "./TranscriptDocumentPanel";
 import "./documents.css";
 
 const kinds: Record<MinutesKind, string> = { summary: "요약", discussion: "논의", decision: "결정", action: "할 일" };
@@ -13,11 +18,13 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
   onClose: () => void; onSource: (time: number, captionId: string) => void;
 }) {
   const { t, locale } = useI18n();
-  const [mode, setMode] = useState<"interview" | "minutes">("interview");
+  const [mode, setMode] = useState<"transcript" | "interview" | "minutes">("transcript");
   const [page, setPage] = useState(0);
   const [status, setStatus] = useState<TranslationStatus | null>(null);
   const [model, setModel] = useState("");
   const [device, setDevice] = useState<"auto" | "cpu">("auto");
+  const [provider, setProvider] = useState<TextProvider>("local"), [cloudModel, setCloudModel] = useState(""), [cloudConsent, setCloudConsent] = useState(false);
+  const [credential, setCredential] = useState<CredentialState>({configured:false,busy:true});
   const [error, setError] = useState("");
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
@@ -29,6 +36,7 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
   const captions = useMemo(() => [...project.captions].sort((a,b) => a.start-b.start), [project.captions]);
   const sourceOptions = useMemo(() => documentSourceOptions(captions, sourceSearch, sourceId), [captions, sourceSearch, sourceId]);
   const pages = Math.max(1, Math.ceil(captions.length / 50));
+  const generationReady = provider === "local" ? !!status?.ready && !!model : cloudTextReady(provider, cloudModel, cloudConsent, credential.configured, credential.busy);
   function edit(change: (d: ProjectDocuments) => ProjectDocuments) {
     try {
       update(p => ({ ...p, documents: parseDocuments(change(p.documents ?? emptyDocuments())) }));
@@ -48,24 +56,25 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
     return () => { alive.current = false; stop.current = true; };
   }, []);
   async function generate() {
-    if (running || pending.length) return;
+    if (running || pending.length || !generationReady) return;
     setError(""); setPending([]); setRunning(true); stop.current = false;
     try {
       const batches = documentBatches(captions); const items: MinutesItem[] = [];
+      const providerOptions = await beginTextRun(provider, cloudConsent);
       for (const [index, batch] of batches.entries()) {
         if (stop.current || !alive.current) break;
         setProgress(`${index + 1} / ${batches.length}`);
         const response = await request<unknown>("/api/documents/generate", {
           method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(195000),
-          body: JSON.stringify({ model, language: locale, device, captions: batch.map(c => ({ id: c.id, text: c.text, speaker: project.speakers.find(s=>s.id===c.speakerId)?.name ?? "" })) }),
+          body: JSON.stringify({ model: provider === "local" ? model : cloudModel, ...providerOptions, language: locale, device, captions: batch.map(c => ({ id: c.id, text: c.text, speaker: project.speakers.find(s=>s.id===c.speakerId)?.name ?? "" })) }),
         });
         if (!alive.current) return;
-        const next = acceptMinutesResponse(response, batch);
+        const next = acceptMinutesResponse(response, batch, provider);
         if (items.length + next.length + docs.items.length > 1000) throw new Error(t("문서 항목은 최대 1000개입니다."));
         items.push(...next); setPending([...items]);
       }
     } catch(e) { if(alive.current) setError((e as Error).message); }
-    finally { if(alive.current) { setRunning(false); setProgress(""); } }
+    finally { if(alive.current) { setRunning(false); setProgress(""); setCloudConsent(false); } }
   }
   function addManual() {
     if (docs.items.length >= 1000) { setError(t("문서 항목은 최대 1000개입니다.")); return; }
@@ -75,10 +84,25 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
   function changeItem(itemId: string, change: Partial<MinutesItem>) {
     edit(d=>({...d, items:d.items.map(item=>item.id===itemId?{...item,...change}:item)}));
   }
+  function exportReport(format: "html" | "pdf" | "xlsx" | "md") {
+    if (mode === "transcript") return;
+    if (running || pending.length) { setError(t("출력 문서에는 프로젝트에 추가한 항목만 포함됩니다. 생성 중이거나 아직 추가하지 않은 초안을 먼저 처리하세요.")); return; }
+    try {
+      const base = `${safeFilename(project.name)}-${mode}`;
+      if (format === "md") download(`${base}.md`, exportDocument(project, mode, t), "text/markdown;charset=utf-8");
+      else if (format === "xlsx") downloadDocumentXlsx(exportDocumentXlsx(project, mode, t, { locale }), `${base}.xlsx`);
+      else {
+        const html = exportDocumentHtml(project, mode, t, { locale });
+        if (format === "pdf") openDocumentPrintView(html, t);
+        else download(`${base}.html`, html, "text/html;charset=utf-8");
+      }
+      setError("");
+    } catch (cause) { setError((cause as Error).message); }
+  }
   return <Dialog title={t("인터뷰·회의록")} onClose={()=>close()}>
-    <div className="document-tabs"><button aria-pressed={mode==="interview"} onClick={()=>setMode("interview")}>{t("인터뷰")}</button><button aria-pressed={mode==="minutes"} onClick={()=>setMode("minutes")}>{t("회의록")}</button></div>
-    <p>{t("원본 시간과 근거 자막을 유지합니다. 생성 문서는 확인 전까지 초안입니다.")}</p>
-    {mode==="interview" ? <>
+    <div className="document-tabs"><button aria-pressed={mode==="transcript"} onClick={()=>setMode("transcript")}>{t("발언록")}</button><button aria-pressed={mode==="interview"} onClick={()=>setMode("interview")}>{t("인터뷰 문답")}</button><button aria-pressed={mode==="minutes"} onClick={()=>setMode("minutes")}>{t("회의 요약·할 일")}</button></div>
+    {mode !== "transcript" && <p>{t("원본 시간과 근거 자막을 유지합니다. 생성 문서는 확인 전까지 초안입니다.")}</p>}
+    {mode === "transcript" ? <TranscriptDocumentPanel project={project} onSeek={time=>{const caption=captions.find(c=>c.start===time);if(caption)close(time,caption.id);}}/> : mode==="interview" ? <>
       <div className="interview-roles">{project.speakers.map(s=><label key={s.id}>{s.name}<select aria-label={`${s.name} ${t("인터뷰 역할")}`} value={docs.roles[s.id]??"participant"} onChange={e=>edit(d=>({...d,roles:{...d.roles,[s.id]:e.target.value as InterviewRole}}))}><option value="participant">{t("참가자")}</option><option value="questioner">{t("질문자")}</option><option value="respondent">{t("답변자")}</option></select></label>)}</div>
       <p>{t("인물 역할로 질문과 답변을 구분하며, 각 자막의 분류를 직접 바꿀 수 있습니다.")}</p>
       <div className="document-transcript">{captions.slice(page*50,(page+1)*50).map(c=><article key={c.id} className={`interview-${interviewTag(c,docs)}`}>
@@ -89,12 +113,14 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
       </article>)}</div>
       <div className="document-pagination"><button disabled={page===0} onClick={()=>setPage(p=>p-1)}>{t("이전")}</button><span>{page+1} / {pages}</span><button disabled={page+1>=pages} onClick={()=>setPage(p=>p+1)}>{t("다음")}</button></div>
     </> : <>
-      <details className="document-generation"><summary>{t("로컬 AI로 회의록 초안 생성")}</summary>
-        <p>{t("이 기기의 Ollama 모델만 사용합니다. 모델을 자동 다운로드하지 않습니다.")}</p>
-        <label>{t("모델")}<select aria-label={t("회의록 모델")} disabled={running} value={model} onChange={e=>setModel(e.target.value)}>{status?.models.map(name=><option key={name}>{name}</option>)}</select></label>
+      <details className="document-generation"><summary>{t("AI로 회의록 초안 생성")}</summary>
+        <TextProviderControls provider={provider} model={cloudModel} consent={cloudConsent} disabled={running||!!pending.length}
+          onProviderChange={value=>{setProvider(value);setCloudModel("");setCloudConsent(false);setCredential({configured:false,busy:true});setError("");}}
+          onModelChange={value=>{setCloudModel(value);setCloudConsent(false);}} onConsentChange={setCloudConsent} onCredentialState={setCredential}/>
+        {provider === "local" && <><label>{t("모델")}<select aria-label={t("회의록 모델")} disabled={running} value={model} onChange={e=>setModel(e.target.value)}>{status?.models.map(name=><option key={name}>{name}</option>)}</select></label>
         <label>{t("실행 장치")}<select value={device} disabled={running} onChange={e=>setDevice(e.target.value as typeof device)}><option value="auto">{t("자동")}</option><option value="cpu">CPU</option></select></label>
-        {!status?.ready&&<p>{t("로컬 모델이 준비되지 않았습니다. 수동 회의록은 작성할 수 있습니다.")}</p>}
-        <button disabled={running||!!pending.length||!model||!captions.length} onClick={()=>void generate()}>{t("구간별 초안 생성")}</button>
+        {!status?.ready&&<p>{t("로컬 모델이 준비되지 않았습니다. 수동 회의록은 작성할 수 있습니다.")}</p>}</>}
+        <button disabled={running||!!pending.length||!generationReady||!captions.length} onClick={()=>void generate()}>{t("구간별 초안 생성")}</button>
         {running&&<><span role="status">{progress}</span><button onClick={()=>{stop.current=true;setProgress(t("현재 구간 완료 후 중지합니다."));}}>{t("중지")}</button></>}
         {!!pending.length&&<>
           <button disabled={running} onClick={()=>{if(docs.items.length+pending.length>1000){setError(t("문서 항목은 최대 1000개입니다."));return;}if(edit(d=>({...d,items:[...d.items,...pending]})))setPending([]);}}>{t("생성한 초안 추가")} ({pending.length})</button>
@@ -120,7 +146,19 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
         </article>;
       })}</div>
     </>}
+    {mode !== "transcript" && <>
     {error&&<p role="alert">{error}</p>}
-    <div className="dialog-actions"><button onClick={()=>download(`${safeFilename(project.name)}-${mode}.md`,exportDocument(project,mode,t),"text/markdown;charset=utf-8")}>{t("문서 Markdown 저장")}</button><button onClick={()=>close()}>{t("닫기")}</button></div>
+    <p>{t("HTML은 브라우저에서 열 수 있는 보고서이며, Excel은 대사·할 일·근거를 시트로 정리합니다.")}</p>
+    {(running||!!pending.length)&&<p role="status">{t("출력 문서에는 프로젝트에 추가한 항목만 포함됩니다. 생성 중이거나 아직 추가하지 않은 초안을 먼저 처리하세요.")}</p>}
+    {!captions.length&&<p>{t("분석한 대사가 없습니다. 녹음 또는 미디어를 먼저 분석하세요.")}</p>}
+    <div className="dialog-actions">
+      <button disabled={running||!!pending.length} onClick={()=>exportReport("pdf")}>{t("PDF 저장(인쇄)")}</button>
+      <button disabled={running||!!pending.length} onClick={()=>exportReport("html")}>{t("보고서 HTML 저장")}</button>
+      <button disabled={running||!!pending.length} onClick={()=>exportReport("xlsx")}>{t("Excel 통합문서 저장")}</button>
+      <button disabled={running||!!pending.length} onClick={()=>exportReport("md")}>{t("문서 Markdown 저장")}</button>
+      <button onClick={()=>close()}>{t("닫기")}</button>
+    </div>
+    </>}
+    {mode === "transcript" && <div className="dialog-actions"><button onClick={()=>close()}>{t("닫기")}</button></div>}
   </Dialog>;
 }

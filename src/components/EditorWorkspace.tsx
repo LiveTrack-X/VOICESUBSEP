@@ -4,6 +4,14 @@ import { useI18n } from "../i18n";
 import { SubtitleFocusContext } from "../workspaceFocus";
 
 const FOCUS_STORAGE_KEY = "voicesubsep-editor-focus-v1";
+const NARROW_FOCUS_STORAGE_KEY = "voicesubsep-editor-focus-narrow-v1";
+
+function readFocused(narrow: boolean): boolean {
+  try {
+    const stored = localStorage.getItem(narrow ? NARROW_FOCUS_STORAGE_KEY : FOCUS_STORAGE_KEY);
+    return stored === null ? narrow : stored === "true";
+  } catch { return narrow; }
+}
 
 export function EditorWorkspace({ children, noteReveal, tools }: {
   children: ReactNode;
@@ -11,17 +19,22 @@ export function EditorWorkspace({ children, noteReveal, tools }: {
   tools?: ReactNode;
 }) {
   const { t } = useI18n();
-  const [focused, setFocused] = useState(() => {
-    try { return localStorage.getItem(FOCUS_STORAGE_KEY) === "true"; }
-    catch { return false; }
-  });
+  const [narrow, setNarrow] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 1000px)").matches);
+  const [focused, setFocused] = useState(() => readFocused(narrow));
+  const chooseFocused = (value: boolean) => {
+    setFocused(value);
+    try { localStorage.setItem(narrow ? NARROW_FOCUS_STORAGE_KEY : FOCUS_STORAGE_KEY, String(value)); }
+    catch { /* Layout remains usable without browser storage. */ }
+  };
   const previousNoteReveal = useRef(noteReveal);
   // Reveal notes in the same commit so NotesPanel measures a visible card.
   const focusedView = focused && !(noteReveal && previousNoteReveal.current !== noteReveal);
   useEffect(() => {
-    try { localStorage.setItem(FOCUS_STORAGE_KEY, String(focused)); }
-    catch { /* Layout remains usable when browser storage is unavailable. */ }
-  }, [focused]);
+    const query = window.matchMedia("(max-width: 1000px)");
+    const resize = () => { setNarrow(query.matches); setFocused(readFocused(query.matches)); };
+    query.addEventListener("change", resize);
+    return () => query.removeEventListener("change", resize);
+  }, []);
   useEffect(() => {
     // A timeline note must still reveal its editor while focus view is active.
     if (noteReveal && previousNoteReveal.current !== noteReveal) setFocused(false);
@@ -35,7 +48,7 @@ export function EditorWorkspace({ children, noteReveal, tools }: {
       <button
         className="workspace-focus-button"
         aria-pressed={focusedView}
-        onClick={() => setFocused(value => !value)}
+        onClick={() => chooseFocused(!focused)}
         title={t("미리보기와 보조 패널을 줄여 자막 편집 공간을 넓힙니다.")}
       >
         {focusedView ? <Columns2 size={15} /> : <PanelLeftClose size={15} />}

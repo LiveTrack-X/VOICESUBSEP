@@ -26,11 +26,12 @@ export type Health = {
 export function analysisBlockReason(
   health: Health | null,
   diarization = true,
+  asrProvider: "local" | "groq" | "xai" = "local",
 ): string | null {
   if (!health) return "분석 서버의 준비 상태를 확인하지 못했습니다.";
   if (!health.ffmpeg || !health.ffprobe)
     return "미디어 처리에 필요한 FFmpeg와 FFprobe가 준비되지 않았습니다.";
-  if (!health.engines.whisper)
+  if (asrProvider === "local" && !health.engines.whisper)
     return "음성 인식에 필요한 Whisper 실행환경이 준비되지 않았습니다.";
   if (diarization && !health.engines.nemotron)
     return health.engineIssues?.nemotron?.trim() ||
@@ -48,6 +49,9 @@ export type Job = {
   status: "queued" | "running" | "completed" | "failed" | "cancelled";
   stage: string;
   progress: number;
+  createdAt?: string;
+  updatedAt?: string;
+  recognitionPreview?: { lines: string[]; updatedAt: string };
   error?: string;
   result?: AnalysisResult;
 };

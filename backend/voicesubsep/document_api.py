@@ -1,11 +1,12 @@
-"""Evidence-linked minutes drafts from bounded transcripts, local Ollama only."""
+"""Evidence-linked minutes drafts; local by default, explicitly opted-in cloud text."""
 import json
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .translation import LANGUAGES, _busy, installed_models, is_remote_model, ollama_json, text_units
+from . import cloud_text
 
 router = APIRouter(prefix="/api/documents")
 
@@ -22,10 +23,17 @@ class MinutesRequest(BaseModel):
     model: str = Field(min_length=1, max_length=200)
     language: Literal["ko", "en", "ja", "zh", "es"] = "ko"
     device: Literal["auto", "cpu"] = "auto"
+    provider: Literal["local", "groq", "xai"] = "local"
+    cloudConsent: bool = False
+    credentialGeneration: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
     captions: list[SourceCaption] = Field(min_length=1, max_length=80)
 
     @model_validator(mode="after")
     def bounded(self):
+        if self.provider != "local":
+            cloud_text.validate_cloud_request(self.provider, self.model, self.cloudConsent)
+            if self.credentialGeneration is None:
+                raise ValueError("Confirm the current provider key before starting a cloud text run.")
         if len({c.id for c in self.captions}) != len(self.captions):
             raise ValueError("Duplicate source IDs.")
         lengths = [text_units(c.text) for c in self.captions]
@@ -40,13 +48,15 @@ class MinutesRequest(BaseModel):
         return self
 
 
-def generate_minutes(request: MinutesRequest) -> dict:
-    if request.model not in installed_models():
-        raise ValueError("Select an installed local Ollama model. No models are downloaded automatically.")
-    info = ollama_json("/api/show", {"model": request.model})
-    capabilities = info.get("capabilities", [])
-    if is_remote_model(info) or not isinstance(capabilities, list) or "completion" not in capabilities:
-        raise ValueError("An installed local text generation model is required.")
+def generate_minutes(request: MinutesRequest, *, provider_key: str | None = None) -> dict:
+    capabilities = []
+    if request.provider == "local":
+        if request.model not in installed_models():
+            raise ValueError("Select an installed local Ollama model. No models are downloaded automatically.")
+        info = ollama_json("/api/show", {"model": request.model})
+        capabilities = info.get("capabilities", [])
+        if is_remote_model(info) or not isinstance(capabilities, list) or "completion" not in capabilities:
+            raise ValueError("An installed local text generation model is required.")
     item_schema = {"type": "object", "additionalProperties": False, "properties": {
         "kind": {"type": "string", "enum": ["summary", "discussion", "decision", "action"]},
         "text": {"type": "string"}, "owner": {"type": "string"}, "due": {"type": "string"},
@@ -66,11 +76,15 @@ def generate_minutes(request: MinutesRequest) -> dict:
             {"role": "user", "content": json.dumps([c.model_dump() for c in request.captions], ensure_ascii=False)}],
             "format": schema, "stream": False, "options": options, "keep_alive": "1m"}
     if "thinking" in capabilities: body["think"] = False
-    response = ollama_json("/api/chat", body, timeout=180)
-    if is_remote_model(response) or response.get("done") is not True or response.get("done_reason") == "length":
-        raise ValueError("The local minutes response is incomplete or invalid.")
-    message = response.get("message")
-    content = message.get("content") if isinstance(message, dict) else None
+    if request.provider == "local":
+        response = ollama_json("/api/chat", body, timeout=180)
+        if is_remote_model(response) or response.get("done") is not True or response.get("done_reason") == "length":
+            raise ValueError("The local minutes response is incomplete or invalid.")
+        message = response.get("message")
+        content = message.get("content") if isinstance(message, dict) else None
+    else:
+        content = cloud_text.chat_json(request.provider, provider_key or "", model=request.model,
+            messages=body["messages"], schema=schema, consent=request.cloudConsent, max_tokens=6000)
     value = json.loads(content) if isinstance(content, str) else None
     if not isinstance(value, dict) or set(value) != {"items"} or not isinstance(value["items"], list) or len(value["items"]) > 64:
         raise ValueError("Invalid minutes response structure.")
@@ -91,15 +105,19 @@ def generate_minutes(request: MinutesRequest) -> dict:
                 raise ValueError("Invalid assignment or due date.")
             if item[field] and not any(item[field] in sources[source_id] for source_id in ids): item[field] = ""
         items.append({**item, "evidenceIds": list(dict.fromkeys(ids))})
-    return {"items": items, "model": request.model, "localOnly": True}
+    return {"items": items, "model": request.model, "localOnly": request.provider == "local",
+            **({"provider": request.provider} if request.provider != "local" else {})}
 
 
 @router.post("/generate")
-def generate(request: MinutesRequest):
+def generate(request: MinutesRequest, http_request: Request = None):
     if not _busy.acquire(blocking=False):
-        raise HTTPException(409, "Another local text generation request is running.")
+        raise HTTPException(409, "Another text generation request is running.")
     try:
-        return generate_minutes(request)
+        if request.provider == "local":
+            return generate_minutes(request)
+        with cloud_text.session_key(http_request, request.provider, request.credentialGeneration) as key:
+            return generate_minutes(request, provider_key=key)
     except (ValueError, TypeError, KeyError) as exc:
         raise HTTPException(422, str(exc)) from exc
     except RuntimeError as exc:
