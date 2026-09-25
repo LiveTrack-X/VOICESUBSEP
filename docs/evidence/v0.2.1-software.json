@@ -7,7 +7,7 @@
     "backend": {"passed": 748, "skipped": 1},
     "typescriptAndProductionBuild": "passed",
     "localDocumentationLinks": {"checked": 134, "errors": 0},
-    "docx": "Synthetic fixture: ZIP CRC and six OpenXML parts parsed; XML metacharacters, line breaks and tabs preserved",
+    "docx": "Synthetic fixture: ZIP CRC and six OpenXML parts parsed; independently opened with python-docx (eight paragraphs, one section); XML metacharacters, line breaks and tabs preserved",
     "xlsx": "Synthetic fixture: ZIP CRC and nine XML/relationship parts parsed; literal formula-like text and numeric times preserved"
   },
   "browser": {

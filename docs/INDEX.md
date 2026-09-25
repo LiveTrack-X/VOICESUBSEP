@@ -11,6 +11,7 @@ Start with the bilingual user and online installer guides. Versioned evidence is
 | Small EXE, speed limit, retry/cache, manual fallback / 작은 EXE·속도 제한·재시도·캐시·수동 대안 | [Online installer / 온라인 설치](ONLINE-INSTALLER.md) |
 | Install, analyze, edit, export and recover / 설치·분석·편집·출력·복구 | [User guide / 사용자 가이드](USER-GUIDE.md) |
 | Features and boundaries / 기능과 한계 | [README](../README.md) |
+| Every requested feature and remaining gaps / 이전 요청별 구현·미완료 현황 | [Feature status / 기능 현황](FEATURE-STATUS.md) |
 | Bulk captions, waveform, recovery, OBS, documents and recording / 일괄 자막·파형·복구·OBS·문서·녹음 | [Editing workflows / 편집 흐름](EDITING-WORKFLOWS.md) |
 | Source/output time and translation contracts / 원본·출력 시간과 번역 규칙 | [Cuts and languages / 컷·언어](CUTS-AND-LANGUAGES.md) |
 | External VST3 chains and latency / 외부 VST3 체인·지연 | [VST chain / VST 체인](VST-CHAIN.md) |
