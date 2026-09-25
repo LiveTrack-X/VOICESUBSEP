@@ -23,6 +23,7 @@ from .model_cache import resolve_nemotron_model, resolve_whisper_model
 from .asr_windows import speaker_change_clips
 from .recognition_preview import RecognitionPreview
 from .speech_activity import SpeechActivityCancelled, SpeechActivityGate
+from .speaker_evidence import attach_speaker_evidence
 
 
 class AnalysisCancelled(Exception):
@@ -570,7 +571,8 @@ def build_result(records: list[dict], diarization_segments: list[dict] | None, *
     captions: list[dict] = []
     invalid = 0
     boundary_repairs = 0
-    for record in sorted(records, key=lambda item: _number(item.get("start")) or 0):
+    word_sources: dict[int, dict] = {}
+    for record_index, record in enumerate(sorted(records, key=lambda item: _number(item.get("start")) or 0)):
         _checkpoint(cancelled)
         source_words = record.get("words") or []
         fallback = not source_words
@@ -595,6 +597,8 @@ def build_result(records: list[dict], diarization_segments: list[dict] | None, *
             probability = _number(word.get("probability"))
             if probability is not None:
                 clean_word["probability"] = max(0, min(1, probability))
+            word_sources[id(clean_word)] = {"identity": identity, "reasons": list(reasons), "record": record_index,
+                                           "probability": word.get("probability")}
             atoms.append((clean_word, identity, reasons))
         atoms.sort(key=lambda item: (item[0]["start"], item[0]["end"]))
         boundary_repairs += _compensate_speaker_boundaries(atoms, intervals, speaker_boundary_ms)
@@ -619,6 +623,12 @@ def build_result(records: list[dict], diarization_segments: list[dict] | None, *
     for i, caption in enumerate(captions):
         caption["id"] = f"caption-{i + 1}"
         caption["text"] = caption["text"].strip()
+    reduced_evidence = attach_speaker_evidence(captions, word_sources, intervals, speaker_ids,
+                                             diarization=diarization_segments is not None,
+                                             tolerance_ms=speaker_boundary_ms,
+                                             checkpoint=lambda: _checkpoint(cancelled))
+    if reduced_evidence:
+        warnings.append(f"근거 용량 제한으로 자막 {reduced_evidence}개의 상세 근거를 줄였습니다. 원문·시간·인물은 보존했고 추천은 필요한 근거가 남은 항목에만 표시합니다.")
     if invalid:
         warnings.append(f"시간이 유효하지 않거나 비어 있는 단어 {invalid}개를 자막으로 만들지 못했습니다. 해당 원문 구간을 확인하세요.")
     if not captions:

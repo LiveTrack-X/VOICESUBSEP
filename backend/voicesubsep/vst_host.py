@@ -132,7 +132,9 @@ def _read_json(path: Path) -> dict:
 
 def _run_worker(request: dict, *, timeout: float, cancelled: Cancelled,
                 progress: Progress | None = None, directory: Path | None = None,
-                stall_timeout: float = 180, close_requested: Cancelled | None = None) -> dict:
+                stall_timeout: float = 180, close_requested: Cancelled | None = None,
+                focus_requested: Cancelled | None = None, open_timeout: float = 45,
+                close_timeout: float = 10) -> dict:
     _checkpoint(cancelled)
     if not _WORKER_LOCK.acquire(blocking=False):
         raise VSTError("Another VST operation is running. Wait for it to finish or cancel it first.")
@@ -140,7 +142,8 @@ def _run_worker(request: dict, *, timeout: float, cancelled: Cancelled,
         try:
             with vst_process_lock():
                 return _run_worker_locked(request, timeout=timeout, cancelled=cancelled, progress=progress,
-                                          directory=directory, stall_timeout=stall_timeout, close_requested=close_requested)
+                                          directory=directory, stall_timeout=stall_timeout, close_requested=close_requested,
+                                          focus_requested=focus_requested, open_timeout=open_timeout, close_timeout=close_timeout)
         except RuntimeError as exc:
             if isinstance(exc, VSTError):
                 raise
@@ -151,7 +154,9 @@ def _run_worker(request: dict, *, timeout: float, cancelled: Cancelled,
 
 def _run_worker_locked(request: dict, *, timeout: float, cancelled: Cancelled,
                        progress: Progress | None = None, directory: Path | None = None,
-                       stall_timeout: float = 180, close_requested: Cancelled | None = None) -> dict:
+                       stall_timeout: float = 180, close_requested: Cancelled | None = None,
+                       focus_requested: Cancelled | None = None, open_timeout: float = 45,
+                       close_timeout: float = 10) -> dict:
     _checkpoint(cancelled)
     if not runtime_available():
         raise VSTError("VST preprocessing requires the optional Pedalboard runtime on Windows x64.")
@@ -162,9 +167,11 @@ def _run_worker_locked(request: dict, *, timeout: float, cancelled: Cancelled,
         request = {**request, "progressPath": str(progress_path)}
         close_path = folder / "close-editor"
         start_path = folder / "start-editor"
+        focus_path = folder / "focus-editor"
         if close_requested is not None:
             request["closePath"] = str(close_path)
             request["startPath"] = str(start_path)
+            request["focusPath"] = str(focus_path)
         encoded = json.dumps(request, ensure_ascii=False, allow_nan=False).encode("utf-8")
         if len(encoded) > MAX_JSON_BYTES:
             raise ValueError("VST worker request exceeded its size limit.")
@@ -173,7 +180,10 @@ def _run_worker_locked(request: dict, *, timeout: float, cancelled: Cancelled,
         environment["PYTHONPATH"] = os.pathsep.join(filter(None, [str(Path(__file__).resolve().parent.parent),
                                                                  environment.get("PYTHONPATH", "")]))
         environment.update({"OMP_NUM_THREADS": "2", "MKL_NUM_THREADS": "2", "OPENBLAS_NUM_THREADS": "2"})
-        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0)
+        # Interactive startup should not be deprioritized behind background work.
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        if close_requested is None:
+            flags |= getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0)
         # Native plugins can write unlimited or malformed stdout/stderr. Discard
         # both; the bounded atomic response is the sole result/error channel.
         process = subprocess.Popen(_worker_command(request_path, response_path), stdin=subprocess.DEVNULL,
@@ -182,6 +192,8 @@ def _run_worker_locked(request: dict, *, timeout: float, cancelled: Cancelled,
                                    start_new_session=close_requested is not None and os.name != "nt")
         started = heartbeat = time.monotonic()
         last_progress = -1.0
+        window_open = False
+        close_started = None
         tree = None
         try:
             if close_requested is not None:
@@ -192,6 +204,9 @@ def _run_worker_locked(request: dict, *, timeout: float, cancelled: Cancelled,
                 _checkpoint(cancelled)
                 if close_requested is not None and close_requested() and not close_path.exists():
                     close_path.touch()
+                    close_started = time.monotonic()
+                if focus_requested is not None and focus_requested() and close_started is None:
+                    focus_path.touch()
                 now = time.monotonic()
                 if now - started > timeout or now - heartbeat > stall_timeout:
                     raise VSTError("VST worker timed out. Disable this effect or use a compatible offline VST3.")
@@ -199,6 +214,8 @@ def _run_worker_locked(request: dict, *, timeout: float, cancelled: Cancelled,
                     try:
                         state = _read_json(progress_path)
                         fraction = state.get("fraction")
+                        if close_requested is not None and state.get("stage") == "open" and type(fraction) in (int, float) and fraction == 1.0:
+                            window_open = True
                         if (isinstance(fraction, (int, float)) and not isinstance(fraction, bool)
                                 and math.isfinite(fraction) and 0 <= fraction <= 1 and fraction > last_progress):
                             heartbeat, last_progress = now, fraction
@@ -206,6 +223,10 @@ def _run_worker_locked(request: dict, *, timeout: float, cancelled: Cancelled,
                                 progress(str(state.get("stage", "VST preprocessing"))[:160], fraction)
                     except (OSError, ValueError):
                         pass  # An atomic replace may race an antivirus/file reader.
+                if close_started is not None and now - close_started > close_timeout:
+                    raise VSTError("The plugin did not close in time. The editor was stopped; unsaved changes were not applied.")
+                if close_requested is not None and not window_open and close_started is None and now - started > open_timeout:
+                    raise VSTError(f"The plugin window did not open within {open_timeout:g} seconds. The editor was stopped; try opening it again.")
                 time.sleep(0.05)
             _checkpoint(cancelled)
             if not response_path.exists():
@@ -243,12 +264,14 @@ def inspect_plugin(path: str, plugin_name: str | None = None, *, timeout: float 
 
 
 def edit_plugin(slot: dict, *, cancelled: Cancelled = lambda: False,
-                close_requested: Cancelled = lambda: False, timeout: float = 30 * 60) -> dict:
+                close_requested: Cancelled = lambda: False, timeout: float = 30 * 60,
+                focus_requested: Cancelled = lambda: False, progress: Progress | None = None) -> dict:
     effect = validate_chain([slot])[0]
     # A bypassed slot can still be edited, but its plugin must actually exist.
     effect["path"] = validate_plugin_path(effect["path"])
     return _run_worker({"operation": "editor", "effect": effect}, timeout=timeout,
-                       stall_timeout=timeout, cancelled=cancelled, close_requested=close_requested)
+                       stall_timeout=timeout, cancelled=cancelled, close_requested=close_requested,
+                       focus_requested=focus_requested, progress=progress)
 
 
 def _pcm_wav_info(path: Path) -> dict:

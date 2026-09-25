@@ -28,7 +28,7 @@ export function editCaption(caption: Caption, change: Partial<Caption>): Caption
     if (next.speakerId === null) reasons.add("unassigned");
     else reasons.delete("unassigned");
   }
-  return { ...next, ...(textChanged || timeChanged ? { words: undefined } : {}), reasons: [...reasons], reviewed: false };
+  return { ...next, ...(textChanged || timeChanged ? { words: undefined } : {}), speakerEvidence: undefined, reasons: [...reasons], reviewed: false };
 }
 
 export function addCaption(project: Project, time: number, text: string, id: string = crypto.randomUUID()): Project {

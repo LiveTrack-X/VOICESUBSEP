@@ -160,7 +160,12 @@ def setup_process(tmp_path, monkeypatch, plugins, data=None):
     monkeypatch.setattr(worker, "_pedalboard", lambda:SimpleNamespace(Pedalboard=lambda effects:DelayBoard(effects[0])))
     remaining=iter(plugins)
     monkeypatch.setattr(worker, "_load_effect", lambda *args:next(remaining))
-    monkeypatch.setattr(worker, "_apply_parameters", lambda *args:{})
+    def apply_parameters(_plugin, _values, *, capture_values=True):
+        # The editor may skip value capture while opening; offline processing
+        # must still capture the values recorded in its preprocessing report.
+        assert capture_values is True
+        return {}
+    monkeypatch.setattr(worker, "_apply_parameters", apply_parameters)
     return source, destination, chain, quantized
 
 

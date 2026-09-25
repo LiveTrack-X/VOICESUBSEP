@@ -197,7 +197,7 @@ def test_saved_native_state_affects_processed_samples_and_preserves_source(slot,
 def test_manager_bounds_cancel_discards_result_and_stale_close_cannot_affect_new_editor(slot):
     entered, returned = threading.Event(), threading.Event()
     calls = []
-    def editor(effect, *, cancelled, close_requested):
+    def editor(effect, *, cancelled, close_requested, **_):
         calls.append(effect)
         entered.set()
         end = time.monotonic() + 3
@@ -232,7 +232,7 @@ def test_manager_bounds_cancel_discards_result_and_stale_close_cannot_affect_new
 
 def test_manager_shutdown_waits_for_cancel_and_never_publishes_result(slot):
     entered = threading.Event()
-    def editor(_effect, *, cancelled, close_requested):
+    def editor(_effect, *, cancelled, close_requested, **_):
         entered.set()
         while not cancelled():
             time.sleep(.005)
@@ -257,7 +257,7 @@ def test_manager_retains_at_most_sixteen_terminal_snapshots(slot):
             identifier = manager.submit(slot)["id"]
             ids.append(identifier)
             assert wait(manager, identifier)["status"] == "completed"
-        assert len(manager._records) == len(manager._close) == len(manager._cancel) == 16
+        assert len(manager._records) == len(manager._close) == len(manager._cancel) == len(manager._focus) == 16
         with pytest.raises(KeyError):
             manager.close(ids[0])
     finally:
@@ -279,6 +279,10 @@ def test_api_state_bounds_origin_validation_and_lifecycle(slot, tmp_path, monkey
         assert client.get(f"/api/vst/editors/{identifier}").status_code == 200
         assert client.post(f"/api/vst/editors/{identifier}/close", json={}).status_code == 200
         assert client.post(f"/api/vst/editors/{identifier}/close", json={"path": slot["path"]}).status_code == 422
+        assert client.post(f"/api/vst/editors/{identifier}/focus", json={}).status_code == 200
+        assert client.post(f"/api/vst/editors/{identifier}/focus", json={"window": 1}).status_code == 422
+        assert client.post(f"/api/vst/editors/{identifier}/focus", json={}, headers={"Origin": "https://other.example"}).status_code == 403
+        assert client.post("/api/vst/editors/" + "a" * 32 + "/focus", json={}).status_code == 404
         assert client.delete(f"/api/vst/editors/{identifier}").status_code == 200
         for invalid in ["not-base64", "YR==", None, encode_plugin_state(b"x" * MAX_STATE_BYTES) + "AAAA"]:
             rejected = client.post("/api/vst/editors", json={**slot, "state": invalid})
@@ -289,6 +293,83 @@ def test_api_state_bounds_origin_validation_and_lifecycle(slot, tmp_path, monkey
         assert client.post("/api/vst/inspect", content=b" " * (64 * 1024 + 1), headers={"Content-Type": "application/json"}).status_code == 413
         assert client.get("/api/vst/editors/" + "a" * 32).status_code == 404
     assert app.state.vst_editors._stopping
+
+
+def test_manager_only_worker_visible_stage_means_open_and_late_callbacks_cannot_mutate_terminal(slot):
+    entered = threading.Event()
+    callbacks = {}
+
+    def editor(_effect, *, cancelled, close_requested, progress, focus_requested):
+        callbacks.update(progress=progress, focus=focus_requested)
+        entered.set()
+        while not cancelled() and not close_requested():
+            time.sleep(.005)
+        return {"parameters": []}
+
+    manager = EditorManager(editor=editor)
+    manager.start()
+    try:
+        identifier = manager.submit(slot)["id"]
+        assert entered.wait(1)
+        assert manager.get(identifier)["status"] == "running"
+        assert manager.get(identifier)["stage"] == "starting"
+        assert not callbacks["focus"]()
+        manager.focus(identifier)
+        manager.focus(identifier)
+        assert callbacks["focus"]() is True  # Multiple clicks coalesce; not an endless focus loop.
+        assert callbacks["focus"]() is False
+        callbacks["progress"]("loading", .1)
+        assert manager.get(identifier)["stage"] == "loading"
+        callbacks["progress"]("opening", .5)
+        assert manager.get(identifier)["stage"] == "opening"
+        callbacks["progress"]("invalid", 1)
+        callbacks["progress"]("loading", .1)
+        assert manager.get(identifier)["stage"] == "opening"
+        callbacks["progress"]("open", 1)
+        assert manager.get(identifier)["stage"] == "open"
+        manager.focus(identifier)
+        manager.close(identifier)
+        assert callbacks["focus"]() is False  # Pending focus cannot resurrect a closing window.
+        saved = wait(manager, identifier)
+        manager.focus(identifier)
+        callbacks["progress"]("starting", 0)
+        assert callbacks["focus"]() is False
+        assert manager.get(identifier) == saved
+    finally:
+        manager.stop()
+
+
+def test_manager_focus_is_owned_and_cancelled_session_never_focuses_new_editor(slot):
+    callbacks = []
+    entered = threading.Event()
+
+    def editor(_effect, *, cancelled, close_requested, progress, focus_requested):
+        callbacks.append(focus_requested)
+        entered.set()
+        while not cancelled() and not close_requested():
+            time.sleep(.005)
+        return {"parameters": []}
+
+    manager = EditorManager(editor=editor)
+    manager.start()
+    try:
+        first = manager.submit(slot)["id"]
+        assert entered.wait(1)
+        manager.focus(first)
+        manager.cancel(first)
+        assert callbacks[0]() is False
+        assert wait(manager, first)["status"] == "cancelled"
+        entered.clear()
+        second = manager.submit(slot)["id"]
+        assert entered.wait(1)
+        manager.focus(first)
+        assert callbacks[0]() is callbacks[1]() is False
+        manager.focus(second)
+        assert callbacks[1]() is True
+        manager.close(second)
+        assert wait(manager, second)["status"] == "completed"
+    finally:
+        manager.stop()
 
 
 def test_atomic_progress_publish_retries_transient_windows_lock(tmp_path, monkeypatch):

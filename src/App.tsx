@@ -63,6 +63,9 @@ import { BackgroundJobStatus, BackgroundJobDialog } from "./components/Backgroun
 import { bindProjectMedia, mediaLinkDecision, MediaSelectionGuard, sameMediaIdentity, uploadedMediaIdentity, type MediaIdentity } from "./mediaIdentity";
 import { sourceUrl, type MediaSource } from "./mediaSource";
 import { MediaReconnect, reconnectMessage } from "./mediaReconnect";
+import { SpeakerReviewDialog } from "./components/SpeakerReviewDialog";
+import { applySpeakerRecommendations, SPEAKER_REVIEW_STALE, type SpeakerReviewSnapshot } from "./speakerReview";
+import { fitSpeakerEvidence, SPEAKER_EVIDENCE_BUDGET_NOTICE } from "./speakerEvidenceBudget";
 import "./branding-links.css";
 
 export default function App() {
@@ -77,7 +80,7 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [revealCaption, setRevealCaption] = useState<{ id: string } | null>(null);
   const [revealNote, setRevealNote] = useState<{ id: string } | null>(null);
-  const [dialog, setDialog] = useState<"export" | "analysis" | "background" | "update" | "render" | "settings" | "documents" | "live" | "history" | "recovery" | "mixer" | "shortcuts" | null>(null);
+  const [dialog, setDialog] = useState<"export" | "analysis" | "background" | "update" | "render" | "settings" | "documents" | "live" | "history" | "recovery" | "mixer" | "shortcuts" | "speaker-review" | null>(null);
   const [editedPreview, setEditedPreview] = useState(false);
   const [projectSession, setProjectSession] = useState(0);
   const [notice, setNotice] = useState("");
@@ -361,23 +364,34 @@ export default function App() {
   }
   function applyAnalysis(result: AnalysisResult) {
     try {
+      const fitted = fitSpeakerEvidence({ ...project, duration: result.duration, captions: result.captions,
+        speakers: result.speakers.length ? result.speakers : project.speakers }, MAX_PROJECT_BYTES);
       const next = parseProject(
-        JSON.stringify({
-          ...project,
-          duration: result.duration,
-          captions: result.captions,
-          speakers: result.speakers.length ? result.speakers : project.speakers,
-        }),
+        JSON.stringify(fitted.project),
       );
       update(next);
       setSelected(null);
       setDialog(null);
       setNotice(
-        t("분석 결과를 적용했습니다. 목소리를 확인해 인물 이름을 지정하세요."),
+        t("분석 결과를 적용했습니다. 목소리를 확인해 인물 이름을 지정하세요.") + (fitted.reduced ? ` ${t(SPEAKER_EVIDENCE_BUDGET_NOTICE)}` : ""),
       );
     } catch (e) {
       setNotice(t("분석 결과를 적용할 수 없습니다: {error}",{error:(e as Error).message}));
     }
+  }
+  function applySpeakerReview(snapshot: SpeakerReviewSnapshot, ids: ReadonlySet<string>) {
+    let applied = false;
+    update(previous => {
+      const next = applySpeakerRecommendations(previous, snapshot, projectSession, ids);
+      applied = next !== previous;
+      return next;
+    });
+    if (!applied) throw new Error(SPEAKER_REVIEW_STALE);
+    videoRef.current?.pause();
+    const id = ids.values().next().value;
+    if (id) { setSelected(id); setRevealCaption({ id }); }
+    setDialog(null);
+    setNotice(t("선택한 후보 {count}개를 적용했습니다. 원문·시간은 유지하며 실행 취소할 수 있습니다.", { count: ids.size }));
   }
   function exportText(kind: "srt" | "md" | "csv", speakerId?: string | null) {
     try {
@@ -518,6 +532,7 @@ export default function App() {
           onAnalyze={() => file ? setDialog("analysis") : chooseMedia(true)}
         />}>
         <EditorWorkspace noteReveal={revealNote} tools={<>
+          <button disabled={!project.captions.some(caption => caption.speakerId === null)} onClick={() => setDialog("speaker-review")}>{t("미배정 보완 검토")}</button>
           <button onClick={() => setDialog("mixer")}>{t("오디오 트랙 믹서")}</button>
           <button onClick={()=>setDialog("history")}><History size={15}/>{t("작업 이력·저장 공간")}</button>
           <button className={recoveryWarning?"recovery-warning":""} onClick={()=>setDialog("recovery")}><ArchiveRestore size={15}/>{t("자동 저장 복구")}</button>
@@ -710,6 +725,13 @@ export default function App() {
         />
       )}
       {dialog === "background" && <BackgroundJobDialog snapshot={background.snapshot} project={project} file={file} onClose={()=>setDialog(null)} onApply={applyAnalysis} onRetry={background.retry}/>}
+      {dialog === "speaker-review" && <SpeakerReviewDialog key={projectSession} project={project} session={projectSession}
+        mediaAvailable={!!source} playing={playing} onStop={() => videoRef.current?.pause()} onClose={() => setDialog(null)} onApply={applySpeakerReview}
+        onListen={(start, end, captionId) => {
+          if (!source) return;
+          flushSync(() => setEditedPreview(false));
+          setSelected(captionId); setTime(start); playerRef.current?.previewRange(start, end);
+        }}/>}
       {dialog === "shortcuts" && <ShortcutDialog bindings={shortcuts.bindings} status={shortcuts.status} onSave={shortcuts.save} onClose={() => setDialog(null)}/>}
       {dialog === "export" && (
         <Dialog title={t("자막과 노트 내보내기")} onClose={() => setDialog(null)}>

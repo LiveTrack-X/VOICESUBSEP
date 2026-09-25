@@ -82,6 +82,13 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
   const durationSeconds = Number(duration);
   const validRange = !!media && !!start.trim() && !!duration.trim() && Number.isFinite(startSeconds) && startSeconds >= 0 && startSeconds < media.duration && Number.isFinite(durationSeconds) && durationSeconds > 0 && durationSeconds <= 30;
   const latency = vstLatencySummary(preview);
+  const editorCancelling = editor.cancelling || editor.command === "cancel";
+  const editorClosing = editor.command === "close" || !!editor.session?.closeRequested;
+  const editorOpen = !editor.paused && !editorCancelling && !editorClosing && editor.session?.stage === "open";
+  const editorLabel = editorCancelling ? t("플러그인 창 취소 중…") : editorClosing ? t("설정 저장·창 닫는 중…") :
+    editor.paused ? t("플러그인 창 상태 확인 필요") : !editor.session ? t("플러그인 창 요청 중…") :
+    editor.session.stage === "open" ? t("플러그인 창 열림") : editor.session.stage === "opening" ? t("플러그인 창 여는 중…") :
+    editor.session.stage === "loading" ? t("플러그인 불러오는 중…") : t("플러그인 준비 중…");
 
   useEffect(() => { setSaved(saveVstSettings(settings)); }, [settings]);
   useEffect(() => { onStateChange({ preprocessing, busy, blocked }); }, [preprocessing, busy, blocked, onStateChange]);
@@ -252,6 +259,23 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
       <button type="button" className="vst-refresh" disabled={locked} title={t("플러그인 목록 새로고침")} aria-label={t("플러그인 목록 새로고침")} onClick={() => void refresh()}>
         {checking ? <LoaderCircle size={16} className="spin" /> : <RefreshCw size={16} />}
       </button></div>
+    {editor.busy && <section className="vst-editor-status" aria-label={t("플러그인 설정창")}>
+      <p className="inline-status" role="status">{editorOpen || editor.paused ? <AppWindow size={16} /> : <LoaderCircle size={16} className="spin" />}{editorLabel}
+        {editor.preparing && <small>{t("준비 대기 {seconds}초", { seconds: editor.elapsedSeconds })}</small>}</p>
+      {editorOpen && <p>{t("별도 플러그인 창에서 설정을 조절하세요.")}</p>}
+      {editor.preparing && <p>{t("준비가 끝나면 별도 창이 열립니다. 경과 시간은 완료 예상 시간이 아닙니다.")}</p>}
+      {!editorCancelling && !editorClosing && <p>{t("창이 뒤에 있으면 앞으로 가져오기를 누르세요. 창을 닫으면 설정이 적용됩니다.")}</p>}
+      <div className="vst-preset-actions">
+        <button type="button" disabled={!editor.session || editor.commandPending || editorCancelling || editorClosing}
+          onClick={() => void editor.focus()}><AppWindow size={15} />{t("창 앞으로 가져오기")}</button>
+        <button type="button" disabled={!editor.session || editor.commandPending || editorCancelling || editorClosing}
+          onClick={() => void editor.finish(false)}>{t("닫고 적용")}</button>
+        <button type="button" disabled={editor.commandPending || editorCancelling}
+          onClick={() => void editor.finish(true)}>{t("변경 취소·창 닫기")}</button>
+        {editor.paused && <button type="button" disabled={editor.commandPending} onClick={editor.retry}>{t("상태 다시 확인")}</button>}
+        {(editor.paused || editorCancelling) && <button type="button" onClick={editor.detach}>{t("창 닫기 요청·연결 해제")}</button>}
+      </div>
+    </section>}
     <p>{t("분석용 음성만 처리합니다. 원본 미디어와 내보내기 소리는 바뀌지 않습니다.")}</p>
     <div className="vst-preset-actions">
       <button type="button" disabled={locked || badParameters} onClick={exportPreset}><Download size={15} />{t("VST 설정 저장")}</button>
@@ -293,9 +317,9 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
           <small className="vst-path" title={slot.path}>{slot.path}{slot.pluginName ? ` · ${slot.pluginName}` : ""}</small>
           <button type="button" className="vst-native-open" disabled={!status?.available || badParameters}
             onClick={() => { if (!locked && !busyRef.current) { setPresetMessage(""); setError(""); void editor.open(slot); } }}>
-            {editor.busy && editor.slotId === slot.id ? <><LoaderCircle size={16} className="spin" />{t("플러그인 창 요청 중…")}</> : <><AppWindow size={16} />{t("플러그인 창 열기")}</>}
+            {editor.busy && editor.slotId === slot.id ? <>{editorOpen || editor.paused ? <AppWindow size={16} /> : <LoaderCircle size={16} className="spin" />}{editorLabel}</> : <><AppWindow size={16} />{t("플러그인 창 열기")}</>}
           </button>
-          {editor.slotId === slot.id && editor.busy && <p className="vst-editor-inline-status" role="status">{t("별도 창을 확인하세요. 보이지 않으면 아래의 닫기 또는 취소 버튼을 사용하세요.")}</p>}
+          {editor.slotId === slot.id && editor.busy && <p className="vst-editor-inline-status" role="status">{t("창 제어 버튼은 오디오 사전처리 영역 위쪽에 있습니다.")}</p>}
           {editor.slotId === slot.id && editor.error && <p className="error-box" role="alert">{t(editor.error)}</p>}
           <details className="vst-parameters"><summary>{t("플러그인 매개변수")}</summary>
             {!metadata[slot.id] ? <><p>{t("저장된 설정을 사용합니다. 조정하려면 플러그인을 불러오세요.")}</p><button type="button" disabled={!status?.available} onClick={() => void inspect(slot)}>{t("매개변수 불러오기")}</button></>
@@ -321,18 +345,6 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
           <label>{t("비교 길이 (최대 30초)")}<input type="number" min={0.01} max={30} step="any" value={duration} onChange={(event) => { setDuration(event.target.value); setPreview(null); }} /></label>
           <button type="button" disabled={blocked || !validRange} onClick={() => void startPreview()}>{t("원본 / 처리음 비교 생성")}</button></div>
       </fieldset>
-      {editor.busy && <section className="vst-editor-status" aria-label={t("플러그인 설정창")}>
-        <p className="inline-status" role="status"><LoaderCircle size={16} className="spin" />{t("별도 플러그인 창에서 설정을 조절하세요.")}</p>
-        <p>{t("창을 닫으면 적용됩니다. 이 창을 여는 동안 다른 VST 작업은 기다려야 합니다.")}</p>
-        <div className="vst-preset-actions">
-          <button type="button" disabled={!editor.session || editor.commandPending || editor.session.cancelRequested || editor.session.closeRequested}
-            onClick={() => void editor.finish(false)}>{t("닫고 적용")}</button>
-          <button type="button" disabled={!editor.session || editor.commandPending || editor.session.cancelRequested}
-            onClick={() => void editor.finish(true)}>{t("변경 취소·창 닫기")}</button>
-          {editor.paused && <><button type="button" onClick={editor.retry}>{t("상태 다시 확인")}</button>
-            <button type="button" onClick={editor.detach}>{t("창 닫기 요청·연결 해제")}</button></>}
-        </div>
-      </section>}
       {editor.session?.status === "cancelled" && <p role="status">{t("플러그인 설정 변경을 취소했습니다.")}</p>}
       {inspecting && <p className="inline-status" role="status"><LoaderCircle size={16} className="spin" />{t("플러그인을 확인하고 있습니다…")}</p>}
       {(previewStarting || previewRunning) && <div className="vst-preview-progress" role="status"><p className="inline-status"><LoaderCircle size={16} className="spin" />{t("비교 음성을 준비하고 있습니다…")}</p>

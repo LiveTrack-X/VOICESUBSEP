@@ -1,6 +1,7 @@
 import { parseDocuments, type ProjectDocuments } from "./documents";
 import { parseAudioMix, type AudioMixPlan } from "./audioMixer";
 import { parseMediaIdentity, type MediaIdentity } from "./mediaIdentity";
+import { parseSpeakerEvidence, type SpeakerEvidence } from "./speakerEvidence";
 /** Portable editing data. All times are seconds on the original source media. */
 export type Mode = "standard" | "overlap";
 export type ReviewReason =
@@ -57,6 +58,7 @@ export type Caption = {
   words?: Word[];
   style?: Partial<CaptionStyle>;
   translation?: CaptionTranslation;
+  speakerEvidence?: SpeakerEvidence;
 };
 
 /** Resolve only at display time so partial overrides keep inheriting defaults. */
@@ -374,6 +376,7 @@ export function parseProject(text: string): Project {
         "words",
         "style",
         "translation",
+        "speakerEvidence",
       ]);
       const start = number(item.start, `${path}.start`);
       const end = number(item.end, `${path}.end`);
@@ -402,6 +405,8 @@ export function parseProject(text: string): Project {
       };
       if (item.style !== undefined)
         caption.style = parseCaptionStyle(item.style, `${path}.style`);
+      if (item.speakerEvidence !== undefined)
+        caption.speakerEvidence = parseSpeakerEvidence(item.speakerEvidence, `${path}.speakerEvidence`);
       if (item.translation !== undefined) {
         const translationPath = `${path}.translation`;
         const translation = object(item.translation, translationPath, ["sourceText", "texts"]);

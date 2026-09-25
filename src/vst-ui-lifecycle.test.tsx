@@ -26,7 +26,7 @@ vi.mock("react", async importOriginal => ({ ...await importOriginal<typeof impor
     }
   },
 }));
-vi.mock("./i18n", () => ({ useI18n: () => ({ locale: "ko", t: (key: string) => key }) }));
+vi.mock("./i18n", () => ({ useI18n: () => ({ locale: "ko", t: (key: string, values: Record<string, unknown> = {}) => key.replace(/\{(\w+)\}/g, (match, name) => String(values[name] ?? match)) }) }));
 vi.mock("./api", () => ({ request: vi.fn(), download: vi.fn() }));
 import { request } from "./api";
 import { VstChainPanel } from "./components/VstChainPanel";
@@ -50,6 +50,9 @@ function text(node: any): string { return Array.isArray(node) ? node.map(text).j
 function click(label: string) { const button = nodes(tree).find(node => node.type === "button" && text(node).includes(label)); expect(button).toBeTruthy(); button.props.onClick(); render(); }
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 function countEditorPosts() { return mockRequest.mock.calls.filter(([path, init]) => path === "/api/vst/editors" && init?.method === "POST").length; }
+function editorStatus() { return nodes(tree).find(node => node.props?.className === "vst-editor-status"); }
+async function tick(ms: number) { await vi.advanceTimersByTimeAsync(ms); await settle(); }
+const completedEditor = (id = "editor") => ({ id, status: "completed", result: { path: slot.path, name: slot.name, parameters: [{ key: "gain", label: "Gain", type: "number", value: 2, min: 0, max: 5 }], state: "cHJlc2V0" } });
 
 beforeEach(async () => {
   vi.useFakeTimers();
@@ -66,6 +69,135 @@ beforeEach(async () => {
   });
   render(); await settle();
 });
+
+describe("native VST window status and commands", () => {
+  it("distinguishes the request, preparation and observed open stages, then focuses without reopening", async () => {
+    const posted = deferred<any>();
+    const normal = mockRequest.getMockImplementation()!;
+    let stage = "opening";
+    mockRequest.mockImplementation((path, init) => {
+      if (path === "/api/vst/editors") return posted.promise;
+      if (String(path).startsWith("/api/vst/editors/editor")) return Promise.resolve({ id: "editor", status: "running", stage } as any);
+      return normal(path, init);
+    });
+    click("플러그인 창 열기");
+    expect(text(editorStatus())).toContain("플러그인 창 요청 중…");
+    posted.resolve({ id: "editor", status: "running", stage: "loading" }); await settle();
+    expect(text(editorStatus())).toContain("플러그인 불러오는 중…");
+    await tick(1250);
+    expect(text(editorStatus())).toContain("플러그인 창 여는 중…");
+    expect(text(editorStatus())).toContain("준비 대기 1초");
+    stage = "open"; await tick(1000);
+    expect(text(editorStatus())).toContain("플러그인 창 열림");
+    expect(text(editorStatus())).not.toContain("준비 대기");
+    expect(nodes(editorStatus()).filter(node => node.props?.className === "spin")).toHaveLength(0);
+    click("창 앞으로 가져오기"); await settle();
+    expect(mockRequest).toHaveBeenCalledWith("/api/vst/editors/editor/focus", expect.objectContaining({ method: "POST", body: "{}" }));
+    expect(countEditorPosts()).toBe(1);
+  });
+
+  it("ignores the GET begun before close, then applies the final result exactly once", async () => {
+    const previousPoll = deferred<any>();
+    const normal = mockRequest.getMockImplementation()!;
+    let polled = 0;
+    mockRequest.mockImplementation((path, init) => {
+      if (path === "/api/vst/editors/editor/close") return Promise.resolve({ id: "editor", status: "running", stage: "open", closeRequested: true } as any);
+      if (path === "/api/vst/editors/editor" && !init?.method) return polled++ === 0 ? previousPoll.promise : Promise.resolve(completedEditor() as any);
+      return normal(path, init);
+    });
+    click("플러그인 창 열기"); await settle(); await tick(500);
+    click("닫고 적용"); await settle();
+    expect(text(editorStatus())).toContain("설정 저장·창 닫는 중…");
+    previousPoll.resolve({ id: "editor", status: "running", stage: "loading" }); await settle();
+    expect(text(editorStatus())).toContain("설정 저장·창 닫는 중…");
+    await tick(250);
+    expect(text(tree)).toContain("플러그인 창의 설정을 적용했습니다.");
+    expect(onStateChange.mock.lastCall?.[0].busy).toBe(false);
+    const saves = vi.mocked(localStorage.setItem).mock.calls.filter(([, value]) => JSON.parse(value).chain[0]?.parameters.gain === 2);
+    expect(saves).toHaveLength(1);
+  });
+
+  it("can leave accepted cancellation even with healthy running responses and ignores a detached result", async () => {
+    const oldPoll = deferred<any>();
+    const normal = mockRequest.getMockImplementation()!;
+    let posted = 0, polled = 0;
+    mockRequest.mockImplementation((path, init) => {
+      if (path === "/api/vst/editors") return Promise.resolve({ id: ++posted === 1 ? "editor" : "new-editor", status: "running", stage: "loading" } as any);
+      if (path === "/api/vst/editors/editor" && init?.method === "DELETE") return Promise.resolve({ id: "editor", status: "running", cancelRequested: true } as any);
+      if (path === "/api/vst/editors/editor" && !init?.method) return polled++ === 0 ? Promise.resolve({ id: "editor", status: "running", cancelRequested: true } as any) : oldPoll.promise;
+      return normal(path, init);
+    });
+    click("플러그인 창 열기"); await settle();
+    click("변경 취소·창 닫기"); await settle(); await tick(1250);
+    expect(text(editorStatus())).toContain("플러그인 창 취소 중…");
+    click("창 닫기 요청·연결 해제"); await settle();
+    expect(onStateChange.mock.lastCall?.[0].busy).toBe(false);
+    click("플러그인 창 열기"); await settle();
+    oldPoll.resolve(completedEditor()); await settle();
+    expect(text(tree)).not.toContain("플러그인 창의 설정을 적용했습니다.");
+    expect(text(editorStatus())).toContain("플러그인 불러오는 중…");
+    expect(onStateChange.mock.lastCall?.[0].busy).toBe(true);
+  });
+
+  it("cleans up a late POST after cancellation before the session ID arrives", async () => {
+    const posted = deferred<any>();
+    const normal = mockRequest.getMockImplementation()!;
+    let count = 0;
+    mockRequest.mockImplementation((path, init) => path === "/api/vst/editors" && count++ === 0 ? posted.promise : normal(path, init));
+    click("플러그인 창 열기");
+    click("변경 취소·창 닫기"); await settle();
+    expect(onStateChange.mock.lastCall?.[0].busy).toBe(false);
+    click("플러그인 창 열기"); await settle();
+    posted.resolve({ id: "late-editor", status: "running", stage: "open" }); await settle();
+    expect(mockRequest).toHaveBeenCalledWith("/api/vst/editors/late-editor", expect.objectContaining({ method: "DELETE" }));
+    expect(onStateChange.mock.lastCall?.[0].busy).toBe(true);
+    expect(text(editorStatus())).toContain("플러그인 준비 중…");
+  });
+
+  it("never applies settings when a close races with the discard response", async () => {
+    const normal = mockRequest.getMockImplementation()!;
+    mockRequest.mockImplementation((path, init) => path === "/api/vst/editors/editor" && init?.method === "DELETE" ? Promise.resolve(completedEditor() as any) : normal(path, init));
+    click("플러그인 창 열기"); await settle();
+    click("변경 취소·창 닫기"); await settle();
+    expect(onStateChange.mock.lastCall?.[0].busy).toBe(false);
+    expect(text(tree)).not.toContain("플러그인 창의 설정을 적용했습니다.");
+    expect(vi.mocked(localStorage.setItem).mock.calls.some(([, value]) => JSON.parse(value).chain[0]?.parameters.gain === 2)).toBe(false);
+  });
+
+  it("supports old backends missing focus without incorrectly expiring their editor", async () => {
+    const normal = mockRequest.getMockImplementation()!;
+    mockRequest.mockImplementation((path, init) => path === "/api/vst/editors/editor/focus" ? Promise.reject({ status: 404 }) : normal(path, init));
+    click("플러그인 창 열기"); await settle(); click("창 앞으로 가져오기"); await settle();
+    expect(onStateChange.mock.lastCall?.[0].busy).toBe(true);
+    expect(text(tree)).toContain("창 앞으로 가져오기를 요청하지 못했습니다.");
+    expect(text(tree)).not.toContain("작업이 만료되었습니다");
+  });
+
+  it.each([404, 503])("releases missing jobs or offers escape after repeated transport failure (%s)", async status => {
+    const normal = mockRequest.getMockImplementation()!;
+    mockRequest.mockImplementation((path, init) => path === "/api/vst/editors/editor" && !init?.method ? Promise.reject({ status }) : normal(path, init));
+    click("플러그인 창 열기"); await settle(); await tick(2500);
+    if (status === 404) {
+      expect(onStateChange.mock.lastCall?.[0].busy).toBe(false);
+      expect(text(tree)).toContain("플러그인 창의 작업이 만료되었습니다.");
+    } else {
+      expect(text(editorStatus())).toContain("플러그인 창 상태 확인 필요");
+      click("창 닫기 요청·연결 해제"); await settle();
+      expect(onStateChange.mock.lastCall?.[0].busy).toBe(false);
+    }
+  });
+
+  it("cancels a late created window after the panel unmounts", async () => {
+    const posted = deferred<any>();
+    const normal = mockRequest.getMockImplementation()!;
+    mockRequest.mockImplementation((path, init) => path === "/api/vst/editors" ? posted.promise : normal(path, init));
+    click("플러그인 창 열기");
+    for (const value of hooks.values) value?.cleanup?.();
+    posted.resolve({ id: "unmounted", status: "running", stage: "open" });
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    expect(mockRequest).toHaveBeenCalledWith("/api/vst/editors/unmounted", expect.objectContaining({ method: "DELETE" }));
+  });
+});
 afterEach(() => { for (const value of hooks.values) value?.cleanup?.(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe("VST UI operation ownership", () => {
@@ -76,7 +208,7 @@ describe("VST UI operation ownership", () => {
     expect(mockRequest).toHaveBeenCalledWith("/api/vst/previews/preview-a", { method: "DELETE" });
     click("플러그인 창 열기"); await settle();
     expect(countEditorPosts()).toBe(1);
-    expect(text(tree)).toContain("플러그인 창 요청 중…");
+    expect(text(tree)).toContain("플러그인 준비 중…");
   });
   it("cancels a late preview POST and keeps a newer native editor busy", async () => {
     const pending = deferred<any>();

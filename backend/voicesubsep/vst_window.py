@@ -21,7 +21,8 @@ def position_editor(plugin_name: str) -> bool:
 
     Pedalboard provides a native title bar, but initially anchors its content at
     (0, 0), which can put the title bar above the work area on Windows. Never
-    enumerate/control other processes, change window size, or synthesize input.
+    control other processes, change window size, or synthesize input. Called only
+    on initial open or an explicit focus request, never on an ordinary poll.
     """
     if os.name != "nt":
         return True
@@ -47,6 +48,9 @@ def position_editor(plugin_name: str) -> bool:
     user32.GetMonitorInfoW.argtypes = [wintypes.HANDLE, ctypes.POINTER(MonitorInfo)]
     user32.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
                                    ctypes.c_int, ctypes.c_int, wintypes.UINT]
+    user32.IsIconic.argtypes = [wintypes.HWND]
+    user32.ShowWindowAsync.argtypes = [wintypes.HWND, ctypes.c_int]
+    user32.SetForegroundWindow.argtypes = [wintypes.HWND]
     found = False
 
     @callback_type
@@ -63,18 +67,22 @@ def position_editor(plugin_name: str) -> bool:
         if not user32.SendMessageTimeoutW(hwnd, 0x000D, len(title), ctypes.cast(title, ctypes.c_void_p),
                                          0x0001 | 0x0002, 100, ctypes.byref(result)):
             return True
-        if title.value != "Pedalboard":
+        label_text = f"VOICESUBSEP · {plugin_name[:120]}"
+        if title.value not in ("Pedalboard", label_text):
             return True
+        if user32.IsIconic(hwnd):
+            user32.ShowWindowAsync(hwnd, 9)  # SW_RESTORE: explicit user request.
         rect = wintypes.RECT()
         monitor = MonitorInfo(cbSize=ctypes.sizeof(MonitorInfo))
         if not user32.GetWindowRect(hwnd, ctypes.byref(rect)) or not user32.GetMonitorInfoW(user32.MonitorFromWindow(hwnd, 2), ctypes.byref(monitor)):
             return True
         work = monitor.rcWork
         x, y = editor_origin((rect.left, rect.top, rect.right, rect.bottom), (work.left, work.top, work.right, work.bottom))
-        # Preserve plugin dimensions, Z order, and keyboard focus.
-        if not user32.SetWindowPos(hwnd, None, x, y, 0, 0, 0x0001 | 0x0004 | 0x0010 | 0x4000):
+        # Raise only this worker's editor. HWND_TOP is temporary; never TOPMOST.
+        if not user32.SetWindowPos(hwnd, None, x, y, 0, 0, 0x0001 | 0x4000):
             return True
-        label = ctypes.create_unicode_buffer(f"VOICESUBSEP · {plugin_name[:120]}")
+        user32.SetForegroundWindow(hwnd)
+        label = ctypes.create_unicode_buffer(label_text)
         user32.SendMessageTimeoutW(hwnd, 0x000C, 0, ctypes.cast(label, ctypes.c_void_p),
                                   0x0001 | 0x0002, 100, ctypes.byref(result))
         found = True

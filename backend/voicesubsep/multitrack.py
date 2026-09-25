@@ -23,7 +23,11 @@ def analyze_tracks(analyzer, media_path, *, selections, options, progress, cance
         speakers[identity] = {"id": identity, "name": selection["name"], "color": selection["color"]}
         duration = max(duration, result["duration"])
         for caption in result["captions"]:
-            captions.append({**caption, "id": f"track-{track}-{caption['id']}", "speakerId": identity,
+            # Explicit track mapping is not automatic diarization evidence.
+            # In particular, don't retain "diarization_disabled" or references
+            # to pre-prefix caption IDs after the user supplies the speaker.
+            mapped = {key: value for key, value in caption.items() if key != "speakerEvidence"}
+            captions.append({**mapped, "id": f"track-{track}-{caption['id']}", "speakerId": identity,
                              "reasons": [reason for reason in caption.get("reasons", []) if reason not in {"unassigned", "speaker_count"}]})
         warnings.extend(f"Track {track}: {message}" for message in result.get("warnings", [])
                         if not message.startswith("전사만 실행했습니다."))

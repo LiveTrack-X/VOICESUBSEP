@@ -14,7 +14,9 @@
 
 **0.3.4의 새 기능:** 프로젝트·미리보기 패널, 자막 열과 메모 크기 조절, 영상 자동 맞춤, 검증된 원본 자동 연결·연결 상태 표시, 타임라인 항목 메뉴·확대 선명도, 진행창 중복 방지, VST 비교 잠금 수정, 연결 중인 미디어의 캐시 정리 보호입니다.
 
-The [speaker-assignment strategy / 미배정 개선 전략](docs/SPEAKER-ASSIGNMENT-STRATEGY.md) is a proposal, not an implemented recognition change. / 미배정 전략은 제안이며 인식 알고리즘 변경은 아직 적용하지 않았습니다.
+**0.3.5 source first scope:** the [speaker-assignment strategy](docs/SPEAKER-ASSIGNMENT-STRATEGY.md) now has cause/evidence collection, conservative boundary proposals, source-audio review and explicit selected-caption application with stale/manual-edit protection and undo. Proposals do not assign speakers automatically; older results without evidence remain unknown. This is source implementation, **not a published/installed 0.3.5 claim**. Voice-reference matching and overlap recovery remain future work; real-audio accuracy and review-time gains have not been measured.
+
+**0.3.5 소스의 첫 구현 범위:** [미배정 개선 전략](docs/SPEAKER-ASSIGNMENT-STRATEGY.md)의 원인·근거 보존, 보수적 경계 후보, 원음 듣기·선택 적용, 오래된 후보·수동 수정 보호와 실행 취소를 구현했습니다. 자동 확정하지 않으며 근거 없는 이전 결과는 상세 없음으로 남깁니다. 이는 소스 구현이며 **0.3.5 게시·설치 완료를 뜻하지 않습니다**. 인물별 확인 음성 비교·겹침 복원은 후속 단계이고 실음성 정확도·검수 시간 개선은 아직 측정하지 않았습니다.
 
 **Earlier 0.3.3 / 이전 0.3.3:** optional RNNoise, native VST editor/state saving, F1 personal shortcuts, centered caption follow, cut controls, timeline name editing, compact analysis results, speech-activity checks and document search/playback. See its preserved [release record / 릴리즈 기록](docs/releases/v0.3.3.md).
 

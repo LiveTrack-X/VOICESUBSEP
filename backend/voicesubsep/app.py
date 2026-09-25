@@ -229,7 +229,7 @@ def create_app(
     # VOICESUBSEP_MAX_UPLOAD_BYTES is retired and intentionally ignored. Actual
     # filesystem capacity and media validity still constrain source uploads.
     storage = Storage(root)
-    diagnostics = Diagnostics(storage, "0.3.4")
+    diagnostics = Diagnostics(storage, "0.3.5")
     provider_credentials = ProviderCredentials()
     jobs = JobManager(storage, analyzer, diagnostics=diagnostics, provider_credentials=provider_credentials)
     live = LiveManager(storage, live_engine_factory)
@@ -271,7 +271,7 @@ def create_app(
             provider_credentials.clear()
             await run_in_threadpool(jobs.stop)
 
-    application = FastAPI(title="VOICESUBSEP", version="0.3.4", lifespan=lifespan)
+    application = FastAPI(title="VOICESUBSEP", version="0.3.5", lifespan=lifespan)
     application.state.storage = storage
     application.state.jobs = jobs
     application.state.live = live

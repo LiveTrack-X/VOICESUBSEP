@@ -38,6 +38,7 @@ export type VstInspection = {
 export type VstEditor = {
   id: string;
   status: "queued" | "running" | "completed" | "failed" | "cancelled";
+  stage?: "starting" | "loading" | "opening" | "open";
   closeRequested?: boolean;
   cancelRequested?: boolean;
   result?: VstInspection;
@@ -211,9 +212,10 @@ export function checkedEditor(value: unknown, slot: VstSlotRequest, expectedId?:
       (expectedId !== undefined && value.id !== expectedId) ||
       typeof value.status !== "string" || !["queued", "running", "completed", "failed", "cancelled"].includes(value.status) ||
       (value.error !== undefined && (typeof value.error !== "string" || value.error.length > 8000)) ||
+      (value.stage !== undefined && (typeof value.stage !== "string" || !["starting", "loading", "opening", "open"].includes(value.stage))) ||
       (value.closeRequested !== undefined && typeof value.closeRequested !== "boolean") ||
       (value.cancelRequested !== undefined && typeof value.cancelRequested !== "boolean")) return fail();
-  const next = { id: value.id, status: value.status, error: value.error, closeRequested: value.closeRequested, cancelRequested: value.cancelRequested } as VstEditor;
+  const next = { id: value.id, status: value.status, stage: value.stage, error: value.error, closeRequested: value.closeRequested, cancelRequested: value.cancelRequested } as VstEditor;
   if (value.status === "completed") {
     const result = checkedInspection(value.result, slot.path, slot.pluginName);
     if (!result.parameters || !record(value.result) || (value.result.state !== undefined && !validVstState(value.result.state))) return fail();

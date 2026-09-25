@@ -127,7 +127,9 @@ def inspect(path: str, plugin_name: str | None = None) -> dict:
             "parameters": _parameter_metadata(plugin)}
 
 
-def _apply_parameters(plugin, values: dict) -> dict:
+def _apply_parameters(plugin, values: dict, *, capture_values: bool = True) -> dict:
+    if not values and not capture_values:
+        return {}  # Opening an untouched editor needs no parameter enumeration.
     metadata = {item["key"]: item for item in _parameter_metadata(plugin)}
     # A VST's exposed program selector can reset other controls. Set it first,
     # then explicit controls; never let an unchanged default program erase the
@@ -156,37 +158,40 @@ def _apply_parameters(plugin, values: dict) -> dict:
         if getattr(plugin, key) != value:
             setattr(plugin, key, value)
     # Record the actual values after the plugin's quantization/normalization.
-    return {item["key"]: item["value"] for item in _parameter_metadata(plugin)}
+    return ({item["key"]: item["value"] for item in _parameter_metadata(plugin)}
+            if capture_values else {})
 
 
-def _apply_effect(plugin, effect: dict) -> dict:
+def _apply_effect(plugin, effect: dict, *, capture_values: bool = True) -> dict:
     if "state" in effect:
         raw = decode_plugin_state(effect["state"])
         try:
             plugin.raw_state = raw
         except Exception:
             raise ValueError("The plugin could not restore its saved state.") from None
-    return _apply_parameters(plugin, effect["parameters"])
+    return _apply_parameters(plugin, effect["parameters"], capture_values=capture_values)
 
 
-def edit(effect: dict, close_path: Path) -> dict:
+def edit(effect: dict, close_path: Path, focus_path: Path | None = None,
+         progress: Callable[[str, float], None] = lambda *_: None) -> dict:
     """Only the dedicated worker's main thread may own a native editor."""
     if threading.current_thread() is not threading.main_thread():
         raise RuntimeError("The VST editor must run on the worker main thread.")
     effect = validate_chain([effect])[0]
     path = validate_plugin_path(effect["path"])
-    names = _pedalboard().VST3Plugin.get_plugin_names_for_file(path)
-    if not names or len(names) > 128 or any(not isinstance(name, str) or len(name) > 512 for name in names):
-        raise ValueError("The VST3 bundle returned an invalid plugin list.")
+    progress("loading", .1)
     selected = effect["pluginName"]
     if selected is None:
+        names = _pedalboard().VST3Plugin.get_plugin_names_for_file(path)
+        if not names or len(names) > 128 or any(not isinstance(name, str) or len(name) > 512 for name in names):
+            raise ValueError("The VST3 bundle returned an invalid plugin list.")
         if len(names) != 1:
             raise ValueError("Select a plugin from this VST3 bundle before opening its editor.")
         selected = names[0]
-    if selected not in names:
-        raise ValueError("The selected plugin does not exist in this VST3 bundle.")
+    # The native loader validates an explicit name itself. Re-scanning an
+    # already-selected bundle can initialize native resources a second time.
     plugin = _load_effect(path, selected)
-    _apply_effect(plugin, effect)
+    _apply_effect(plugin, effect, capture_values=False)
     close_event, finished = threading.Event(), threading.Event()
 
     def watch_close():
@@ -197,14 +202,22 @@ def edit(effect: dict, close_path: Path) -> dict:
 
     def place_window():
         from .vst_window import position_editor
-        for _ in range(100):
-            if finished.wait(.05) or close_event.is_set():
-                return
+        opened = False
+        last_ready_publish = 0.0
+        while not finished.wait(.1) and not close_event.is_set():
             try:
-                if position_editor(selected):
-                    return
+                focus = focus_path is not None and focus_path.exists()
+                if focus:
+                    focus_path.unlink(missing_ok=True)
+                if not opened or focus:
+                    # Initial open and explicit focus are the only operations
+                    # that may raise the window. Ordinary polls never steal it.
+                    opened = position_editor(selected) or opened
+                if opened and time.monotonic() - last_ready_publish >= 1:
+                    progress("open", 1.0)  # Retry best-effort file publication.
+                    last_ready_publish = time.monotonic()
             except (OSError, ValueError):
-                return  # Placement is optional; the close watcher is independent.
+                continue  # The independent close watcher remains responsive.
 
     watcher = threading.Thread(target=watch_close, name="vst-editor-close", daemon=True)
     watcher.start()
@@ -213,6 +226,7 @@ def edit(effect: dict, close_path: Path) -> dict:
     try:
         if close_path.exists():
             close_event.set()
+        progress("opening", .5)
         plugin.show_editor(close_event=close_event)
         try:
             state = encode_plugin_state(plugin.raw_state)
@@ -223,6 +237,7 @@ def edit(effect: dict, close_path: Path) -> dict:
     finally:
         finished.set()
         watcher.join(timeout=1)
+        placement.join(timeout=.2)
 
 
 def _wav_header(frames: int, channels: int) -> bytes:
@@ -504,7 +519,10 @@ def main(argv: list[str] | None = None) -> int:
                 if time.monotonic() > deadline:
                     raise ValueError("The VST editor was not attached to its host process.")
                 time.sleep(.02)
-            result = edit(request["effect"], close_path)
+            focus_path = Path(request.get("focusPath", request_path.parent / "focus-editor"))
+            if focus_path.parent.resolve() != request_path.parent.resolve() or focus_path.name != "focus-editor":
+                raise ValueError("Invalid private editor focus marker.")
+            result = edit(request["effect"], close_path, focus_path, progress)
         else:
             raise ValueError("Unknown VST worker operation.")
         _write_json(response_path, {"ok": True, "result": result})

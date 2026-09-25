@@ -1,0 +1,31 @@
+.dialog:has(> .speaker-review) { width: min(1040px, calc(100vw - 32px)); max-width: 1040px; max-height: calc(100dvh - 50px); display: flex; flex-direction: column; overflow: hidden; }
+.dialog:has(> .speaker-review) > .dialog-heading { flex: 0 0 auto; margin-bottom: 12px; }
+.speaker-review { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.speaker-review-scroll { min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.speaker-review > .dialog-actions { flex: 0 0 auto; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); background: var(--surface); }
+.speaker-review-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.speaker-review-filters label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
+.speaker-review-filters .speaker-review-check { flex-direction: row; align-items: center; min-height: 32px; }
+.speaker-review-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.speaker-review-list { height: 360px; min-width: 0; overflow: auto; overflow-anchor: none; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+.speaker-review-row { position: absolute; inset-inline: 0; top: 0; display: flex; gap: 8px; align-items: start; padding: 10px; border-bottom: 1px solid var(--border); }
+.speaker-review-row.selected { background: var(--accent-soft); }
+.speaker-review-row > input { flex: 0 0 auto; margin-top: 8px; }
+.speaker-review-row .speaker-review-row-button { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 5px; text-align: left; padding: 3px; border: 0; background: transparent; }
+.speaker-review-row-button strong { font-size: 12px; font-weight: 500; white-space: normal; overflow-wrap: anywhere; }
+.speaker-review-row-button span { font-size: 11px; color: var(--muted); white-space: normal; }
+.speaker-review-row-button .speaker-review-proposal { color: var(--accent-text); }
+.speaker-review-detail { min-width: 0; max-height: 360px; overflow: auto; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; }
+.speaker-review-detail h3, .speaker-review-detail h4 { font-size: 12px; margin: 6px 0; }
+.speaker-review-detail p, .speaker-review-anchor { overflow-wrap: anywhere; }
+.speaker-review-text { white-space: pre-wrap; color: var(--ink); }
+.speaker-review-listen { display: flex; flex-wrap: wrap; gap: 6px; }
+.speaker-review-listen button, .speaker-review-anchor button { font-size: 11px; }
+.speaker-review-activity { padding-left: 20px; font-size: 12px; }
+.speaker-review-anchor { border-top: 1px solid var(--border); padding-block: 6px; }
+.speaker-review-empty { padding: 12px; color: var(--muted); }
+@media (max-width: 700px) {
+  .speaker-review-body { grid-template-columns: minmax(0, 1fr); }
+  .speaker-review-list { height: 220px; }
+  .speaker-review-detail { max-height: 260px; }
+}

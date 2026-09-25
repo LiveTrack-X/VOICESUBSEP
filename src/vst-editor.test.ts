@@ -42,6 +42,15 @@ describe("native VST state preservation", () => {
 });
 
 describe("native editor response ownership", () => {
+  it("accepts only explicit native stages while supporting older responses without one", () => {
+    expect(checkedEditor({ id: "session", status: "running" }, slot).stage).toBeUndefined();
+    for (const stage of ["starting", "loading", "opening", "open"]) {
+      expect(checkedEditor({ id: "session", status: "running", stage }, slot).stage).toBe(stage);
+    }
+    for (const stage of [["open"], null, true, 1, "finished", {}]) {
+      expect(() => checkedEditor({ id: "session", status: "running", stage }, slot)).toThrow();
+    }
+  });
   it("accepts completed settings bound to the requested plugin and session", () => {
     const next = checkedEditor({ id: "session", status: "completed", result }, slot, "session");
     expect(next.result?.state).toBe(result.state);

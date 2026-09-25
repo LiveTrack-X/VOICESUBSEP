@@ -7,11 +7,11 @@ from pathlib import Path
 import sys
 import secrets
 from typing import Callable
-from fastapi import Request, HTTPException
 
 
 def create_desktop_app(*, data_dir: Path, web_dir: Path, port: int, token: str,
                        shutdown: Callable[[], None]):
+    from fastapi import Request, HTTPException
     from fastapi.staticfiles import StaticFiles
     from voicesubsep.app import create_app
 
@@ -19,13 +19,17 @@ def create_desktop_app(*, data_dir: Path, web_dir: Path, port: int, token: str,
         f"http://127.0.0.1:{port}", "voicesubsep://app",
     })
 
-    @application.post("/api/desktop/shutdown")
-    async def stop_server(request: Request):
+    async def stop_server(request):
         supplied = request.headers.get("x-voicesubsep-token", "")
         if not token or not secrets.compare_digest(supplied, token):
             raise HTTPException(403, "Desktop session authorization required.")
         shutdown()
         return {"status": "stopping"}
+
+    # Keep FastAPI/Pydantic out of the frozen VST worker startup path. Bind the
+    # actual type before route registration (future annotations are strings).
+    stop_server.__annotations__["request"] = Request
+    application.post("/api/desktop/shutdown")(stop_server)
 
     application.mount("/", StaticFiles(directory=web_dir, html=True), name="editor")
     return application

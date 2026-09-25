@@ -429,6 +429,14 @@ def close_editor(identifier: Identifier, body: CloseEditorRequest, request: Requ
         raise HTTPException(404, "This VST editor is missing or expired.") from error
 
 
+@router.post("/editors/{identifier}/focus")
+def focus_editor(identifier: Identifier, body: CloseEditorRequest, request: Request):
+    try:
+        return request.app.state.vst_editors.focus(identifier)
+    except KeyError as error:
+        raise HTTPException(404, "This VST editor is missing or expired.") from error
+
+
 @router.delete("/editors/{identifier}")
 def cancel_editor(identifier: Identifier, request: Request):
     try:

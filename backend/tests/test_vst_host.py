@@ -182,6 +182,38 @@ def test_editor_cancel_reaps_worker_even_when_native_editor_ignores_close(fake_w
     assert not list(tmp_path.glob("vst-worker-*"))
 
 
+def test_editor_open_timeout_reaps_worker_before_full_edit_session(fake_worker, tmp_path):
+    processes = fake_worker("import time; time.sleep(60)")
+    with pytest.raises(host.VSTError, match="window did not open"):
+        host._run_worker({"operation": "editor"}, timeout=30, cancelled=lambda: False,
+                         close_requested=lambda: False, open_timeout=.2, directory=tmp_path)
+    assert processes[0].poll() is not None
+
+
+def test_editor_close_timeout_never_returns_partial_settings(fake_worker, tmp_path):
+    processes = fake_worker("import time; time.sleep(60)")
+    with pytest.raises(host.VSTError, match="unsaved changes were not applied"):
+        host._run_worker({"operation": "editor"}, timeout=30, cancelled=lambda: False,
+                         close_requested=lambda: True, close_timeout=.2, directory=tmp_path)
+    assert processes[0].poll() is not None
+
+
+def test_visible_editor_survives_open_deadline_and_focus_reuses_worker(fake_worker, tmp_path):
+    code = """import json,sys,time
+from pathlib import Path
+r=json.loads(Path(sys.argv[1]).read_text())
+while not Path(r['startPath']).exists(): time.sleep(.01)
+Path(r['progressPath']).write_text(json.dumps({'stage':'open','fraction':1.0}))
+while not Path(r['focusPath']).exists(): time.sleep(.01)
+time.sleep(.5)
+Path(sys.argv[2]).write_text(json.dumps({'ok':True,'result':{'focused':True}}))
+"""
+    processes = fake_worker(code)
+    result = host._run_worker({'operation':'editor'}, timeout=3, cancelled=lambda:False,
+        close_requested=lambda:False, focus_requested=lambda:True, open_timeout=.4, directory=tmp_path)
+    assert result == {'focused':True} and len(processes) == 1
+
+
 def test_native_stdout_does_not_corrupt_file_protocol(fake_worker):
     fake_worker("import json,sys; print('NATIVE NOISE'); print('error noise',file=sys.stderr); "
                 "open(sys.argv[2],'w').write(json.dumps({'ok':True,'result':{'value':3}}))")

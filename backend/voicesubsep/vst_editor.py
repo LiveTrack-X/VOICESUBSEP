@@ -8,6 +8,7 @@ from .storage import new_id
 from .vst_host import VSTCancelled, edit_plugin, validate_chain, validate_plugin_path
 
 TERMINAL = {"completed", "failed", "cancelled"}
+STAGES = ("starting", "loading", "opening", "open")
 
 
 class EditorManager:
@@ -20,6 +21,7 @@ class EditorManager:
         self._records: dict[str, dict] = {}
         self._cancel: dict[str, threading.Event] = {}
         self._close: dict[str, threading.Event] = {}
+        self._focus: dict[str, threading.Event] = {}
         self._thread: threading.Thread | None = None
 
     def start(self):
@@ -51,11 +53,12 @@ class EditorManager:
                 raise OverflowError("Close or cancel the current VST editor first.")
             while len(self._records) >= 16:
                 oldest = next(iter(self._records))
-                del self._records[oldest], self._cancel[oldest], self._close[oldest]
+                del self._records[oldest], self._cancel[oldest], self._close[oldest], self._focus[oldest]
             identifier = new_id()
-            self._records[identifier] = {"id": identifier, "status": "queued"}
+            self._records[identifier] = {"id": identifier, "status": "queued", "stage": "starting"}
             self._cancel[identifier] = threading.Event()
             self._close[identifier] = threading.Event()
+            self._focus[identifier] = threading.Event()
             self._thread = threading.Thread(target=self._work, args=(identifier, effect),
                                             name="vst-editor", daemon=True)
             self._thread.start()
@@ -81,6 +84,14 @@ class EditorManager:
                 self._cancel[identifier].set()
             return self.get(identifier)
 
+    def focus(self, identifier: str) -> dict:
+        with self._lock:
+            record = self._records[identifier]
+            if (record["status"] not in TERMINAL and not record.get("closeRequested")
+                    and not record.get("cancelRequested")):
+                self._focus[identifier].set()
+            return self.get(identifier)
+
     def _work(self, identifier: str, effect: dict):
         with self._lock:
             cancelled, close_requested = self._cancel[identifier], self._close[identifier]
@@ -88,9 +99,31 @@ class EditorManager:
                 self._records[identifier]["status"] = "cancelled"
                 return
             self._records[identifier]["status"] = "running"
+
+        def progress(stage: str, _fraction: float):
+            # Only the worker's actual visible-window observation may report "open".
+            # Late callbacks must never recreate an evicted/terminal session or regress it.
+            with self._lock:
+                record = self._records.get(identifier)
+                if (record and record["status"] not in TERMINAL and stage in STAGES
+                        and STAGES.index(stage) >= STAGES.index(record["stage"])):
+                    record["stage"] = stage
+
+        def focus_requested() -> bool:
+            with self._lock:
+                record = self._records.get(identifier)
+                if (not record or record["status"] in TERMINAL or cancelled.is_set()
+                        or close_requested.is_set()):
+                    return False
+                event = self._focus[identifier]
+                requested = event.is_set()
+                event.clear()
+                return requested
+
         try:
             result = (self._editor or edit_plugin)(effect, cancelled=cancelled.is_set,
-                                                   close_requested=close_requested.is_set)
+                                                   close_requested=close_requested.is_set,
+                                                   progress=progress, focus_requested=focus_requested)
             with self._lock:
                 if cancelled.is_set():
                     self._records[identifier]["status"] = "cancelled"
