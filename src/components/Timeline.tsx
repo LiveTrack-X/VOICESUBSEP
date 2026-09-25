@@ -8,6 +8,7 @@ import { NoteTimelineLane } from "./NoteTimelineLane";
 import { normalizeCuts } from "../cuts";
 import { useI18n } from "../i18n";
 import { editableSpeakers } from "../speakerOperations";
+import { renameTimelineSpeaker } from "../timelineSpeakerName";
 import "./timeline-layout.css";
 
 const LAYOUT_STORAGE_KEY = "voicesubsep-timeline-layout-v1";
@@ -107,6 +108,9 @@ export function Timeline({
       const next=resizeCaption(current,edge,position,p.duration);if(next===current)return p;
       return {...p,captions:p.captions.map(c=>c.id===id?next:c)};
     });
+  }
+  function renameSpeaker(id: string, originalName: string, name: string) {
+    update(project => renameTimelineSpeaker(project, id, originalName, name));
   }
   const sectionRef = useRef<HTMLElement>(null);
   const dragRef = useRef<{ pointerId: number; startY: number; height: number } | null>(null);
@@ -286,7 +290,7 @@ export function Timeline({
               {normalizeCuts(project.cuts,project.duration).map(cut=><button key={cut.id} className="cut-block" style={{left:`${cut.start/duration*100}%`,width:`${(cut.end-cut.start)/duration*100}%`}} title={`${formatTime(cut.start)} → ${formatTime(cut.end)}`} aria-label={t("제외 구간 {start}부터 {end}",{start:formatTime(cut.start),end:formatTime(cut.end)})} onClick={()=>preview(cut.start)}>{t("제외")}</button>)}
             </div>
           </div>}
-          {lanes.map(s=><CaptionTimelineLane key={s.id} speaker={s} captions={captionGroups.get(s.id)??[]} duration={duration} mediaDuration={project.duration} time={time} selected={selected} preview={preview} onResize={changeBoundary}/>)}
+          {lanes.map(s=><CaptionTimelineLane key={s.id} speaker={s} captions={captionGroups.get(s.id)??[]} duration={duration} mediaDuration={project.duration} time={time} selected={selected} preview={preview} onResize={changeBoundary} onRename={renameSpeaker}/>)}
         </div>
       </div>
     </section>

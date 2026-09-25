@@ -3,12 +3,25 @@
   "appVersion": "0.3.3",
   "status": "source-verified-release-preparation",
   "tests": {
-    "webPassed": 733,
+    "webPassed": 787,
     "nodePassed": 73,
     "typecheckAndWebBuild": true,
-    "backendPassed": null,
-    "backendSkipped": null,
+    "backendPassed": 1023,
+    "backendSkipped": 1,
+    "backendWarnings": 1,
     "onlineInstallerPassed": null
+  },
+  "localRegression": {
+    "backendExitCode": 0,
+    "backendDurationSeconds": 119.63,
+    "backendCommand": "python -m pytest backend/tests -q -ra",
+    "backendLog": "tmp/v0.3.3-backend-tests-complete.log",
+    "includesNativeEditorClosePlacementIsolationRegression": true,
+    "backendSkip": "test_diagnostics.py:102: This Windows account cannot create symbolic links.",
+    "backendWarning": "Starlette TestClient uses the deprecated anyio.abc.BlockingPortal alias.",
+    "scope": "Local source regression; does not establish frozen-runtime, installer or publication success.",
+    "includesFrozenSourceComparisonRegression": true,
+    "includesSilenceEvidenceRegression": true
   },
   "browserQa": {
     "environment": "Isolated localhost UI, synthetic media; user projects and active jobs untouched",
@@ -157,10 +170,374 @@
       "matched": true,
       "cameraDenied": true,
       "stopped": true
+    },
+    "latestDetailsTimelineAndHan": {
+      "passed": true,
+      "checkedAt": "2026-09-25T12:44:57.5205894Z",
+      "browser": "Codex in-app Chromium",
+      "url": "http://127.0.0.1:4174/tmp/v033-ui-review.html",
+      "fixture": "synthetic React harness using production Timeline, RecognitionPreview, AnalysisJobDetails and Dialog",
+      "checks": [
+        "timeline name Enter commits exactly once",
+        "Escape cancels without undo entry",
+        "undo restores previous shared project name",
+        "blur commits exactly once",
+        "renaming does not seek playback",
+        "unassigned lane has fixed label",
+        "completed details initially collapsed while counts and export/apply remain visible",
+        "details disclosure reveals draft and warnings",
+        "Korean Han markup highlights only Han and preserves source text",
+        "no horizontal overflow at normal viewport",
+        "no console errors"
+      ],
+      "limitations": [
+        "Synthetic fixture, not a production job rerun",
+        "No physical media capture",
+        "No performance benchmark"
+      ]
+    },
+    "centeredFollow": {
+      "scope": "Centered caption follow on the unreleased 0.3.3 working tree",
+      "origin": "http://127.0.0.1:4174/",
+      "automation": "cua_repl Chrome, separate QA tab; UI controls and documented CDP pointer events; read-only DOM measurements",
+      "fixture": {
+        "synthetic": true,
+        "seconds": 180,
+        "captions": 120,
+        "source": "tmp/shortcut-follow-qa/synthetic-180s.wav"
+      },
+      "passed": true,
+      "checks": {
+        "pausedSeek": {
+          "time": 57.07,
+          "caption": "caption-038",
+          "paused": true,
+          "centerDeltaPx": 0.44997215270996094
+        },
+        "playingCaptionTransition": {
+          "time": 77.869931,
+          "caption": "caption-051",
+          "paused": false,
+          "centerDeltaPx": 0.8499965667724609
+        },
+        "externalPausedRevealResizeAfterTimerFix": {
+          "caption": "caption-040",
+          "viewport": [
+            1440,
+            980
+          ],
+          "centerDeltaPx": 0.25000572204589844,
+          "waitSeconds": 4.3
+        },
+        "typingFocus": {
+          "startTime": 96.282298,
+          "endTime": 100.658749,
+          "scrollTopBefore": 2270.39990234375,
+          "scrollTopAfter": 2270.39990234375,
+          "playbackContinued": true
+        },
+        "pausedManualReadingPause": {
+          "time": 101.820166,
+          "after1SecondScrollTop": 4516,
+          "activeRowOutsideViewport": true,
+          "settledScrollTop": 3816,
+          "settledCenterDeltaPx": 0.44998741149902344,
+          "mediaStayedPaused": true,
+          "note": "4.3-second first observation still preceded settled rendering; next separate observation confirmed timer-only recovery without a time change."
+        },
+        "pausedNarrowResize": {
+          "viewport": [
+            480,
+            778
+          ],
+          "time": 101.820166,
+          "caption": "caption-067",
+          "centerDeltaPx": -0.3000202178955078
+        },
+        "modalSuspension": {
+          "startTime": 103.718116,
+          "endTime": 108.230999,
+          "scrollTopBefore": 3995.199951171875,
+          "scrollTopAfter": 3995.199951171875,
+          "playbackContinued": true
+        },
+        "pausedStableCenter": {
+          "time": 111.739314,
+          "caption": "caption-074",
+          "centerDeltaPx": 0.1000041961669922,
+          "scrollTopBefore": 4348,
+          "scrollTopAfter": 4348,
+          "intervalSeconds": 0.8
+        }
+      },
+      "reproducedAndFixed": {
+        "issue": "External row reveal paused the follow gate without scheduling a resume wake; paused playback had no subsequent time update.",
+        "reproduction": "With no media connected, click timeline at 90 seconds, resize 2048x1018 to 1280x900 within the reading pause, then wait 4.5 seconds.",
+        "beforeCenterDeltaPx": 40.20001792907715,
+        "fix": "CaptionFollowGate invokes the shared pause scheduler for every pause source, including external reveals. Cleanup clears the timer and callback.",
+        "regression": "captionFollow.test.ts checks external and pointer/composition pause notification, unpaired pointer-up behavior, and gate expiry. Focused tests: 32 passed; TypeScript passed."
+      },
+      "discarded": "Measurements collected across a development HMR/full reload were excluded because the File connection and time reset. Initial textarea focus/edit can cause browser focus scrolling and row remeasurement; the typing guard uses the settled baseline afterward.",
+      "evidence": "Inline screenshots reviewed for wide centered playback and narrow centered paused caption. No private media or physical capture used.",
+      "cleanup": {
+        "playbackStopped": true,
+        "viewportReset": true,
+        "qaTabClosed": true,
+        "user5173Untouched": true
+      }
+    },
+    "previewHeightColumnStability": {
+      "task": "Preview height slider must not move its containing column",
+      "scope": "Actual EditorWorkspace and MediaPlayer components with synthetic 2-second video; no user project or original media changed",
+      "viewportWidth": 2048,
+      "before": {
+        "sliderValues": [
+          48,
+          360
+        ],
+        "previewWidths": [
+          210,
+          640
+        ],
+        "captionLefts": [
+          248,
+          678
+        ],
+        "sliderLefts": [
+          125.20000457763672,
+          460.6000061035156
+        ]
+      },
+      "afterKeyboard": {
+        "sliderValues": [
+          48,
+          360,
+          48,
+          360
+        ],
+        "previewWidths": [
+          898,
+          898,
+          898,
+          898
+        ],
+        "captionLefts": [
+          936,
+          936,
+          936,
+          936
+        ],
+        "captionWidths": [
+          1086,
+          1086,
+          1086,
+          1086
+        ],
+        "sliderLefts": [
+          718.6000366210938,
+          718.6000366210938,
+          718.6000366210938,
+          718.6000366210938
+        ],
+        "pictureHeights": [
+          48,
+          360,
+          48,
+          360
+        ]
+      },
+      "afterPointerDrag": {
+        "sliderValues": [
+          48,
+          208
+        ],
+        "previewWidths": [
+          898,
+          898
+        ],
+        "captionLefts": [
+          936,
+          936
+        ],
+        "sliderLefts": [
+          718.6000366210938,
+          718.6000366210938
+        ],
+        "pictureHeights": [
+          48,
+          208
+        ]
+      },
+      "appConsoleErrors": 0,
+      "appConsoleWarnings": 0,
+      "excludedConsoleNoise": "Existing third-party browser extension warnings",
+      "focusedTests": 20,
+      "typecheck": "passed",
+      "sourceFiles": [
+        "src/workspaceLayout.ts",
+        "src/workspaceLayout.test.tsx"
+      ],
+      "installationValidation": "not performed; root owns release and installation"
     }
   },
-  "frozenRuntime": null,
-  "frozenRnnoise": null,
+  "frozenRuntime": {
+    "source": {
+      "passed": true,
+      "checkedAt": "2026-09-25T12:59:07.375056+00:00",
+      "executableSha256": "ca657ec854d12982439cc3e06818ae985a7aa805e44e20abb5aa300a088a3eb7",
+      "method": "all application PYZ modules plus entry script versus fresh optimize=0 compile; only co_filename normalized recursively",
+      "checkedModules": 42
+    },
+    "runtime": {
+      "passed": true,
+      "engines": [
+        "whisper",
+        "nemotron"
+      ],
+      "systemOnlyPath": true
+    },
+    "rnnoise": {
+      "passed": true,
+      "startedAt": "2026-09-25T12:59:07.399608+00:00",
+      "offline": true,
+      "syntheticAudio": true,
+      "physicalCapture": false,
+      "speechModelInference": false,
+      "rnnoiseModelInference": true,
+      "executableSha256": "ca657ec854d12982439cc3e06818ae985a7aa805e44e20abb5aa300a088a3eb7",
+      "previews": [
+        {
+          "mix": 0,
+          "status": "completed",
+          "audio": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "channels": 2
+          },
+          "measuredLagSamples": 0,
+          "pcmEqual": true,
+          "noiseReport": {
+            "sampleRate": 48000,
+            "channels": 2,
+            "inputFrames": 48000,
+            "outputFrames": 48000,
+            "engine": "rnnoise",
+            "mix": 0.0,
+            "model": "xiph-rnnoise-v0.1",
+            "compensatedLatencySamples": 480,
+            "latencyCompensation": "fixed-algorithm-delay",
+            "warnings": []
+          }
+        },
+        {
+          "mix": 0.7,
+          "status": "completed",
+          "audio": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "channels": 2
+          },
+          "measuredLagSamples": 0,
+          "pcmEqual": false,
+          "noiseReport": {
+            "sampleRate": 48000,
+            "channels": 2,
+            "inputFrames": 48000,
+            "outputFrames": 48000,
+            "engine": "rnnoise",
+            "mix": 0.7,
+            "model": "xiph-rnnoise-v0.1",
+            "compensatedLatencySamples": 480,
+            "latencyCompensation": "fixed-algorithm-delay",
+            "warnings": []
+          }
+        }
+      ],
+      "bundledAssets": {
+        "std.rnnn": "6b8943dc4a9b6b24425873992a44f29c0577503276456af46a8854774faeb294",
+        "COPYING": "e2f59ff41d9d03adc3dcf3deff170f8c8cf4a6eb4a9b174762a7656d23200ffa",
+        "README.md": "5df348e6dde1ed2bd08b33b5f761d5413f4a340732f9a05e7234ab722d73025b"
+      },
+      "apiVersion": "0.3.3",
+      "runtime": {
+        "available": true,
+        "engine": "rnnoise",
+        "model": "xiph-rnnoise-v0.1",
+        "issue": null
+      },
+      "sourceUnchanged": true,
+      "shutdown": {
+        "requested": true,
+        "clean": true,
+        "forced": false,
+        "exitCode": 0,
+        "portClosed": true
+      },
+      "elapsedSeconds": 5.812
+    },
+    "vst": {
+      "format": "voicesubsep-release-vst-smoke",
+      "schemaVersion": 1,
+      "expectedVersion": "0.3.3",
+      "scope": "frozen-vst-worker-empty-chain",
+      "startedAt": "2026-09-25T12:59:13.496170+00:00",
+      "passed": true,
+      "thirdPartyPluginsOpened": false,
+      "inferenceRun": false,
+      "gpuRequired": false,
+      "offlineRequested": true,
+      "systemOnlyPath": true,
+      "timeoutSeconds": 60,
+      "executableSha256": "ca657ec854d12982439cc3e06818ae985a7aa805e44e20abb5aa300a088a3eb7",
+      "inputAudio": {
+        "sampleRate": 48000,
+        "channels": 1,
+        "sampleWidth": 2,
+        "frames": 9600,
+        "compression": "NONE",
+        "sha256": "1b5ce5e6ebd6dcd9f055d91e2c52979a1a1b69b47ca29d4ad151ff016b598e5d",
+        "durationSeconds": 0.2
+      },
+      "exitCode": 0,
+      "workerResult": {
+        "ok": true,
+        "bypassed": true,
+        "pluginCount": 0,
+        "inputFrames": 9600,
+        "outputFrames": 9600,
+        "sampleRate": 48000,
+        "channels": 1,
+        "totalReportedLatencySamples": 0,
+        "compensatedLatencySamples": 0
+      },
+      "outputAudio": {
+        "sampleRate": 48000,
+        "channels": 1,
+        "sampleWidth": 2,
+        "frames": 9600,
+        "compression": "NONE",
+        "sha256": "1b5ce5e6ebd6dcd9f055d91e2c52979a1a1b69b47ca29d4ad151ff016b598e5d",
+        "durationSeconds": 0.2
+      },
+      "sourcePreserved": true,
+      "outputByteIdentical": true,
+      "elapsedSeconds": 1.422
+    },
+    "whisper": {
+      "passed": true,
+      "device": "cpu",
+      "model": "large-v3-turbo",
+      "executableSha256": "ca657ec854d12982439cc3e06818ae985a7aa805e44e20abb5aa300a088a3eb7",
+      "syntheticFixture": true,
+      "seconds": 14.022448979591836,
+      "captionCount": 3,
+      "elapsedSeconds": 34.484,
+      "offline": true,
+      "speechActivityFailOpenWarningAbsent": true,
+      "shutdownClean": true,
+      "qualityBenchmark": false
+    }
+  },
   "package": null,
   "publication": null,
   "localInstallation": null,
@@ -172,5 +549,37 @@
     "Translation and automatic AI/Ollama summaries remain removed.",
     "Qwen stays a source-only opt-in; the release excludes its unresolved runtime license metadata.",
     "Windows executables remain unsigned; the Ed25519 update manifest authenticates asset hashes separately."
-  ]
+  ],
+  "speechActivity": {
+    "scope": "CPU evidence and preservation, not an ASR accuracy benchmark",
+    "actualReportedCue": {
+      "start": 482.88,
+      "end": 483.84,
+      "asrProbability": 0.293212890625,
+      "classification": "uncertain",
+      "contextMaxVad": 0.9572156667709351,
+      "contextRms": 0.03851303085684776,
+      "contextPeak": 0.423370361328125,
+      "unitSpeechFrameRatio": 0.1935483870967742,
+      "unitRms": 0.007640687748789787
+    },
+    "readOnlySourceWindowSeconds": [
+      476,
+      490
+    ],
+    "diagnosticClipUnchanged": true,
+    "syntheticSileroSmoke": {
+      "fixture": "synthetic digital silence; no user audio",
+      "cpuOnly": true,
+      "download": false,
+      "verdict": "silence",
+      "maxVad": 0.002089858055114746,
+      "rms": 0.0,
+      "peak": 0.0,
+      "elapsedSeconds": 0.858
+    },
+    "phraseBlacklist": false,
+    "previousUserResultsChanged": false,
+    "maximumCachedAudioSeconds": 94
+  }
 }

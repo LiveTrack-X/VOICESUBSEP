@@ -27,6 +27,7 @@ import { shortcutMessages } from "./i18n-shortcuts";
 import { cutUiMessages } from "./i18n-cuts-ui";
 
 export const extraMessages: Record<string, readonly [string, string, string, string]> = {
+  "상세 보기": ["View details", "詳細を見る", "查看详情", "Ver detalles"],
   ...shortcutMessages,
   ...cutUiMessages,
   ...yttMessages,
@@ -99,7 +100,6 @@ export const extraMessages: Record<string, readonly [string, string, string, str
   "새 프로젝트": ["New project", "新規プロジェクト", "新建项目", "Nuevo proyecto"],
   "새 프로젝트를 시작합니다. 현재 작업은 먼저 파일로 저장해 두세요.": ["Start a new project. Save your current work to a file first.", "新規プロジェクトを開始します。先に現在の作業をファイルに保存してください。", "将创建新项目。请先将当前工作保存为文件。", "Se iniciará un proyecto nuevo. Guarda primero el trabajo actual."],
   "새로": ["New", "新規", "新建", "Nuevo"],
-  "샘플 프로젝트로 전환합니다. 현재 작업은 먼저 파일로 저장해 두세요.": ["Switch to the sample project. Save your current work first.", "サンプルプロジェクトに切り替えます。先に現在の作業を保存してください。", "将切换至示例项目。请先保存当前工作。", "Se abrirá el proyecto de ejemplo. Guarda primero el trabajo actual."],
   "선택 자막 구간 제외": ["Exclude selected subtitle range", "選択字幕の区間を除外", "排除所选字幕区间", "Excluir tramo del subtítulo seleccionado"],
   "선택 자막 반복": ["Loop selected subtitle", "選択字幕を繰り返す", "循环播放所选字幕", "Repetir subtítulo seleccionado"],
   "선택한 오디오 트랙 하나를 내보냅니다. 브라우저 미리보기와 다른 트랙일 수 있습니다.": ["Exports one selected audio track. It may differ from the browser preview track.", "選択した音声トラック1本を書き出します。ブラウザーのプレビューと異なる場合があります。", "导出所选的单条音轨，可能与浏览器预览的音轨不同。", "Exporta una pista de audio seleccionada. Puede diferir de la vista previa del navegador."],

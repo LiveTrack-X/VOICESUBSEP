@@ -3,7 +3,7 @@ import type { TranscriptTurn } from "./transcriptDocument";
 import { transcriptAnchoredTop, transcriptOffsets, transcriptWindow } from "./transcriptScroll";
 
 /** Variable-height, continuous reading. Exports do not depend on this window. */
-export function useTranscriptScroll(turns: readonly TranscriptTurn[], timestamps: boolean, identity: string) {
+export function useTranscriptScroll(turns: readonly TranscriptTurn[], timestamps: boolean, identity: string, reveal?: { id: string; nonce: number } | null) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ top: 0, width: 640, height: 400 });
   const [revision, setRevision] = useState(0);
@@ -12,6 +12,7 @@ export function useTranscriptScroll(turns: readonly TranscriptTurn[], timestamps
   const range = transcriptWindow(offsets, viewport.top, viewport.height);
   const previous = useRef<{ offsets: number[]; identity: string } | null>(null);
   const scrollTop = useRef(0);
+  const appliedReveal = useRef<typeof reveal>(null);
   const readViewport = useCallback(() => {
     const node = scrollRef.current; if (!node) return;
     scrollTop.current = node.scrollTop;
@@ -29,6 +30,16 @@ export function useTranscriptScroll(turns: readonly TranscriptTurn[], timestamps
     }
     previous.current = { offsets, identity }; readViewport();
   }, [offsets, identity, readViewport]);
+
+  useLayoutEffect(() => {
+    const node = scrollRef.current;
+    if (!node || !reveal || appliedReveal.current === reveal) return;
+    const index = turns.findIndex(turn => turn.ids[0] === reveal.id);
+    if (index < 0) return;
+    appliedReveal.current = reveal;
+    node.scrollTop = offsets[index] ?? 0;
+    readViewport();
+  }, [reveal, turns, offsets, readViewport]);
 
   useLayoutEffect(() => {
     const node = scrollRef.current; if (!node) return;

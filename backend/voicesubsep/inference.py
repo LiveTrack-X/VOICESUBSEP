@@ -22,6 +22,7 @@ import wave
 from .model_cache import resolve_nemotron_model, resolve_whisper_model
 from .asr_windows import speaker_change_clips
 from .recognition_preview import RecognitionPreview
+from .speech_activity import SpeechActivityCancelled, SpeechActivityGate
 
 
 class AnalysisCancelled(Exception):
@@ -227,7 +228,8 @@ def _release_memory() -> None:
 def _transcribe(path: Path, *, model_name: str, language: str, device: str,
                 duration: float, progress: Progress, cancelled: Cancelled,
                 clip_timestamps: list[float] | None = None,
-                recognition_preview: RecognitionPreview | None = None) -> list[dict]:
+                recognition_preview: RecognitionPreview | None = None,
+                silence_warnings: list[str] | None = None) -> list[dict]:
     _checkpoint(cancelled)
     if device == "cuda":
         from .gpu_runtime import ensure_cuda_runtime
@@ -238,6 +240,7 @@ def _transcribe(path: Path, *, model_name: str, language: str, device: str,
     model_name = "large-v3-turbo" if model_name == "turbo" else model_name
     model = None
     segments = None
+    speech_activity = None
     records: list[dict] = []
     try:
         progress("Whisper 모델 준비 (첫 실행 시 가중치 다운로드)", 0.12)
@@ -250,37 +253,59 @@ def _transcribe(path: Path, *, model_name: str, language: str, device: str,
             str(path), language=None if language == "auto" else language,
             # AUTO means the recording's main language. Per-segment detection
             # can switch languages on short/noisy speech; use Whisper's initial
-            # detection once, while retaining all text returned by the model.
+            # detection once, without filtering text by its written language.
             task="transcribe", multilingual=False,
+            # Explicit diarizer-guided clips disable faster-whisper's own VAD.
+            # Use an independent conservative gate below, retaining source
+            # timestamps and all uncertain voice/noise boundaries.
             word_timestamps=True, vad_filter=False, condition_on_previous_text=False,
             beam_size=5,
             **({"clip_timestamps": clip_timestamps} if clip_timestamps else {}),
         )
+        speech_activity = SpeechActivityGate(path, cancelled)
         last_progress = 0.17
         for segment in segments:
             _checkpoint(cancelled)
             words = []
+            dropped = False
             for word in segment.words or []:
+                verdict = speech_activity.classify(word.start, word.end, getattr(word, "probability", None))
+                if verdict == "silence":
+                    dropped = True
+                    continue
                 item = {"start": word.start, "end": word.end, "text": word.word}
+                if verdict == "uncertain":
+                    item["_speechUncertain"] = True
                 probability = _number(getattr(word, "probability", None))
                 if probability is not None:
                     item["probability"] = min(1.0, max(0.0, probability))
                 words.append(item)
-            records.append({"start": segment.start, "end": segment.end, "text": segment.text, "words": words})
-            if recognition_preview is not None:
-                recognition_preview(segment.text)
+            # Never fall back to the original segment text when all its words
+            # were rejected, or publish that text in interim recognition.
+            keep = bool(words) if segment.words else speech_activity.classify(segment.start, segment.end) != "silence"
+            if keep:
+                text = "".join(word["text"] for word in words) if dropped else segment.text
+                records.append({"start": segment.start, "end": segment.end, "text": text, "words": words})
+                if recognition_preview is not None:
+                    recognition_preview(text)
             last_progress = max(last_progress, min(0.64, 0.17 + 0.47 * max(0.0, segment.end) / duration))
             progress("대사 전사", last_progress)
         _checkpoint(cancelled)
         return records
     except AnalysisCancelled:
         raise
+    except SpeechActivityCancelled:
+        raise AnalysisCancelled("분석 취소 요청을 처리했습니다.") from None
     except Exception as exc:
         raise RuntimeError(
             "Whisper 실행에 실패했습니다. 선택한 장치의 실행 환경과 모델 다운로드 연결을 확인하세요. "
             "CUDA 오류라면 CPU 또는 더 작은 모델로 다시 실행할 수 있습니다. " + str(exc)[:500]
         ) from exc
     finally:
+        if speech_activity is not None:
+            if silence_warnings is not None:
+                silence_warnings.extend(speech_activity.warnings())
+            speech_activity.close()
         if segments is not None and callable(getattr(segments, "close", None)):
             segments.close()
         if model is not None:
@@ -560,6 +585,8 @@ def build_result(records: list[dict], diarization_segments: list[dict] | None, *
                 continue
             start, end, clipped = span
             identity, reasons = _attribute(start, end, intervals)
+            if word.get("_speechUncertain") is True:
+                reasons.append("speech_uncertain")
             if fallback or clipped:
                 reasons = list(dict.fromkeys([*reasons, "timing"]))
             if mismatch:
@@ -739,10 +766,11 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
                                       device=device, duration=duration, clip_timestamps=clips, progress=asr_progress,
                                       cancelled=cancelled, recognition_preview=recognition_preview)
         elif asr_provider == "local":
+            silence_warnings: list[str] = []
             records = _transcribe(asr_path, model_name=whisper_model, language=language, device=device,
                                   duration=duration, clip_timestamps=clips, progress=asr_progress,
                                   **({"recognition_preview": recognition_preview} if recognition_preview is not None else {}),
-                                  cancelled=cancelled)
+                                  cancelled=cancelled, silence_warnings=silence_warnings)
         else:
             from .cloud_asr import transcribe_cloud, CloudASRCancelled
 
@@ -757,6 +785,8 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
         progress("단어·화자 시간 연결 및 검수 표시", 0.96)
         result = build_result(records, diarized, duration=duration, speaker_count=speaker_count, mode=mode,
                               speaker_boundary_ms=speaker_boundary_ms, diarization_provider=diarization_provider, cancelled=cancelled)
+        if asr_provider == "local" and local_asr_engine != "qwen":
+            result["warnings"].extend(silence_warnings)
         if asr_provider != "local":
             result["warnings"].append(f"{asr_provider} 클라우드에서 선택한 트랙의 음성을 전사했습니다.")
         if diarization:

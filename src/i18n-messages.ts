@@ -40,7 +40,6 @@ export const messages: Record<string, readonly [string, string, string, string]>
   "자막 검색": ["Search subtitles", "字幕を検索", "搜索字幕", "Buscar subtítulos"],
   "자막 내용, 이름으로 검색": ["Search text or speaker name", "字幕・名前で検索", "搜索字幕或姓名", "Buscar texto o nombre"],
   "SRT 가져오기": ["Import SRT", "SRTを読み込む", "导入SRT", "Importar SRT"],
-  "샘플 프로젝트": ["Sample project", "サンプル", "示例项目", "Proyecto de ejemplo"],
   "인물 필터": ["Speaker filter", "話者フィルター", "说话人筛选", "Filtrar hablantes"],
   "모든 인물": ["All speakers", "すべての話者", "所有说话人", "Todos los hablantes"],
   "나누기": ["Split", "分割", "拆分", "Dividir"],

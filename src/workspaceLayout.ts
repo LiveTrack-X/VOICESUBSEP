@@ -32,8 +32,12 @@ export function calculateWorkspacePreview(input: WorkspacePreviewMeasurement): {
     + (input.wide ? 0 : nonnegative(input.captionChrome) + 324);
   const available = Math.max(48, height - reserved);
   const maxStage = input.wide ? available : Math.min(260, available);
-  const targetHeight = manual ?? maxStage;
-  const columnWidth = input.wide ? Math.min(maxColumn, Math.max(minColumn, targetHeight * aspect)) : width;
+  // The height slider is inside this column. Sizing the column from its value
+  // moves the slider beneath a held pointer, feeding a new value back into
+  // the layout and making both panes jump between their minimum and maximum.
+  // Keep the automatic column allocation; manual height changes the picture
+  // stage only. object-fit: contain still preserves the video's aspect ratio.
+  const columnWidth = input.wide ? Math.min(maxColumn, Math.max(minColumn, maxStage * aspect)) : width;
   return {
     columnWidth: Math.round(columnWidth),
     stageHeight: Math.round(manual ?? Math.max(0, Math.min(maxStage, columnWidth / aspect))),

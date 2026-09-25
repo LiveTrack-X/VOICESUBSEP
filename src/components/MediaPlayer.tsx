@@ -293,6 +293,7 @@ export function MediaPlayer({
       <div className="player-controls">
         <input
           aria-label={t("재생 위치")}
+          data-caption-follow-seek
           type="range"
           min={0}
           max={playbackDuration || 1}

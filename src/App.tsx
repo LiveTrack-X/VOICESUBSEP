@@ -17,7 +17,6 @@ import {
   X,
 } from "lucide-react";
 import {
-  demoProject,
   createProject,
   parseProject,
   serializeProject,
@@ -506,19 +505,14 @@ export default function App() {
                 previewRange={(from,to)=>{flushSync(()=>setEditedPreview(false));playerRef.current?.previewRange(from,to);}} stopPreview={()=>videoRef.current?.pause()} mediaAvailable={!!source}/>
               <CaptionEditor
                 project={project}
-                playing={playing && dialog === null && confirm === null}
+                playing={playing}
+                followSuspended={dialog !== null || confirm !== null}
                 update={update}
                 preview={preview}
                 reveal={revealCaption}
                 selected={selected}
                 setSelected={setSelected}
                 onImport={() => srtInput.current?.click()}
-                onSample={() =>
-                  guarded(
-                    t("샘플 프로젝트로 전환합니다. 현재 작업은 먼저 파일로 저장해 두세요."),
-                    () => changeProject(demoProject()),
-                  )
-                }
                 onError={setNotice}
                 time={time}
               />
@@ -730,7 +724,8 @@ export default function App() {
       {dialog === "update" && <UpdateDialog onClose={() => setDialog(null)} />}
       {dialog === "settings" && <SettingsDialog onClose={() => setDialog(null)} />}
       {dialog === "mixer" && <AudioMixerDialog project={project} file={file} initialTime={time} onSave={audioMix => update(current => ({ ...current, audioMix }))} onClose={() => setDialog(null)}/>}
-      {dialog === "documents" && <DocumentsDialog project={project} update={update} onClose={()=>setDialog(null)} onSource={(position,id)=>preview(position,id)}/>}
+      {dialog === "documents" && <DocumentsDialog project={project} update={update} onClose={()=>setDialog(null)} onSource={(position,id)=>preview(position,id)}
+        time={time} playing={playing} mediaAvailable={!!source} onTogglePlayback={()=>playerRef.current?.toggle()}/>}
       {dialog === "history" && <JobHistoryDialog project={project} file={file} onClose={()=>setDialog(null)} onApplyAnalysis={applyAnalysis}/>}
       {dialog === "recovery" && <ProjectRecoveryDialog onClose={()=>setDialog(null)} onRestore={next=>{setDialog(null);guarded(t("복구본을 엽니다. 현재 작업은 먼저 파일로 저장해 두세요."),()=>changeProject(next));}}/>}
       {dialog === "live" && <LiveCaptureDialog speakerCount={project.speakerCount} onClose={()=>setDialog(null)} onLiveResult={(recording,result)=>{void openRecording(recording,result);}} onUse={recording=>{void openRecording(recording);}}/>}

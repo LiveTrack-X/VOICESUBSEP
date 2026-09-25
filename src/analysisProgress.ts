@@ -1,5 +1,10 @@
 import type { Job } from "./api";
 
+/** Korean decoding does not forbid Han characters; flag them without altering the transcript. */
+export function hasKoreanHanDraft(text: string, language?: string): boolean {
+  return language === "ko" && /\p{Script=Han}/u.test(text);
+}
+
 /** Preview text is display-only: never turn it into project captions or speakers. */
 export function recognitionPreviewLines(job: Job): string[] {
   const lines = job.recognitionPreview?.lines;

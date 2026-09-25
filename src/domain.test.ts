@@ -1,8 +1,8 @@
+import { demoProject } from "./testFixtures/demoProject";
 import { describe, expect, it } from "vitest";
 import {
   createProject,
   DEFAULT_CAPTION_STYLE,
-  demoProject,
   exportNotesCsv,
   exportNotesMarkdown,
   exportSrt,

@@ -109,6 +109,29 @@ describe("automatic contained preview geometry", () => {
     expect(calculateWorkspacePreview({ ...base, kind: "empty" }).stageHeight).toBe(40);
   });
 
+  it.each([16 / 9, 9 / 16, 1])("keeps both columns fixed through a complete height-slider sweep (aspect=%s)", aspectRatio => {
+    const measurement = { ...base, aspectRatio };
+    const automatic = calculateWorkspacePreview(measurement);
+    const heights = Array.from({ length: 40 }, (_, index) => 48 + index * 8);
+    // Forward/backward pointer movement must never relocate the slider or
+    // caption pane. This used to change landscape width from 210px to 495px.
+    for (const manualHeight of [...heights, ...[...heights].reverse()]) {
+      const resized = calculateWorkspacePreview({ ...measurement, manualHeight });
+      expect(resized.columnWidth).toBe(automatic.columnWidth);
+      expect(resized.stageHeight).toBe(manualHeight);
+    }
+    expect(calculateWorkspacePreview({ ...measurement, manualHeight: null })).toEqual(automatic);
+  });
+
+  it("keeps manual sizing stable in short desktop and stacked layouts", () => {
+    for (const measurement of [{ ...base, height: 280 }, { ...base, wide: false, width: 640, height: 700 }]) {
+      const small = calculateWorkspacePreview({ ...measurement, manualHeight: 48 });
+      const large = calculateWorkspacePreview({ ...measurement, manualHeight: 360 });
+      expect(small.columnWidth).toBe(large.columnWidth);
+      expect([small.stageHeight, large.stageHeight]).toEqual([48, 360]);
+    }
+  });
+
   it("uses a safe unknown-video aspect and never emits nonfinite geometry", () => {
     expect(calculateWorkspacePreview({ ...base, aspectRatio: NaN })).toEqual(calculateWorkspacePreview(base));
     const result = calculateWorkspacePreview({ ...base, width: NaN, height: Infinity, playerChrome: NaN, auxiliaryHeight: -10 });

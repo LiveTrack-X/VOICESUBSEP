@@ -1,4 +1,6 @@
 export const pipelineMessages: Record<string, readonly [string,string,string,string]> = {
+  "한자 포함 · 원음 확인": ["Han character · Check the audio","漢字を含む · 音声を確認","含汉字 · 请核对原音","Carácter han · Comprueba el audio"],
+  "한국어 초안에 한자가 포함됐습니다. 표기 또는 인식 오류일 수 있으니 원음을 확인하세요. 원문은 유지합니다.": ["This Korean draft contains Han characters. Check the audio for a spelling or recognition error. The original text is preserved.","韓国語の下書きに漢字が含まれています。表記や認識の誤りか音声を確認してください。原文は保持します。","韩语草稿中含有汉字。请核对原音，确认是否为用字或识别错误。保留原文。","Este borrador coreano contiene caracteres han. Comprueba el audio por posibles errores de escritura o reconocimiento. Se conserva el texto original."],
   "AUTO · 자동 감지": ["AUTO · Detect automatically","AUTO · 自動検出","AUTO · 自动检测","AUTO · Detectar automáticamente"],
   "직접 지정 · 선택한 언어로 인식": ["Manual · Use the selected language","手動指定 · 選択した言語で認識","手动指定 · 使用所选语言识别","Manual · Usar el idioma elegido"],
   "처음 감지한 언어로 계속 인식합니다. 한 언어 위주라면 직접 선택하세요.": ["Recognition continues in the first detected language. Choose it manually if most speech is in one language.","最初に検出した言語で認識を続けます。主に1つの言語を話す場合は直接選択してください。","识别将继续使用最初检测到的语言。如果主要使用一种语言，请手动选择。","El reconocimiento continúa en el primer idioma detectado. Elígelo manualmente si la mayoría del audio está en un solo idioma."],

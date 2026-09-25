@@ -12,6 +12,14 @@
 html[data-theme="dark"] .transcript-speaker { color: var(--speaker-name-dark); }
 .transcript-time { color: var(--muted); font-size: 10px; }
 .transcript-seek { display: inline-flex; min-height: 20px; padding: 2px 4px; margin-right: 5px; vertical-align: middle; }
+.transcript-search-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.transcript-text-search { display: flex; align-items: center; gap: 5px; flex: 1 1 210px; min-width: 0; }
+.transcript-text-search input { min-width: 0; width: 100%; }
+.transcript-time-search { display: flex; gap: 5px; flex: 0 1 230px; min-width: 0; }
+.transcript-time-search input { width: 130px; min-width: 0; flex: 1; font-variant-numeric: tabular-nums; }
+.transcript-search-tools input, .transcript-search-tools button { font-size: 11px; }
+.transcript-search-summary { font-size: 11px; color: var(--muted); margin: 6px 0; }
+.transcript-turn-found { background: var(--accent-soft); box-shadow: inset 3px 0 var(--accent-text); padding-left: 7px; }
 @media (max-width: 680px) {
   .transcript-page { padding: 12px; }
   .transcript-scroll { height: clamp(140px, calc(100dvh - 550px), 440px); }

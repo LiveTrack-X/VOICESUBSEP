@@ -100,11 +100,11 @@ The public source-location check used small upstream text/API requests only; no 
 - Pedalboard's pinned source and five submodule revisions are identified, but the installed wheel was not rebuilt from that recursive source tree.
 - The full source/version inventory and build recipe for FFmpeg's statically linked external libraries remain unverified.
 - Keep the source directions available beside binary downloads and maintain the referenced source availability. GPLv3 section 6(d), included in the linked original license, addresses network distribution and equivalent access to Corresponding Source; copying license texts alone does not establish that every obligation is met.
-- VOICESUBSEP's own licensing choice and other bundled components' conditions remain separate; this notice does not grant additional rights over them. Model weights and third-party VST plugins are not included in the installer.
+- VOICESUBSEP's own licensing choice and other bundled components' conditions remain separate; this notice does not grant additional rights over them. Whisper/Nemotron model weights and third-party VST plugins are not included in the installer.
 
 공개 소스 위치 검사는 원본 텍스트·API의 작은 요청으로 수행했으며 의존성 소스 압축파일 다운로드나 재빌드는 하지 않았습니다. 버전 참조와 접근 가능성을 확인한 것이며 **전체 재배포·법률 검토 또는 동일 바이너리 재현 완료를 뜻하지 않습니다**. 구체적으로:
 
 - Pedalboard 원본과 다섯 하위 모듈의 커밋을 식별했지만, 그 재귀 소스로 설치된 wheel을 다시 빌드하지는 않았습니다.
 - FFmpeg에 정적으로 연결된 외부 라이브러리 전체의 소스·버전 목록과 배포자 빌드 절차는 아직 독립 검증하지 않았습니다.
 - 바이너리 다운로드 옆에 소스 안내를 유지하고, 참조한 소스의 제공 가능성을 계속 관리해야 합니다. 연결된 GPLv3 원문 6(d)는 네트워크 배포 시 대응 소스에 대한 동등한 접근을 다룹니다. 라이선스 문서 복사만으로 모든 의무가 충족됐다고 보지는 않습니다.
-- VOICESUBSEP 자체의 라이선스 선택과 다른 포함 구성요소의 조건은 별도이며 이 고지가 추가 권리를 부여하지는 않습니다. 모델 가중치와 외부 VST 플러그인은 설치 파일에 포함하지 않습니다.
+- VOICESUBSEP 자체의 라이선스 선택과 다른 포함 구성요소의 조건은 별도이며 이 고지가 추가 권리를 부여하지는 않습니다. Whisper/Nemotron 모델 가중치와 외부 VST 플러그인은 설치 파일에 포함하지 않습니다.

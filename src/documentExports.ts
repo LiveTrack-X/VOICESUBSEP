@@ -3,6 +3,7 @@ import { emptyDocuments, interviewTag, type MinutesItem } from "./documents";
 import { zipStore } from "./subtitle-export";
 import { createWordDocument, type WordParagraph } from "./wordDocument";
 import { normalizeSpeakerColor } from "./speakerColor";
+import { captionReviewLabel } from "./reviewReasons";
 
 export type DocumentMode = "interview" | "minutes";
 type Label = (key: string) => string;
@@ -41,7 +42,7 @@ function snapshot(project: Project, options: ExportOptions, mode: DocumentMode) 
   return { project: valid, docs, generatedAt, captions, speakers, participants, fresh };
 }
 function captionState(caption: Caption, label: Label): string {
-  return label(caption.reviewed ? "확인 완료" : "검수 필요");
+  return captionReviewLabel(caption, label);
 }
 function itemState(item: MinutesItem, fresh: boolean, label: Label): string {
   return label(!fresh ? "근거 재확인 필요" : item.status === "reviewed" ? "확인 완료" : "초안");

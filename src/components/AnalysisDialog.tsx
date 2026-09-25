@@ -4,6 +4,7 @@ import { AudioLines, CheckCircle2, Languages, LoaderCircle } from "lucide-react"
 import {
   analysisBlockReason,
   ApiError,
+  download,
   request,
   uploadMedia,
   type AnalysisResult,
@@ -17,7 +18,7 @@ import { ASR_LANGUAGES, languageName } from "../languages";
 import { VstChainPanel, type VstPanelState } from "./VstChainPanel";
 import { effectiveAnalysisDevice, loadAnalysisPreferences, saveAnalysisPreferences, type AnalysisPreferences } from "../settings";
 import { readHistory, sameAnalysisSource } from "../jobHistory";
-import { RecognitionPreview } from "./RecognitionPreview";
+import { AnalysisJobDetails } from "./AnalysisJobDetails";
 import { CloudAsrSettings } from "./CloudAsrSettings";
 import { cloudAsrBlockReason, cloudAsrRequestFields, defaultAsrSelection, type AsrSelection } from "../cloudAsr";
 import { providerName, type CredentialState } from "../providerCredentials";
@@ -422,17 +423,12 @@ export function AnalysisDialog({
           <p>
             {t(jobStageLabel(job.stage))}
           </p>
-          <RecognitionPreview key={job.id} job={job} />
           <AnalysisQueueControls key={`queue-${job.id}`} job={job} onUpdated={setJob}/>
           {job.error && <p className="error-box">{job.error}</p>}
-          {job.result?.warnings.map((w, i) => (
-            <p className="info-box" key={i}>
-              {w}
-            </p>
-          ))}
           {job.result && (
             <p>{t("자막 {captions}개 · 감지된 인물 {speakers}명", { captions: job.result.captions.length, speakers: job.result.speakers.length })}</p>
           )}
+          <AnalysisJobDetails key={job.id} job={job} language={asr.provider === "xai" ? "auto" : language} />
         </div>
       )}
       {running && <p className="info-box">{t("창을 닫아도 작업은 계속됩니다. 작업 이력에서 다시 열 수 있습니다.")}</p>}
@@ -462,6 +458,7 @@ export function AnalysisDialog({
         ) : job?.result ? (
           <>
             <p>{t('적용하면 기존 자막이 교체됩니다. 노트는 유지됩니다.')}</p>
+            <button onClick={() => download(`analysis-${job.id}.json`, JSON.stringify(job.result, null, 2), "application/json;charset=utf-8")}>{t("분석 결과 JSON 저장")}</button>
             <button disabled={starting} onClick={() => {setJob(null); setError("");}}>{t("새 분석 설정")}</button>
             <button className="primary" disabled={starting} onClick={() => onApply(job.result!)}>{t('결과 적용')}</button>
           </>

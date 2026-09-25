@@ -1,10 +1,10 @@
 import { useEffect, useId, useState } from "react";
 import type { Job } from "../api";
-import { elapsedClock, jobElapsedSeconds, recognitionPreviewLines, validJobTime } from "../analysisProgress";
+import { elapsedClock, hasKoreanHanDraft, jobElapsedSeconds, recognitionPreviewLines, validJobTime } from "../analysisProgress";
 import { useI18n } from "../i18n";
 import "./recognition-preview.css";
 
-export function RecognitionPreview({ job }: { job: Job }) {
+export function RecognitionPreview({ job, language }: { job: Job; language?: string }) {
   const { t, locale } = useI18n();
   const heading = useId();
   const [now, setNow] = useState(Date.now);
@@ -16,6 +16,7 @@ export function RecognitionPreview({ job }: { job: Job }) {
     return () => window.clearInterval(timer);
   }, [job.id, active]);
   const lines = recognitionPreviewLines(job);
+  const hasHan = lines.some(line => hasKoreanHanDraft(line, language));
   const elapsed = jobElapsedSeconds(job, now);
   const updated = validJobTime(job.recognitionPreview?.updatedAt);
   if (!active && !lines.length) return null;
@@ -25,9 +26,13 @@ export function RecognitionPreview({ job }: { job: Job }) {
       {elapsed !== undefined && <span>{t("요청 후 경과 {time}", { time: elapsedClock(elapsed) })}</span>}
     </header>
     <div className="recognition-preview-lines" role="log" aria-live="polite" aria-atomic="true">
-      {lines.length ? lines.map((line, index) => <p key={index} title={line}>{line}</p>) :
+      {lines.length ? lines.map((line, index) => <p key={index} title={line}>{hasKoreanHanDraft(line, language)
+        ? line.split(/(\p{Script=Han}+)/u).map((part, n) => hasKoreanHanDraft(part, language)
+          ? <mark key={n} title={t("한자 포함 · 원음 확인")}>{part}</mark> : part)
+        : line}</p>) :
         <p className="recognition-preview-waiting">{t("아직 인식된 구간이 없습니다. 대기·모델 준비·화자 분석 중에는 초안이 늦게 표시될 수 있습니다.")}</p>}
     </div>
+    {hasHan && <small className="recognition-script-notice">{t("한국어 초안에 한자가 포함됐습니다. 표기 또는 인식 오류일 수 있으니 원음을 확인하세요. 원문은 유지합니다.")}</small>}
     {!!lines.length && updated !== undefined && <small>{t("마지막 결과 갱신 시각: {time}", {
       time: new Date(updated).toLocaleTimeString(locale === "zh" ? "zh-CN" : locale, {
         hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,

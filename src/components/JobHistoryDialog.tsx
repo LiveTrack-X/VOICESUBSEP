@@ -5,7 +5,7 @@ import { cacheCleanupSelection, cleanupMediaCache, jobUrl, readHistory, sameAnal
 import { useI18n } from "../i18n";
 import { Dialog } from "./Dialog";
 import { RenderDialog } from "./RenderDialog";
-import { RecognitionPreview } from "./RecognitionPreview";
+import { AnalysisJobDetails } from "./AnalysisJobDetails";
 import { AnalysisQueueControls } from "./AnalysisQueueControls";
 import { jobStageLabel } from "../jobStage";
 
@@ -110,10 +110,12 @@ export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
     {items.length>count&&<button onClick={()=>setCount(value=>value+30)}>{t("더 보기")}</button>}
     {analysis&&<section className="export-section">
       <h3>{t("분석 결과 확인")}</h3><p>{analysis.item.mediaName} · {t(statusLabel[analysis.job.status])}</p>
-      {(analysis.job.status==="running"||analysis.job.status==="queued")&&<><progress value={analysis.job.progress} max={1}/><p>{Math.round(analysis.job.progress*100)}% · {t(jobStageLabel(analysis.job.stage))}</p><RecognitionPreview job={analysis.job}/></>}
+      {(analysis.job.status==="running"||analysis.job.status==="queued")&&<><progress value={analysis.job.progress} max={1}/><p>{Math.round(analysis.job.progress*100)}% · {t(jobStageLabel(analysis.job.stage))}</p></>}
       <AnalysisQueueControls key={analysis.job.id} job={analysis.job} showCancel onUpdated={job=>{setAnalysis(value=>value?.job.id===job.id?{...value,job}:value);void refresh();}}/>
       {analysis.job.error&&<p className="error-box">{analysis.job.error}</p>}
-      {analysis.job.result&&<><p>{t("자막 {captions}개 · 감지된 인물 {speakers}명",{captions:analysis.job.result.captions.length,speakers:analysis.job.result.speakers.length})}</p>
+      {analysis.job.result&&<p>{t("자막 {captions}개 · 감지된 인물 {speakers}명",{captions:analysis.job.result.captions.length,speakers:analysis.job.result.speakers.length})}</p>}
+      <AnalysisJobDetails key={analysis.job.id} job={analysis.job}/>
+      {analysis.job.result&&<>
         <p>{t("같은 프로젝트와 원본 파일이 연결된 경우에만 결과를 적용할 수 있습니다.")}</p>
         <p>{t("적용하면 기존 자막이 교체됩니다. 노트는 유지됩니다.")}</p>
         <div className="dialog-actions"><button onClick={()=>download(`analysis-${analysis.item.id}.json`,JSON.stringify(analysis.job.result,null,2),"application/json;charset=utf-8")}>{t("분석 결과 JSON 저장")}</button>

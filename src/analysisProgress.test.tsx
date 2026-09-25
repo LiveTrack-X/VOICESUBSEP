@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Job } from "./api";
-import { elapsedClock, jobElapsedSeconds, recognitionPreviewLines } from "./analysisProgress";
+import { elapsedClock, hasKoreanHanDraft, jobElapsedSeconds, recognitionPreviewLines } from "./analysisProgress";
 import { RecognitionPreview } from "./components/RecognitionPreview";
 import { I18nProvider } from "./i18n";
 
@@ -9,6 +9,20 @@ const job = (patch: Partial<Job> = {}): Job => ({ id: "a", status: "running", st
 const render = (value: Job) => renderToStaticMarkup(<I18nProvider><RecognitionPreview job={value}/></I18nProvider>);
 
 describe("recognition draft display", () => {
+  it("flags single and supplementary Han characters only for an explicitly Korean draft", () => {
+    for (const text of ["말 끝 漢", "字", "𠀀"]) expect(hasKoreanHanDraft(text,"ko")).toBe(true);
+    expect(hasKoreanHanDraft("정상 한글 ABC","ko")).toBe(false);
+    for (const language of [undefined,"auto","ja","zh"]) expect(hasKoreanHanDraft("漢",language)).toBe(false);
+  });
+  it("highlights Han in a Korean draft while preserving every recognized character", () => {
+    const value=job({recognitionPreview:{lines:["한자 漢字 그대로"],updatedAt:"bad"}});
+    const before=JSON.stringify(value);
+    const html=renderToStaticMarkup(<I18nProvider><RecognitionPreview job={value} language="ko"/></I18nProvider>);
+    expect(html).toContain('<mark title="한자 포함 · 원음 확인">漢字</mark>');
+    expect(html).toContain("원문은 유지합니다.");
+    expect(JSON.stringify(value)).toBe(before);
+    expect(render(value)).not.toContain("<mark");
+  });
   it("keeps only the current job's latest two bounded Unicode segments without mutating it", () => {
     const value = job({recognitionPreview:{lines:["first", "second\n\u0000line", "😀".repeat(520)], updatedAt:"2026-09-25T00:00:05Z"}});
     const before = JSON.stringify(value);

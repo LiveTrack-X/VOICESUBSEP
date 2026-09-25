@@ -118,7 +118,7 @@ describe("literal transcript documents", () => {
     const html = renderToStaticMarkup(<I18nProvider><TranscriptDocumentPanel project={project}/></I18nProvider>);
     expect(html).toContain("Word 문서 (.docx)"); expect(html).toContain("텍스트 (.txt)");
     expect(html).toContain("PDF 저장(인쇄)"); expect(html).toContain("안녕하세요.");
-    expect(html).not.toContain('checked=""'); expect(html).not.toContain("00:00:");
+    expect(html).not.toContain('checked=""'); expect(html).not.toContain('class="transcript-time"');
     expect(html).toContain("Excel 통합문서 저장");
     expect(html).not.toContain("<select"); expect(html).not.toContain("번역");
   });

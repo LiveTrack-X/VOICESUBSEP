@@ -5,7 +5,6 @@ import {
   FileText,
   Search,
   Upload,
-  FlaskConical,
   Scissors,
   Combine,
   Trash2,
@@ -25,6 +24,7 @@ import { useCaptionVirtualList } from "../useCaptionVirtualList";
 import { useCaptionFollow } from "../useCaptionFollow";
 import { loadCaptionFollow, saveCaptionFollow } from "../captionFollow";
 import { selectableSpeakers } from "../speakerOperations";
+import { reviewReasonLabels, SPEECH_REVIEW_HINT } from "../reviewReasons";
 import "./caption-editor-density.css";
 import "./caption-virtual-list.css";
 import "./caption-follow.css";
@@ -42,14 +42,6 @@ function loadCaptionDensity(): CaptionDensity {
   }
 }
 
-const reasonLabels: Record<string, string> = {
-  overlap: "동시 발화",
-  unassigned: "화자 미배정",
-  speaker_count: "인원 확인",
-  timing: "시간 확인",
-  speaker_boundary: "경계 보정",
-  edited: "수동 수정",
-};
 export function CaptionEditor({
   project,
   update,
@@ -58,10 +50,10 @@ export function CaptionEditor({
   selected,
   setSelected,
   onImport,
-  onSample,
   onError,
   time,
   playing = false,
+  followSuspended = false,
 }: {
   project: Project;
   update: (fn: (p: Project) => Project) => void;
@@ -70,10 +62,10 @@ export function CaptionEditor({
   selected: string | null;
   setSelected: (id: string | null) => void;
   onImport: () => void;
-  onSample: () => void;
   onError: (s: string) => void;
   time: number;
   playing?: boolean;
+  followSuspended?: boolean;
 }) {
   const { t } = useI18n();
   const { theme } = useTheme();
@@ -105,7 +97,7 @@ export function CaptionEditor({
   const visibleIds = useMemo(()=>visible.map(caption=>caption.id),[visible]);
   const virtual = useCaptionVirtualList(visibleIds,project.id,density,focusedCaptionId,setFocusedCaptionId);
   const {listRef,rows}=virtual;
-  useCaptionFollow({ enabled: followPlayback, playing, time, captions: visible, layout: virtual.layout, listRef, reveal: rowReveal, revealIndex: virtual.revealIndex });
+  useCaptionFollow({ enabled: followPlayback, playing, suspended: followSuspended || styleCaptionId !== null, time, captions: visible, layout: virtual.layout, listRef, reveal: rowReveal, revealIndex: virtual.revealIndex });
   const checkedIds = useMemo(() => new Set(visible.filter((caption) => checked.has(caption.id)).map((caption) => caption.id)), [visible, checked]);
   const replaceIds = replaceScope === "selected" ? checkedIds : new Set(visible.map((caption) => caption.id));
   const replaceCount = replacementCount(visible, replaceIds, find);
@@ -252,10 +244,6 @@ export function CaptionEditor({
             <Upload size={15} />
             <span>{t('SRT 가져오기')}</span>
           </button>
-          <button aria-label={t("샘플 프로젝트")} onClick={onSample}>
-            <FlaskConical size={15} />
-            <span>{t('샘플 프로젝트')}</span>
-          </button>
         </div>
       </div>
         <div className="edit-actions">
@@ -311,7 +299,7 @@ export function CaptionEditor({
         <button onClick={() => navigate("review")} disabled={!visible.length}>{t("다음 검수 필요")}</button>
         <button onClick={() => navigate("unassigned")} disabled={!visible.length}>{t("다음 미배정")}</button>
         <span>{t("필터 결과 {count}개", { count: visible.length })}</span>
-        <button className="caption-follow-toggle" aria-pressed={followPlayback} title={t("현재 재생 중인 자막이 화면 밖으로 나가면 따라갑니다. 입력 중이나 직접 스크롤한 뒤 4초 동안은 이동하지 않습니다.")} onClick={() => {
+        <button className="caption-follow-toggle" aria-pressed={followPlayback} title={t("현재 재생 위치의 자막을 중앙에 표시합니다. 일시정지 중 이동도 따라가며, 입력 중이나 직접 스크롤한 뒤 4초 동안은 이동하지 않습니다.")} onClick={() => {
           const next = !followPlayback;
           setFollowPlayback(next);
           if (!saveCaptionFollow(next)) onError(t("재생 따라가기 설정을 저장하지 못했습니다. 현재 창에서만 적용합니다."));
@@ -442,7 +430,7 @@ export function CaptionEditor({
                 {c.reasons.length > 0 && (
                   <div className="review-reasons">
                     {c.reasons.map((r) => (
-                      <span key={r}>{t(reasonLabels[r] ?? r)}</span>
+                      <span key={r} title={r === "speech_uncertain" ? t(SPEECH_REVIEW_HINT) : undefined}>{t(reviewReasonLabels[r] ?? r)}</span>
                     ))}
                   </div>
                 )}

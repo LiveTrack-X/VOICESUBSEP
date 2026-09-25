@@ -311,6 +311,10 @@ for path in models.iterdir():
     }
     Write-Host ("Original dependency notices preserved: {0} files (SHA256 verified)." -f $noticeChecks.Count)
     if (-not $VerifyNoticesOnly) {
+        $sourceGate = Join-Path $projectRoot 'scripts/check-frozen-source.py'
+        if (-not (Test-Path -LiteralPath $sourceGate -PathType Leaf)) { throw 'The frozen application source verification script is required.' }
+        & $pythonExe $sourceGate --output (Join-Path $projectRoot 'tmp/frozen-source-check.json')
+        if ($LASTEXITCODE -ne 0) { throw 'The frozen application differs from the current source. Rebuild without -ReuseBuildCache and inspect tmp/frozen-source-check.json.' }
         $runtimeGate = Join-Path $projectRoot 'scripts/bundled-runtime-check.py'
         if (-not (Test-Path -LiteralPath $runtimeGate -PathType Leaf)) { throw 'The bundled runtime verification script is required.' }
         & $pythonExe $runtimeGate --output (Join-Path $projectRoot 'tmp/bundled-runtime-check.json')

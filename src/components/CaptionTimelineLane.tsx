@@ -3,10 +3,12 @@ import { formatTime, type Caption, type Speaker } from "../domain";
 import { contrastColor } from "../colors";
 import { resizeCaption } from "../timelineEditing";
 import { useI18n } from "../i18n";
+import { TimelineSpeakerName } from "./TimelineSpeakerName";
 
-export function CaptionTimelineLane({ captions, speaker, duration, mediaDuration, time, selected, preview, onResize }: {
+export function CaptionTimelineLane({ captions, speaker, duration, mediaDuration, time, selected, preview, onResize, onRename }: {
   captions: Caption[]; speaker: Speaker; duration:number; mediaDuration:number; time:number; selected:string|null;
   preview:(time:number,id?:string,speakerId?:string)=>void; onResize:(id:string,edge:"start"|"end",position:number)=>void;
+  onRename:(id:string,originalName:string,name:string)=>void;
 }) {
   const {t}=useI18n(); const canvas=useRef<HTMLCanvasElement>(null), lane=useRef<HTMLDivElement>(null);
   const drag=useRef<{pointerId:number;x:number;width:number;caption:Caption;edge:"start"|"end";next:Caption}|null>(null);
@@ -24,7 +26,9 @@ export function CaptionTimelineLane({ captions, speaker, duration, mediaDuration
   },[captions,duration,speaker.color,dense]);
   const active=draft??captions.find(c=>c.id===selected);
   return <div className="timeline-lane">
-    <div className="lane-label"><span className="speaker-dot" style={{background:speaker.color}}/>{speaker.name}</div>
+    <div className="lane-label"><span className="speaker-dot" style={{background:speaker.color}}/>{speaker.id
+      ? <TimelineSpeakerName speaker={speaker} onRename={onRename}/>
+      : <span className="timeline-speaker-unassigned">{speaker.name}</span>}</div>
     <div className="lane-track" ref={lane} onClick={event=>{const box=event.currentTarget.getBoundingClientRect();preview(Math.max(0,Math.min(1,(event.clientX-box.left)/box.width))*duration,undefined,speaker.id);}}>
       <span className="playhead" style={{left:`${time/duration*100}%`}}/>
       {dense&&<canvas ref={canvas} className="caption-density-canvas" aria-hidden="true"/>}

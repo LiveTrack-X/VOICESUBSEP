@@ -10,7 +10,7 @@ function projectWithCaptions(count:number):Project {
   return project;
 }
 function editor(project:Project,selected:string|null=null){
-  return renderToStaticMarkup(<I18nProvider><CaptionEditor project={project} update={()=>{}} preview={()=>{}} reveal={null} selected={selected} setSelected={()=>{}} onImport={()=>{}} onSample={()=>{}} onError={()=>{}} time={0}/></I18nProvider>);
+  return renderToStaticMarkup(<I18nProvider><CaptionEditor project={project} update={()=>{}} preview={()=>{}} reveal={null} selected={selected} setSelected={()=>{}} onImport={()=>{}} onError={()=>{}} time={0}/></I18nProvider>);
 }
 describe("continuous subtitle editor rendering",()=>{
   it("renders a full-length scroll surface and a bounded initial row window, without page controls",()=>{

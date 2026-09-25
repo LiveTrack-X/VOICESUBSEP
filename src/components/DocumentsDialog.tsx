@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Pause, Play } from "lucide-react";
 import { Dialog } from "./Dialog";
 import { download } from "../api";
 import { formatTime, safeFilename, type Project } from "../domain";
@@ -11,9 +12,10 @@ import { TranscriptDocumentPanel } from "./TranscriptDocumentPanel";
 import "./documents.css";
 
 const kinds: Record<MinutesKind, string> = { summary: "요약", discussion: "논의", decision: "결정", action: "할 일" };
-export function DocumentsDialog({ project, update, onClose, onSource }: {
+export function DocumentsDialog({ project, update, onClose, onSource, time = 0, playing = false, mediaAvailable = false, onTogglePlayback }: {
   project: Project; update: (change: (p: Project) => Project) => void;
   onClose: () => void; onSource: (time: number, captionId: string) => void;
+  time?: number; playing?: boolean; mediaAvailable?: boolean; onTogglePlayback?: () => void;
 }) {
   const { t, locale } = useI18n();
   const [mode, setMode] = useState<"transcript" | "interview" | "minutes">("transcript");
@@ -34,10 +36,12 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
       setError(""); return true;
     } catch (cause) { setError((cause as Error).message); return false; }
   }
-  function close(position?:number,captionId?:string) {
+  function close() {
     if (exporting) return;
-    if(position!==undefined&&captionId)onSource(position,captionId);
     onClose();
+  }
+  function playSource(position: number, captionId: string) {
+    if (!exporting && mediaAvailable) onSource(position, captionId);
   }
   function addManual() {
     if (docs.items.length >= 1000) { setError(t("문서 항목은 최대 1000개입니다.")); return; }
@@ -70,12 +74,19 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
   }
   return <Dialog title={t("인터뷰·회의록")} onClose={()=>close()} closeDisabled={exporting}>
     <div className="document-tabs"><button disabled={exporting} aria-pressed={mode==="transcript"} onClick={()=>setMode("transcript")}>{t("발언록")}</button><button disabled={exporting} aria-pressed={mode==="interview"} onClick={()=>setMode("interview")}>{t("인터뷰 문답")}</button><button disabled={exporting} aria-pressed={mode==="minutes"} onClick={()=>setMode("minutes")}>{t("회의 메모")}</button></div>
+    <div className="document-playback" aria-label={t("문서에서 원음 재생")}>
+      <button type="button" disabled={!mediaAvailable || !onTogglePlayback || exporting} onClick={onTogglePlayback} aria-label={t(playing ? "일시 정지" : "재생")}>
+        {playing ? <Pause size={15}/> : <Play size={15}/>} {t(playing ? "일시 정지" : "재생")}
+      </button>
+      <span className="document-playback-time">{formatTime(time)} / {formatTime(project.duration)}</span>
+      <small>{t(mediaAvailable ? "발언을 재생해도 문서는 열린 상태로 유지됩니다." : "재생하려면 원본 미디어를 연결하세요.")}</small>
+    </div>
     {mode !== "transcript" && <p>{t("원본 시간과 근거 자막을 유지합니다. 생성 문서는 확인 전까지 초안입니다.")}</p>}
-    {mode === "transcript" ? <TranscriptDocumentPanel project={project} onExportingChange={setExporting} onSeek={close}/> : mode==="interview" ? <>
+    {mode === "transcript" ? <TranscriptDocumentPanel project={project} onExportingChange={setExporting} onSeek={mediaAvailable ? playSource : undefined}/> : mode==="interview" ? <>
       <div className="interview-roles">{participants.map(s=><label key={s.id}>{s.name}<select aria-label={`${s.name} ${t("인터뷰 역할")}`} value={docs.roles[s.id]??"participant"} onChange={e=>edit(d=>({...d,roles:{...d.roles,[s.id]:e.target.value as InterviewRole}}))}><option value="participant">{t("참가자")}</option><option value="questioner">{t("질문자")}</option><option value="respondent">{t("답변자")}</option></select></label>)}</div>
       <p>{t("인물 역할로 질문과 답변을 구분하며, 각 자막의 분류를 직접 바꿀 수 있습니다.")}</p>
       <div className="document-transcript">{captions.slice(page*50,(page+1)*50).map(c=><article key={c.id} className={`interview-${interviewTag(c,docs)}`}>
-        <button onClick={()=>close(c.start,c.id)}>{formatTime(c.start)}</button>
+        <button disabled={!mediaAvailable || exporting} aria-label={`${t("이 발언 재생")} ${formatTime(c.start)}`} onClick={()=>playSource(c.start,c.id)}><Play size={12}/> {formatTime(c.start)}</button>
         <strong>{project.speakers.find(s=>s.id===c.speakerId)?.name??t("미배정")}</strong>
         <select aria-label={`${t("문답 분류")} ${c.id}`} value={interviewTag(c,docs)} onChange={e=>edit(d=>({...d,tags:{...d.tags,[c.id]:e.target.value as InterviewTag}}))}><option value="question">{t("질문")}</option><option value="answer">{t("답변")}</option><option value="other">{t("기타")}</option></select>
         <p>{c.text}</p>
@@ -94,7 +105,7 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
           <div className="minutes-heading"><select aria-label={`${t("항목 분류")} ${item.id}`} value={item.kind} onChange={e=>changeItem(item.id,{kind:e.target.value as MinutesKind,status:"draft"})}>{Object.entries(kinds).map(([key,label])=><option key={key} value={key}>{t(label)}</option>)}</select><span>{t(!fresh?"근거 재확인 필요":item.status==="reviewed"?"확인 완료":"초안")}</span><button onClick={()=>edit(d=>({...d,items:d.items.filter(i=>i.id!==item.id)}))}>{t("삭제")}</button></div>
           <textarea aria-label={`${t("회의록 내용")} ${item.id}`} value={item.text} maxLength={8000} onChange={e=>changeItem(item.id,{text:e.target.value,status:"draft"})}/>
           <div className="minutes-fields"><label>{t("담당자")}<input placeholder={t("미정")} value={item.owner} maxLength={160} onChange={e=>changeItem(item.id,{owner:e.target.value,status:"draft"})}/></label><label>{t("기한")}<input placeholder={t("미정")} value={item.due} maxLength={160} onChange={e=>changeItem(item.id,{due:e.target.value,status:"draft"})}/></label></div>
-          <div className="document-evidence">{item.evidence.map(e=><button key={e.id} disabled={!project.captions.some(c=>c.id===e.id)} title={e.text} onClick={()=>{const current=project.captions.find(c=>c.id===e.id);if(current)close(current.start,current.id);}}>{t("근거")} {formatTime(e.start)}</button>)}
+          <div className="document-evidence">{item.evidence.map(e=><button key={e.id} disabled={!mediaAvailable || exporting || !project.captions.some(c=>c.id===e.id)} title={e.text} onClick={()=>{const current=project.captions.find(c=>c.id===e.id);if(current)playSource(current.start,current.id);}}><Play size={12}/> {t("근거")} {formatTime(e.start)}</button>)}
           {!fresh&&<button onClick={()=>changeItem(item.id,{evidence:item.evidence.flatMap(e=>{const c=project.captions.find(c=>c.id===e.id);return c?[evidenceFor(c)]:[];}),status:"draft"})}>{t("현재 근거로 갱신")}</button>}
           <button disabled={!sourceId} onClick={()=>{const c=project.captions.find(c=>c.id===sourceId);if(c)changeItem(item.id,{evidence:[evidenceFor(c)],status:"draft"});}}>{t("선택한 자막으로 근거 교체")}</button>
           <button disabled={!fresh||!item.text.trim()} aria-pressed={item.status==="reviewed"&&fresh} onClick={()=>changeItem(item.id,{status:item.status==="reviewed"?"draft":"reviewed"})}>{t("확인 완료")}</button></div>

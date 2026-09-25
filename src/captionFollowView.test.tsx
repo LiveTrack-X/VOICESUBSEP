@@ -12,7 +12,7 @@ describe("playback-follow preference in the editor", () => {
     vi.stubGlobal("localStorage", { getItem: (key: string) => key === CAPTION_FOLLOW_KEY ? saved : null, setItem });
     const project = createProject();
     const original = JSON.stringify(project);
-    const html = renderToStaticMarkup(<I18nProvider><CaptionEditor project={project} update={update} preview={preview} reveal={null} selected={null} setSelected={setSelected} onImport={() => {}} onSample={() => {}} onError={() => {}} time={0} playing/></I18nProvider>);
+    const html = renderToStaticMarkup(<I18nProvider><CaptionEditor project={project} update={update} preview={preview} reveal={null} selected={null} setSelected={setSelected} onImport={() => {}} onError={() => {}} time={0} playing/></I18nProvider>);
     expect(html).toContain(`class="caption-follow-toggle" aria-pressed="${saved !== "false"}"`);
     expect(html).toContain("재생 따라가기");
     expect(html).toContain("직접 스크롤한 뒤 4초");

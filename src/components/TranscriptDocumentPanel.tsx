@@ -1,5 +1,5 @@
 import { useMemo, useState, type CSSProperties } from "react";
-import { Download, Play } from "lucide-react";
+import { Download, Play, Search } from "lucide-react";
 import { download } from "../api";
 import { safeFilename, type Project } from "../domain";
 import { useI18n } from "../i18n";
@@ -8,6 +8,7 @@ import { saveDocumentPdf, supportsDirectPdf } from "../documentPdf";
 import { buildTranscriptDocument, DOCX_MIME, exportTranscriptDocx, exportTranscriptHtml, exportTranscriptTxt, exportTranscriptXlsx, type TranscriptTurn } from "../transcriptDocument";
 import { readableSpeakerColor } from "../speakerColor";
 import { useTranscriptScroll } from "../useTranscriptScroll";
+import { filterTranscript, transcriptTimeTarget } from "../transcriptSearch";
 import "./transcript-document.css";
 
 export type TranscriptDocumentPanelProps = {
@@ -32,9 +33,25 @@ export function TranscriptDocumentPanel({ project, onSeek, onPrint, onExportingC
   const [timestamps, setTimestamps] = useState(false);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false), [notice, setNotice] = useState("");
+  const [query, setQuery] = useState("");
+  const [timeQuery, setTimeQuery] = useState("");
+  const [searchError, setSearchError] = useState("");
+  const [reveal, setReveal] = useState<{ id: string; nonce: number } | null>(null);
+  const [searchRevision, setSearchRevision] = useState(0);
   const transcript = useMemo(() => buildTranscriptDocument(project, t), [project, t]);
-  const { scrollRef, range, onScroll } = useTranscriptScroll(transcript.turns, timestamps, project.id);
-  const turns = transcript.turns.slice(range.start, range.end);
+  const filtered = useMemo(() => filterTranscript(transcript.turns, query), [transcript.turns, query]);
+  const { scrollRef, range, onScroll } = useTranscriptScroll(filtered, timestamps, `${project.id}\0${query}\0${searchRevision}`, reveal);
+  const turns = filtered.slice(range.start, range.end);
+  const highlightedId = reveal?.id ?? (query.trim() ? filtered[0]?.ids[0] : undefined);
+  function changeQuery(value: string) { setQuery(value); setReveal(null); setSearchError(""); setSearchRevision(value => value + 1); }
+  function findTime() {
+    try {
+      const turn = transcriptTimeTarget(filtered, timeQuery);
+      if (!turn) { setSearchError(t("해당 시간 이후의 발언이 현재 검색 결과에 없습니다.")); return; }
+      setReveal(previous => ({ id: turn.ids[0]!, nonce: (previous?.nonce ?? 0) + 1 }));
+      setSearchError("");
+    } catch { setSearchError(t("초, 분:초 또는 시:분:초 형식으로 입력하세요.")); }
+  }
 
   async function save(format: "docx" | "txt" | "html" | "pdf" | "xlsx") {
     if (exporting) return;
@@ -71,15 +88,30 @@ export function TranscriptDocumentPanel({ project, onSeek, onPrint, onExportingC
     </div>
     {error && <p className="inline-error" role="alert">{error}</p>}
     {notice && <p role="status">{notice}</p>}
+    <div className="transcript-search-tools">
+      <label className="transcript-text-search"><Search size={14} aria-hidden="true"/>
+        <input type="search" aria-label={t("발언 내용·인물 검색")} placeholder={t("발언 내용·인물 검색")} maxLength={200} value={query} onChange={event => changeQuery(event.target.value)}/>
+      </label>
+      <div className="transcript-time-search">
+        <input type="text" aria-label={t("찾을 시간")} placeholder="00:00:00.000" maxLength={24} value={timeQuery}
+          onChange={event => { setTimeQuery(event.target.value); setSearchError(""); }}
+          onKeyDown={event => { if (event.key === "Enter" && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) { event.preventDefault(); findTime(); } }}/>
+        <button type="button" disabled={!timeQuery.trim()} onClick={findTime}>{t("시간 찾기")}</button>
+      </div>
+      <button type="button" disabled={!query && !timeQuery && !reveal} onClick={() => { changeQuery(""); setTimeQuery(""); }}>{t("검색 초기화")}</button>
+    </div>
+    <p className="transcript-search-summary" role="status">{t("검색 결과 {count}개 / 전체 {total}개 · 내보내기는 전체 발언", { count: filtered.length, total: transcript.turns.length })}</p>
+    {searchError && <p className="inline-error" role="alert">{searchError}</p>}
     <div className="transcript-page">
       <h3>{transcript.title}</h3>
       <p className="transcript-people">{t("참가자")}: {transcript.people.length ? transcript.people.map((person, index) => <span key={person.id ?? "unassigned"}>{index > 0 && ", "}<strong className="transcript-speaker" style={speakerStyle(person.color)}>{person.name}</strong></span>) : "—"}</p>
       <div ref={scrollRef} className="transcript-scroll" role="list" tabIndex={0} aria-label={t("발언 내용")} onScroll={onScroll}>
-      {!turns.length && <p>{t("분석한 대사가 없습니다. 녹음 또는 미디어를 먼저 분석하세요.")}</p>}
+      {!filtered.length && <p>{t(transcript.turns.length ? "일치하는 발언이 없습니다." : "분석한 대사가 없습니다. 녹음 또는 미디어를 먼저 분석하세요.")}</p>}
       {range.before > 0 && <div aria-hidden="true" style={{ height: range.before }}/>}
-      {turns.map((turn, index) => <p key={turn.ids[0]} className="transcript-turn" data-transcript-index={range.start + index} role="listitem" aria-posinset={range.start + index + 1} aria-setsize={transcript.turns.length}>
-        {onSeek && <TranscriptSeekButton turn={turn} onSeek={onSeek} label={t("이 발언으로 이동")}/>}
+      {turns.map((turn, index) => <p key={turn.ids[0]} className={`transcript-turn${turn.ids[0] === highlightedId ? " transcript-turn-found" : ""}`} data-transcript-index={range.start + index} role="listitem" aria-posinset={range.start + index + 1} aria-setsize={filtered.length}>
+        {onSeek && <TranscriptSeekButton turn={turn} onSeek={onSeek} label={t("이 발언 재생")}/>}
         {timestamps && <span className="transcript-time">[{reportTime(turn.start)} – {reportTime(turn.end)}] </span>}
+        {turn.speechUncertain && <small className="transcript-time">[{t("음성 확인 필요")}] </small>}
         <strong className="transcript-speaker" style={speakerStyle(turn.color)}>{turn.speaker}: </strong><span>{turn.text}</span>
       </p>)}
       {range.after > 0 && <div aria-hidden="true" style={{ height: range.after }}/>}</div>

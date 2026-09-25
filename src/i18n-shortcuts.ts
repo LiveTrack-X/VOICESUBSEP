@@ -1,6 +1,6 @@
 export const shortcutMessages: Record<string, readonly [string, string, string, string]> = {
   "재생 따라가기": ["Follow playback", "再生に追従", "跟随播放", "Seguir reproducción"],
-  "현재 재생 중인 자막이 화면 밖으로 나가면 따라갑니다. 입력 중이나 직접 스크롤한 뒤 4초 동안은 이동하지 않습니다.": ["Follow the playing caption when it leaves the view. Paused while typing and for 4 seconds after manual scrolling.", "再生中の字幕が画面外に出ると追従します。入力中や手動スクロール後4秒間は移動しません。", "播放字幕离开视图时自动跟随。输入期间及手动滚动后4秒内暂停移动。", "Sigue el subtítulo en reproducción cuando sale de la vista. Se pausa al escribir y durante 4 segundos tras desplazar manualmente."],
+  "현재 재생 위치의 자막을 중앙에 표시합니다. 일시정지 중 이동도 따라가며, 입력 중이나 직접 스크롤한 뒤 4초 동안은 이동하지 않습니다.": ["Center the caption at the current playback position, including seeks while paused. Paused while typing and for 4 seconds after manual scrolling.", "現在の再生位置の字幕を中央に表示します。一時停止中の移動にも追従し、入力中や手動スクロール後4秒間は移動しません。", "将当前播放位置的字幕居中显示，也跟随暂停时的跳转。输入期间及手动滚动后4秒内暂停移动。", "Centra el subtítulo de la posición actual, incluidos los saltos en pausa. No se desplaza al escribir ni durante 4 segundos tras desplazar manualmente."],
   "재생 따라가기 설정을 저장하지 못했습니다. 현재 창에서만 적용합니다.": ["Could not save follow-playback settings. Applied only in this window.", "追従設定を保存できませんでした。このウィンドウ内のみ適用します。", "无法保存跟随播放设置，仅在当前窗口生效。", "No se pudo guardar el seguimiento. Se aplica solo en esta ventana."],
   "단축키 허브": ["Keyboard shortcuts", "キーボードショートカット", "快捷键中心", "Atajos de teclado"],
   "재생 / 일시 정지": ["Play / pause", "再生 / 一時停止", "播放 / 暂停", "Reproducir / pausar"],

@@ -21,31 +21,51 @@ export function playingCaptionId(captions: readonly { id: string; start: number;
   return retained ? retained.id : captions.find(active)?.id ?? null;
 }
 
-/** Scroll only if the active row has left the view; tall rows need not fit fully. */
+/** Center the active row even when it is already visible; edges remain bounded. */
 export function captionFollowTop(layout: CaptionVirtualLayout, id: string, top: number, height: number): number | null {
   const index = layout.indexById.get(id);
   if (index === undefined || !Number.isFinite(top) || !Number.isFinite(height) || height <= 0) return null;
-  const rowTop = layout.offsets[index]!;
-  const rowBottom = layout.offsets[index + 1]!;
-  const visibleHeight = Math.min(rowBottom, top + height) - Math.max(rowTop, top);
-  if ((rowTop >= top - 1 && rowBottom <= top + height + 1) ||
-      (rowBottom - rowTop > height && visibleHeight >= Math.min(80, height * 0.6))) return null;
-  return layout.centeredTop(index, height);
+  const target = layout.centeredTop(index, height);
+  return Math.abs(target - top) <= 1 ? null : target;
+}
+
+type FollowFrame = { id: string | null; time: number; playing: boolean; rowTop: number; rowHeight: number; total: number; viewportHeight: number };
+
+/** Ordinary playback ticks within one caption must not fight manual reading. */
+export class CaptionFollowPosition {
+  private previous: FollowFrame | null = null;
+  private invalid = true;
+  invalidate() { this.invalid = true; }
+  changed(frame: FollowFrame): boolean {
+    const before = this.previous;
+    this.previous = frame;
+    const changed = this.invalid || !before || before.id !== frame.id ||
+      (!frame.playing && before.time !== frame.time) || (frame.playing && !before.playing) ||
+      Math.abs(frame.time - before.time) > 1 ||
+      before.rowTop !== frame.rowTop || before.rowHeight !== frame.rowHeight ||
+      before.total !== frame.total || before.viewportHeight !== frame.viewportHeight;
+    this.invalid = false;
+    return changed && frame.id !== null;
+  }
 }
 
 export class CaptionFollowGate {
   private pausedUntil = 0;
   private pointerHeld = false;
   private composing = false;
-  pause(now: number) { this.pausedUntil = now + CAPTION_FOLLOW_PAUSE_MS; }
+  constructor(private readonly onPause?: () => void) {}
+  pause(now: number) { this.pausedUntil = now + CAPTION_FOLLOW_PAUSE_MS; this.onPause?.(); }
   pointerDown(now: number) { this.pointerHeld = true; this.pause(now); }
-  pointerUp(now: number) { if (this.pointerHeld) { this.pointerHeld = false; this.pause(now); } }
+  pointerUp(now: number) { if (!this.pointerHeld) return false; this.pointerHeld = false; this.pause(now); return true; }
   composition(started: boolean, now: number) { this.composing = started; this.pause(now); }
-  canFollow(enabled: boolean, playing: boolean, editing: boolean, now: number): boolean {
-    return enabled && playing && !editing && !this.pointerHeld && !this.composing && now >= this.pausedUntil;
+  canFollow(enabled: boolean, available: boolean, editing: boolean, now: number): boolean {
+    return enabled && available && !editing && !this.pointerHeld && !this.composing && now >= this.pausedUntil;
   }
 }
 
 export function followEditingTarget(target: unknown): boolean {
-  return !!(target as { closest?: (selector: string) => unknown } | null)?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="slider"], [role="dialog"], [aria-modal="true"]');
+  const element = target as { closest?: (selector: string) => unknown } | null;
+  if (element?.closest?.('[role="dialog"], [aria-modal="true"]')) return true;
+  if (element?.closest?.('[data-caption-follow-seek]')) return false;
+  return !!element?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="slider"]');
 }

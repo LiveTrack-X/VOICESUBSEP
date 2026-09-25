@@ -5,7 +5,7 @@ import { backgroundJobRunning, sameBackgroundSource, type BackgroundJobSnapshot 
 import type { Project } from "../domain";
 import { useI18n } from "../i18n";
 import { Dialog } from "./Dialog";
-import { RecognitionPreview } from "./RecognitionPreview";
+import { AnalysisJobDetails } from "./AnalysisJobDetails";
 import { AnalysisQueueControls } from "./AnalysisQueueControls";
 import { jobStageLabel } from "../jobStage";
 import "./background-job.css";
@@ -41,11 +41,11 @@ export function BackgroundJobDialog({snapshot,project,file,onClose,onApply,onRet
     {snapshot.paused&&<button onClick={onRetry}>{t("상태 다시 확인")}</button>}
     {job&&<section className="analysis-job">
       <strong>{t(labels[job.status])} · {Math.round(job.progress*100)}%</strong><progress value={job.progress} max={1}/><p>{t(jobStageLabel(job.stage))}</p>
-      <RecognitionPreview job={job}/>{job.error&&<p className="error-box">{job.error}</p>}
+      {job.error&&<p className="error-box">{job.error}</p>}
       <AnalysisQueueControls key={job.id} job={job} onUpdated={onRetry} showCancel/>
-      {job.result?.warnings.map((warning,index)=><p key={index} className="info-box">{warning}</p>)}
+      {job.result&&<p>{t("자막 {captions}개 · 감지된 인물 {speakers}명",{captions:job.result.captions.length,speakers:job.result.speakers.length})}</p>}
+      <AnalysisJobDetails key={job.id} job={job}/>
       {job.result&&<>
-        <p>{t("자막 {captions}개 · 감지된 인물 {speakers}명",{captions:job.result.captions.length,speakers:job.result.speakers.length})}</p>
         <button onClick={()=>download(`analysis-${job.id}.json`,JSON.stringify(job.result,null,2),"application/json;charset=utf-8")}>{t("분석 결과 JSON 저장")}</button>
         <p>{t("같은 프로젝트와 원본 파일이 연결된 경우에만 결과를 적용할 수 있습니다.")}</p>
         {(!file||pointer.projectId!==project.id)&&<p>{t("이 작업의 프로젝트와 원본 미디어를 먼저 다시 연결하세요. 파일 없이도 진행 상태와 결과 JSON은 확인할 수 있습니다.")}</p>}

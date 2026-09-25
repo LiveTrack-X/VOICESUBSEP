@@ -1,4 +1,5 @@
 import type { Caption, Project } from "./domain";
+import { needsSpeechReview } from "./reviewReasons";
 
 export type InterviewRole = "questioner" | "respondent" | "participant";
 export type InterviewTag = "question" | "answer" | "other";
@@ -129,7 +130,7 @@ export function exportDocument(project: Project, mode: "interview" | "minutes", 
   if (mode === "interview") for (const c of [...project.captions].sort((a,b)=>a.start-b.start)) {
     const tag = interviewTag(c, docs);
     const who = project.speakers.find(s=>s.id===c.speakerId)?.name ?? label("미배정");
-    lines.push(`### [${stamp(c.start)}] ${markdown(who, true)} · ${label(tag === "question" ? "질문" : tag === "answer" ? "답변" : "기타")}`, "", markdown(c.text), "");
+    lines.push(`### [${stamp(c.start)}] ${markdown(who, true)} · ${label(tag === "question" ? "질문" : tag === "answer" ? "답변" : "기타")}${needsSpeechReview(c) ? ` · ${label("음성 확인 필요")}` : ""}`, "", markdown(c.text), "");
   }
   else for (const item of docs.items) {
     const kind = { summary:"요약", discussion:"논의", decision:"결정", action:"할 일" }[item.kind];

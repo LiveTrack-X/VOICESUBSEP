@@ -2,8 +2,9 @@ import { parseProject, type Project } from "./domain";
 import { zipStore } from "./subtitle-export";
 import { exportWorkbook, reportTime } from "./documentExports";
 import { normalizeSpeakerColor, readableSpeakerColor } from "./speakerColor";
+import { captionReviewLabel, needsSpeechReview } from "./reviewReasons";
 
-export type TranscriptTurn = { ids: string[]; speakerId: string | null; speaker: string; color: string | null; start: number; end: number; text: string; overlap: boolean };
+export type TranscriptTurn = { ids: string[]; speakerId: string | null; speaker: string; color: string | null; start: number; end: number; text: string; overlap: boolean; speechUncertain?: boolean };
 export type TranscriptDocument = { title: string; participants: string[]; people: {id: string | null; name: string; color: string | null}[]; turns: TranscriptTurn[]; captionCount: number };
 type Label = (key: string) => string;
 export type TranscriptOptions = { timestamps?: boolean; locale?: string; coalesce?: boolean };
@@ -30,10 +31,11 @@ export function buildTranscriptDocument(project: Project, label: Label, options:
     if (options.coalesce !== false && previous && previous.ids.at(-1) === captions[index - 1]?.caption.id && caption.speakerId !== null && previous.speakerId === caption.speakerId &&
         !previous.overlap && !overlap && caption.start >= previous.end && caption.start - previous.end <= 1.2) {
       previous.ids.push(caption.id); previous.end = caption.end; previous.text += `\n${text}`;
+      if (needsSpeechReview(caption)) previous.speechUncertain = true;
     } else {
       const person = speakers.get(caption.speakerId ?? "");
       turns.push({ ids: [caption.id], speakerId: caption.speakerId, speaker: person?.name ?? label("미배정"), color: normalizeSpeakerColor(person?.color),
-        start: caption.start, end: caption.end, text, overlap });
+        start: caption.start, end: caption.end, text, overlap, ...(needsSpeechReview(caption) ? { speechUncertain: true } : {}) });
     }
   }
   const active = new Set(turns.map(turn => turn.speakerId));
@@ -50,7 +52,7 @@ const prefix = (turn: TranscriptTurn, timestamps = false) => `${timestamps ? `[$
 
 export function exportTranscriptTxt(project: Project, label: Label, options: TranscriptOptions = {}): string {
   const document = buildTranscriptDocument(project, label, options);
-  return [...metadata(document, label), "", ...document.turns.map(turn => `${prefix(turn, options.timestamps)}${turn.text}\n`)].join("\n");
+  return [...metadata(document, label), "", ...document.turns.map(turn => `${turn.speechUncertain ? `[${label("음성 확인 필요")}]\n` : ""}${prefix(turn, options.timestamps)}${turn.text}\n`)].join("\n");
 }
 
 /** Dedicated original-language transcript workbook, retaining cue IDs and review states. */
@@ -60,7 +62,7 @@ export function exportTranscriptXlsx(project: Project, label: Label): Uint8Array
   return exportWorkbook([
     { name: label("발언록"), filter: true, widths: [26, 22, 18, 18, 14, 14, 90, 24], rows: [
       [label("자막 ID"), label("인물"), label("시작"), label("끝"), label("시작(초)"), label("끝(초)"), label("대사"), label("검수")],
-      ...document.turns.map(turn => [turn.ids[0]!, {text: turn.speaker, color: readableSpeakerColor(turn.color), markerColor: turn.color ?? undefined}, reportTime(turn.start), reportTime(turn.end), turn.start, turn.end, turn.text, label(captions.get(turn.ids[0]!)?.reviewed ? "확인 완료" : "검수 필요")]),
+      ...document.turns.map(turn => [turn.ids[0]!, {text: turn.speaker, color: readableSpeakerColor(turn.color), markerColor: turn.color ?? undefined}, reportTime(turn.start), reportTime(turn.end), turn.start, turn.end, turn.text, captionReviewLabel(captions.get(turn.ids[0]!), label)]),
     ] },
     { name: label("안내"), filter: false, widths: [25, 90], rows: [
       [label("항목"), label("내용")], [label("프로젝트"), document.title],
@@ -76,7 +78,7 @@ export function exportTranscriptHtml(project: Project, label: Label, options: Tr
   const document = buildTranscriptDocument(project, label, options);
   const locale = ["ko", "en", "ja", "zh", "es"].includes(options.locale ?? "") ? options.locale! : "ko";
   const name = (text: string, color: string | null) => `<strong class="speaker" style="color:${readableSpeakerColor(color)};border-left-color:${color ?? "#667085"}">${xml(text)}</strong>`;
-  return `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>${xml(document.title)} · ${xml(label("발언록"))}</title><style>.vs-report{max-width:900px;margin:0 auto;padding:32px;font:15px/1.7 system-ui,"Malgun Gothic",sans-serif;color:#263246;background:#fff}.vs-report h1{overflow-wrap:anywhere}.vs-report p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 16px}.vs-report .meta,.vs-report .notice{font-size:12px;color:#637084}.vs-report .stamp{color:#637084;font-size:12px}.vs-report .speaker{border-left:3px solid;padding-left:5px;box-decoration-break:clone;-webkit-box-decoration-break:clone;print-color-adjust:exact;-webkit-print-color-adjust:exact}@page{size:A4;margin:18mm}@media print{.vs-report{padding:0;font-size:11pt}}</style></head><body><main class="vs-report"><h1>${xml(document.title)}</h1><h2>${xml(label("발언록"))}</h2><p class="meta">${xml(label("참가자"))}: ${document.people.map(person => name(person.name, person.color)).join(", ") || "—"}</p><p class="meta">${xml(metadata(document, label)[3])}</p><h2>${xml(label("발언 내용"))}</h2>${document.turns.map(turn => `<p>${options.timestamps ? `<span class="stamp">[${reportTime(turn.start)} – ${reportTime(turn.end)}]</span> ` : ""}${name(`${turn.speaker}: `, turn.color)}${xml(turn.text)}</p>`).join("")}</main></body></html>`;
+  return `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>${xml(document.title)} · ${xml(label("발언록"))}</title><style>.vs-report{max-width:900px;margin:0 auto;padding:32px;font:15px/1.7 system-ui,"Malgun Gothic",sans-serif;color:#263246;background:#fff}.vs-report h1{overflow-wrap:anywhere}.vs-report p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 16px}.vs-report .meta,.vs-report .notice{font-size:12px;color:#637084}.vs-report .stamp{color:#637084;font-size:12px}.vs-report .speaker{border-left:3px solid;padding-left:5px;box-decoration-break:clone;-webkit-box-decoration-break:clone;print-color-adjust:exact;-webkit-print-color-adjust:exact}@page{size:A4;margin:18mm}@media print{.vs-report{padding:0;font-size:11pt}}</style></head><body><main class="vs-report"><h1>${xml(document.title)}</h1><h2>${xml(label("발언록"))}</h2><p class="meta">${xml(label("참가자"))}: ${document.people.map(person => name(person.name, person.color)).join(", ") || "—"}</p><p class="meta">${xml(metadata(document, label)[3])}</p><h2>${xml(label("발언 내용"))}</h2>${document.turns.map(turn => `<p>${options.timestamps ? `<span class="stamp">[${reportTime(turn.start)} – ${reportTime(turn.end)}]</span> ` : ""}${turn.speechUncertain ? `<small class="notice">[${xml(label("음성 확인 필요"))}]</small><br>` : ""}${name(`${turn.speaker}: `, turn.color)}${xml(turn.text)}</p>`).join("")}</main></body></html>`;
 }
 
 function wordText(text: string): string {
@@ -93,7 +95,7 @@ export function exportTranscriptDocx(project: Project, label: Label, options: Tr
   const body = paragraph(run(document.title), "Title") + paragraph(run(label("발언록")), "Heading1") +
     paragraph(run(`${label("참가자")}: `) + (document.people.map((person, index) => run(index ? ", " : "") + speakerRun(person.name, person.color)).join("") || run("—"))) +
     paragraph(run(meta[3])) + paragraph(run(label("발언 내용")), "Heading1") +
-    document.turns.map(turn => paragraph((options.timestamps ? run(`[${reportTime(turn.start)} – ${reportTime(turn.end)}] `) : "") + speakerRun(`${turn.speaker}: `, turn.color) + run(turn.text))).join("");
+    document.turns.map(turn => (turn.speechUncertain ? paragraph(run(`[${label("음성 확인 필요")}]`)) : "") + paragraph((options.timestamps ? run(`[${reportTime(turn.start)} – ${reportTime(turn.end)}] `) : "") + speakerRun(`${turn.speaker}: `, turn.color) + run(turn.text))).join("");
   return zipStore([
     { name: "[Content_Types].xml", text: `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>` },
     { name: "_rels/.rels", text: `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="document" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="core" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>` },

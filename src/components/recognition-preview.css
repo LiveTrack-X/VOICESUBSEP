@@ -35,3 +35,5 @@
   color: var(--muted);
   overflow-wrap: anywhere;
 }
+.recognition-preview-lines mark { color: var(--warning-text); background: var(--warning-bg); border-radius: 2px; padding: 0 2px; }
+.recognition-preview .recognition-script-notice { color: var(--warning-text); }

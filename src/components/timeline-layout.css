@@ -101,3 +101,27 @@
 .caption-edge-start{transform:translateX(-100%)}.caption-edge-end{transform:none}
 .waveform-lane{height:36px}.waveform-lane .lane-track{height:32px}.waveform-lane svg{width:100%;height:32px;pointer-events:none}.waveform-lane path{stroke:var(--accent-text);stroke-width:1;vector-effect:non-scaling-stroke}
 .timeline-heading-actions>button,.timeline-heading-actions>select{font-size:10px;padding:4px;max-width:130px}
+
+.lane-label .timeline-speaker-name {
+  width: 0;
+  min-width: 0;
+  flex: 1;
+  height: 24px;
+  margin-right: 5px;
+  padding: 2px 3px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-overflow: ellipsis;
+}
+.lane-label .timeline-speaker-name:hover { border-color: var(--border); }
+.lane-label .timeline-speaker-name:focus {
+  background: var(--surface);
+  border-color: var(--accent-text);
+  outline: 1px solid var(--accent-text);
+  outline-offset: -1px;
+}
+.lane-label .timeline-speaker-unassigned { overflow: hidden; text-overflow: ellipsis; }
+.lane-label .speaker-dot { flex-shrink: 0; }

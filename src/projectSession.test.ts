@@ -1,5 +1,6 @@
+import { demoProject } from "./testFixtures/demoProject";
 import { describe, expect, it } from "vitest";
-import { createProject, demoProject, parseProject, type Project } from "./domain";
+import { createProject, parseProject, type Project } from "./domain";
 import {
   createProjectSession,
   editProjectSession,

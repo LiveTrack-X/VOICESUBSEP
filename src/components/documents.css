@@ -21,3 +21,7 @@
 .minutes-fields input { width:100%;min-width:0; }
 .document-evidence { margin-top:10px; }
 .document-evidence button { font-size:11px; }
+.document-playback { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-alt); }
+.document-playback button { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
+.document-playback-time { font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.document-playback small { color: var(--muted); font-size: 10px; }
