@@ -1,8 +1,8 @@
 # YouTube styled captions / YouTube 스타일 CC
 
-**0.3.2 development guide: the exporter is implemented in source; validation is in progress. The release is not published or installed yet.** This guide covers caption files, not text burned into a video. No video or captions are automatically uploaded to YouTube.
+**Available in the published 0.3.2 Windows preview.** Local UI downloads and XML checks passed; actual YouTube upload/player rendering remains unverified. This exports CC files, not burned-in video, and uploads nothing automatically.
 
-**0.3.2 개발 가이드: 내보내기 소스 구현 후 검증 중이며 아직 게시·설치하지 않았습니다.** 영상에 글자를 합성하는 기능이 아니라 CC 파일 출력 범위입니다. YouTube에 영상·자막을 자동 업로드하지 않습니다.
+**공개된 0.3.2 Windows 프리뷰 기능입니다.** 로컬 UI 다운로드·XML 검사는 통과했으며 실제 YouTube 업로드·플레이어 표시는 미검증입니다. CC 파일 출력이며 영상 합성·자동 업로드가 아닙니다.
 
 ## Initial scope / 첫 지원 범위
 
@@ -40,4 +40,4 @@ Local XML generation and escaping tests do **not** prove that YouTube accepts th
 
 로컬 XML 생성·이스케이프 검사는 YouTube 업로드 성공이나 PC·모바일·TV의 모든 스타일 표시를 입증하지 않습니다. 실제 사용 전 비공개·일부 공개 영상에서 업로드 수용·줄바꿈·동시 발화·글꼴 대체·시청자 설정을 별도로 확인해야 하며, 이번 작업에서는 그 플랫폼 검사를 수행하지 않았습니다. 평문 대안은 SRT, 기존 편집용 스타일 출력은 ASS입니다. 이 기능으로 TTML 출력까지 추가되는 것은 아닙니다.
 
-See [feature status](FEATURE-STATUS.md), [the 0.3.2 preparation record](releases/v0.3.2.md) and [the user guide](USER-GUIDE.md). / [기능 현황](FEATURE-STATUS.md), [0.3.2 준비 기록](releases/v0.3.2.md), [사용자 가이드](USER-GUIDE.md)를 함께 확인하세요.
+See [feature status](FEATURE-STATUS.md), [the 0.3.2 release record](releases/v0.3.2.md) and [the user guide](USER-GUIDE.md). / [기능 현황](FEATURE-STATUS.md), [0.3.2 릴리즈 기록](releases/v0.3.2.md), [사용자 가이드](USER-GUIDE.md)를 함께 확인하세요.

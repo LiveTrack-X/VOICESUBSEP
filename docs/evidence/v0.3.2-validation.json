@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "appVersion": "0.3.2",
-  "status": "source-and-frozen-runtime-verified-packaging-in-progress",
+  "status": "published-and-locally-installed",
   "tests": {
     "backendPassed": 905,
     "backendSkipped": 1,
@@ -19,7 +19,8 @@
     ],
     "webPassed": 644,
     "nodePassed": 70,
-    "typecheckAndWebBuild": true
+    "typecheckAndWebBuild": true,
+    "onlineInstallerPassed": 15
   },
   "browserQa": {
     "environment": "isolated local web UI with synthetic projects and owned worker fixtures",
@@ -284,5 +285,359 @@
     },
     "unassignedCaptionCount": 6,
     "accuracyBenchmark": false
+  },
+  "localInstallation": {
+    "installedVersion": "0.3.2.0",
+    "installerExitCode": 0,
+    "elapsedSeconds": 157.5294807,
+    "profileFilesChecked": 22,
+    "profileFilesChanged": 0,
+    "newVersionInstalled": true,
+    "profileBackupCreated": true,
+    "usedLocallyBuiltInstaller": true,
+    "downloadedExecutableExecuted": false,
+    "priorAppCleanShutdown": true,
+    "installedPackageHashesMatch": true,
+    "installedHashes": [
+      {
+        "path": "VOICESUBSEP.exe",
+        "identical": true,
+        "sha256": "7bc6858f63cee7761e084413496386b102a1ac2846b75e6d3e81ecdca0ff50e3"
+      },
+      {
+        "path": "resources\\app.asar",
+        "identical": true,
+        "sha256": "2afb225911325d8d4ff6aa6ae188a0d9df93c55bd2313848c41ffa322f346cd7"
+      },
+      {
+        "path": "resources\\backend\\voicesubsep-server.exe",
+        "identical": true,
+        "sha256": "41eb39e7367dace6799c92c4b35626a12ecad7baab99e2ead064620e5f3fdcb9"
+      },
+      {
+        "path": "resources\\web\\index.html",
+        "identical": true,
+        "sha256": "d1484f5672d88db20a30494a2fef728c3b2c4c6515844c2893ce4c2fe3705022"
+      }
+    ],
+    "installedRuntimePassed": true,
+    "installedApiVersion": "0.3.2",
+    "runtimeProbeShutdown": {
+      "requested": true,
+      "clean": true,
+      "forced": false,
+      "exitCode": 0,
+      "portClosed": true
+    },
+    "userProfileUsedForRuntimeProbe": false,
+    "reopenedApp": {
+      "running": true,
+      "ready": true,
+      "apiVersion": "0.3.2",
+      "installedVersion": "0.3.2.0"
+    }
+  },
+  "packageValidation": {
+    "phase": "completed-package-inspection",
+    "sourceCommit": "9f5abe3",
+    "metadata": {
+      "version": "0.3.2",
+      "main": "desktop/main.cjs",
+      "desktopUpdateProvider": "github-split",
+      "desktopUpdateUrl": "https://api.github.com/repos/LiveTrack-X/VOICESUBSEP/releases"
+    },
+    "asarSha256": "2afb225911325d8d4ff6aa6ae188a0d9df93c55bd2313848c41ffa322f346cd7",
+    "archiveEntries": 4679,
+    "ownPaths": [
+      "desktop",
+      "desktop/assets",
+      "desktop/assets/icon.ico",
+      "desktop/assets/icon.png",
+      "desktop/backend-lifecycle.cjs",
+      "desktop/capture-permissions.cjs",
+      "desktop/document-pdf.cjs",
+      "desktop/helpers.cjs",
+      "desktop/main.cjs",
+      "desktop/preload.cjs",
+      "desktop/proxy.cjs",
+      "desktop/release-updater.cjs",
+      "desktop/startup-log.cjs",
+      "desktop/update-public-key.pem",
+      "desktop/updater.cjs",
+      "package.json"
+    ],
+    "comparisons": [
+      {
+        "path": "desktop/assets/icon.ico",
+        "identical": true,
+        "sha256": "61cb2e537574b2c00e56ee485be76ea863bd27f15b5bfe287bf27f56ba45249e"
+      },
+      {
+        "path": "desktop/assets/icon.png",
+        "identical": true,
+        "sha256": "503eafc66c6315a7ba0bf66e0c58bc8a37e47494c1b9fddcb5baede77cb34309"
+      },
+      {
+        "path": "desktop/backend-lifecycle.cjs",
+        "identical": true,
+        "sha256": "eb68d3d620e536b321645df2bc0f0f24428c7f87d2b4547716410c9265f21cfa"
+      },
+      {
+        "path": "desktop/capture-permissions.cjs",
+        "identical": true,
+        "sha256": "4093701cf8bd6f24f9d5765c5d91a778f8036eb9640f23c8dbca72931894b931"
+      },
+      {
+        "path": "desktop/document-pdf.cjs",
+        "identical": true,
+        "sha256": "450684b2970b95a6a4dc3725aa5518b4da802ded1be1d724c618cd12a4eeaf55"
+      },
+      {
+        "path": "desktop/helpers.cjs",
+        "identical": true,
+        "sha256": "f60aaa6b32140dbaf65453180302a8fbe13e8284241727222a2788676fd4b552"
+      },
+      {
+        "path": "desktop/main.cjs",
+        "identical": true,
+        "sha256": "e95806b16aaea9f2f398ab5d92ba0c072b424209390e8f9880789671338328ae"
+      },
+      {
+        "path": "desktop/preload.cjs",
+        "identical": true,
+        "sha256": "ce3a41a31050854e30382f9e87d1cf75bed0f17ecaa88614dadb74cc40ddf409"
+      },
+      {
+        "path": "desktop/proxy.cjs",
+        "identical": true,
+        "sha256": "b2b192e7f811138a8e3c1da796918c227bdf9ebebfe8b7f8d03cf94951cc685c"
+      },
+      {
+        "path": "desktop/release-updater.cjs",
+        "identical": true,
+        "sha256": "3d44ee19aeeb8c277af15a87c8891d5d48e50d1b299c68bf30d33bd5ae5d2551"
+      },
+      {
+        "path": "desktop/startup-log.cjs",
+        "identical": true,
+        "sha256": "e74ab769c63fd5bd49d2834f9d2d8f4cc978e3a47967c86bf1e4300fb4e90cff"
+      },
+      {
+        "path": "desktop/update-public-key.pem",
+        "identical": true,
+        "sha256": "5533b4f74cf193c9e98ae8a13de3482a656fed603fd209684c0d751b25ba56f3"
+      },
+      {
+        "path": "desktop/updater.cjs",
+        "identical": true,
+        "sha256": "8a58ec2311605b57abd9c73e3493b8d5733592531077132c2ddcd9fb978eccb4"
+      }
+    ],
+    "developmentPaths": [],
+    "privatePemBlock": false,
+    "updateKey": {
+      "type": "ed25519",
+      "publicPem": true,
+      "matchesSource": true,
+      "sha256": "5533b4f74cf193c9e98ae8a13de3482a656fed603fd209684c0d751b25ba56f3"
+    },
+    "backendExeSha256": "41eb39e7367dace6799c92c4b35626a12ecad7baab99e2ead064620e5f3fdcb9",
+    "backendExeMatchesVerified": true,
+    "backendExeMatchesBuild": true,
+    "backendInventoryMatches": true,
+    "backendFileCount": 4389,
+    "webFiles": [
+      {
+        "path": "app-icon.png",
+        "identical": true,
+        "sha256": "6aa6961a24246cdfeae1f68ff1bcbe70e009c4f5a9d57bb430713812be4ea467"
+      },
+      {
+        "path": "assets/index-Drrm62Zt.js",
+        "identical": true,
+        "sha256": "1e2bf77925377a4b6c10eca925e43f7072815159583fe915ea3f8a11cb4bdc02"
+      },
+      {
+        "path": "assets/index-KHgKNqxn.css",
+        "identical": true,
+        "sha256": "c31ae8ba7afac8ab0c067ef28776b461eb90f0595973409bcd6790bddcde659a"
+      },
+      {
+        "path": "assets/live-pcm-worklet-BsliAC3S.js",
+        "identical": true,
+        "sha256": "08462ccea4d998902f59ba977af4fca9df237d0430fa9994bb0def75566eb192"
+      },
+      {
+        "path": "favicon.ico",
+        "identical": true,
+        "sha256": "61cb2e537574b2c00e56ee485be76ea863bd27f15b5bfe287bf27f56ba45249e"
+      },
+      {
+        "path": "favicon.png",
+        "identical": true,
+        "sha256": "117fd95181b2d7730c284fb0de68374553a18426f465d164a92c48e18b119ca0"
+      },
+      {
+        "path": "index.html",
+        "identical": true,
+        "sha256": "d1484f5672d88db20a30494a2fef728c3b2c4c6515844c2893ce4c2fe3705022"
+      }
+    ],
+    "unexpectedWeb": [],
+    "runtimeChecks": [
+      {
+        "path": "voicesubsep-server.exe",
+        "present": true,
+        "identical": true
+      },
+      {
+        "path": "_internal/python312.dll",
+        "present": true,
+        "identical": true
+      },
+      {
+        "path": "_internal/tools/ffmpeg.exe",
+        "present": true,
+        "identical": true
+      },
+      {
+        "path": "_internal/tools/ffprobe.exe",
+        "present": true,
+        "identical": true
+      }
+    ],
+    "resourceFileCount": 4399,
+    "resourcePrivateNames": [],
+    "sessionPaths": [],
+    "modelWeightPaths": [],
+    "bundledOnnx": [
+      {
+        "path": "backend/_internal/faster_whisper/assets/silero_vad_v6.onnx",
+        "size": 1245151
+      },
+      {
+        "path": "backend/_internal/onnxruntime/datasets/logreg_iris.onnx",
+        "size": 670
+      },
+      {
+        "path": "backend/_internal/onnxruntime/datasets/mul_1.onnx",
+        "size": 130
+      },
+      {
+        "path": "backend/_internal/onnxruntime/datasets/sigmoid.onnx",
+        "size": 103
+      }
+    ],
+    "archiveCrcPending": false,
+    "passed": true,
+    "unpackedPassed": true,
+    "artifacts": [
+      {
+        "name": "VOICESUBSEP-0.3.2-Offline-Setup-x64.exe",
+        "bytes": 1045703,
+        "sha256": "bc952173b583b92ccf259480566b41c7301e97b71f69ae36bbcb4d269e7700b1",
+        "matchesExpected": true
+      },
+      {
+        "name": "voicesubsep-0.3.2-x64.nsis.7z",
+        "bytes": 2419065206,
+        "sha256": "276e8b50e9f1671a3598653b9291a6543d26a763ea0cb378f5bbb2e99800805d",
+        "matchesExpected": true
+      }
+    ],
+    "archiveCrc": {
+      "exitCode": 0,
+      "everythingIsOk": true,
+      "files": 4471,
+      "folders": 708,
+      "uncompressedBytes": 5445911306,
+      "archiveBytes": 2416551294,
+      "trailingBytes": 2513912,
+      "warning": "There are data after the end of archive",
+      "warningExplanation": "NSIS web payload has an appended electron-builder blockmap; all 7z member CRCs passed.",
+      "log": "tmp/v0.3.2-archive-crc.log",
+      "embeddedBlockMap": {
+        "compressedBytes": 2513908,
+        "lengthTrailerBytes": 4,
+        "version": "2",
+        "fileEntries": 1,
+        "trailingBytesFullyAccountedFor": true
+      }
+    },
+    "releaseTargetCommit": "67d6497",
+    "verifiedAt": "2026-09-25T11:27:55.345464+00:00",
+    "boundaries": [
+      "Read-only source and release inspection; no installer executed by this audit.",
+      "No user profile, media, credentials or private signing keys read.",
+      "No Whisper/Nemotron weights found in package inventory; bundled Silero VAD and tiny ONNX Runtime example graphs are listed separately.",
+      "This package integrity audit is not a fresh ASR quality test or installation test."
+    ]
+  },
+  "releaseCI": {
+    "runId": 36129140150,
+    "conclusion": "success",
+    "commit": "67d649703c6b3496c784824825dec5100f9b3ce3"
+  },
+  "publication": {
+    "published": true,
+    "checkedAt": "2026-09-25T11:33:08.793Z",
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.3.2",
+    "publishedAt": "2026-09-25T11:33:05Z",
+    "targetCommit": "67d649703c6b3496c784824825dec5100f9b3ce3",
+    "prerelease": true,
+    "assetCount": 10,
+    "allGitHubDigestsMatch": true,
+    "anonymousDownloadsVerified": [
+      "installer-manifest.json",
+      "installer-manifest.sig",
+      "SHA256SUMS.txt",
+      "VOICESUBSEP-0.3.2-Online-Setup-x64.exe"
+    ],
+    "signatureValid": true,
+    "updaterEvents": [
+      {
+        "version": "0.3.1",
+        "event": "available",
+        "offeredVersion": "0.3.2"
+      },
+      {
+        "version": "0.3.2",
+        "event": "not-available",
+        "offeredVersion": "0.3.2"
+      }
+    ],
+    "downloadedExecutablesExecuted": false,
+    "fullPayloadDownloaded": false
+  },
+  "artifacts": {
+    "schemaVersion": 1,
+    "version": "0.3.2",
+    "installer": {
+      "name": "VOICESUBSEP-0.3.2-Offline-Setup-x64.exe",
+      "size": 1045703,
+      "sha256": "bc952173b583b92ccf259480566b41c7301e97b71f69ae36bbcb4d269e7700b1"
+    },
+    "payload": {
+      "name": "voicesubsep-0.3.2-x64.nsis.7z",
+      "size": 2419065206,
+      "sha256": "276e8b50e9f1671a3598653b9291a6543d26a763ea0cb378f5bbb2e99800805d",
+      "parts": [
+        {
+          "name": "voicesubsep-0.3.2-x64.nsis.7z.part001",
+          "size": 1073741824,
+          "sha256": "d84f76105a82aa367797a94ea7f40400593bb8566f281a9297261fe983ddebbd"
+        },
+        {
+          "name": "voicesubsep-0.3.2-x64.nsis.7z.part002",
+          "size": 1073741824,
+          "sha256": "5174ed0e1ce05e4120cee7e6b7fb412bd7f99e8a01da2b2db1305349aa0bbbc9"
+        },
+        {
+          "name": "voicesubsep-0.3.2-x64.nsis.7z.part003",
+          "size": 271581558,
+          "sha256": "72abde6eb8a1234ce8da76fcbd427f4575ac2905e7e30a231e5b8ae0da7d6933"
+        }
+      ]
+    }
   }
 }

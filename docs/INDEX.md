@@ -1,23 +1,23 @@
 # Documentation / 문서 안내
 
-Start with the [0.3.1 release record](releases/v0.3.1.md) for downloads and verification, then the bilingual user/online installer guides. The Windows preview is published; the record distinguishes local installation, source CI, anonymous artifact downloads and update discovery from untested recognition/device behavior. Detailed engineering contracts and historical research are primarily Korean.
+Start with the [0.3.2 release record](releases/v0.3.2.md) for the published Windows preview, verified downloads and local installation. Tests, frozen inference, public files and installed-profile checks have distinct limits; detailed engineering/history documents remain primarily Korean.
 
-[0.3.1 릴리즈 기록](releases/v0.3.1.md)에서 다운로드·검증을 확인한 뒤 한·영 사용자 가이드와 온라인 설치 안내를 읽으세요. Windows 프리뷰를 공개했으며 기록에서 로컬 설치·소스 CI·익명 파일 다운로드·업데이트 검색과 아직 검사하지 않은 인식/장치 동작을 구분합니다. 상세 계약·과거 조사는 한국어 중심입니다.
+[0.3.2 릴리즈 기록](releases/v0.3.2.md)에서 공개 프리뷰·검증된 다운로드·로컬 설치를 확인하세요. 테스트·동결 추론·공개 파일·설치 프로필 검사 범위는 구분하며 상세 기술·과거 문서는 한국어 중심입니다.
 
-**0.3.1 is published.** It adds continuous scrolling, theme/language controls, speaker-colored transcripts, improved preview layout, local Whisper AUTO language retention, background job status and queue/cache controls. See the [release record](releases/v0.3.1.md) for exact scope and artifacts.
+**Earlier 0.3.1 is preserved.** It adds continuous scrolling, theme/language controls, speaker-colored transcripts, improved preview layout, local Whisper AUTO language retention, background job status and queue/cache controls. See the [release record](releases/v0.3.1.md) for exact scope and artifacts.
 
-**0.3.1을 공개했습니다.** 연속 스크롤·테마/언어 조작·인물 색 발언록·미리보기 배치·로컬 Whisper AUTO 언어 유지·백그라운드 작업 상태·대기열/캐시 조작을 개선했습니다. 정확한 범위·파일은 [릴리즈 기록](releases/v0.3.1.md)을 확인하세요.
+**이전 0.3.1 기록을 보존합니다.** 연속 스크롤·테마/언어 조작·인물 색 발언록·미리보기 배치·로컬 Whisper AUTO 언어 유지·백그라운드 작업 상태·대기열/캐시 조작을 개선했습니다. 정확한 범위·파일은 [릴리즈 기록](releases/v0.3.1.md)을 확인하세요.
 
-**0.3.2 is under source validation, not published or installed.** Current feature/user guides mark its new behavior explicitly. The [0.3.2 preparation record](releases/v0.3.2.md) covers isolated force-stop, source identity, editing correctness, capture preferences and measured VST residual delay. The 0.3.1 release and its evidence remain unchanged.
+**0.3.2 is published and locally installed.** The [release record](releases/v0.3.2.md) separates source/CI, frozen Whisper+Nemotron, public asset/signature checks and profile preservation. YTT upload/player rendering and real-broadcast acceptance remain unverified.
 
-**0.3.2는 소스 검증 중이며 미게시·미설치 상태입니다.** 현행 기능·사용자 가이드에서 새 동작에 버전을 표시합니다. 분석 격리·강제 종료, 원본 식별, 편집 정합성, 녹음 선호, VST 잔여 지연은 [0.3.2 준비 기록](releases/v0.3.2.md)을 확인하세요. 0.3.1 릴리즈와 당시 증거는 변경하지 않습니다.
+**0.3.2를 공개하고 로컬 설치했습니다.** [릴리즈 기록](releases/v0.3.2.md)에서 소스·CI, 동결 Whisper+Nemotron, 공개 파일·명세 서명, 프로필 보존 증거를 구분합니다. YTT 업로드·플레이어 표시·실방송 수용 검증은 별도입니다.
 
 ## Users / 사용자
 
 | Purpose / 목적 | Document / 문서 |
 | --- | --- |
 | 0.3.1 publication, verified installer and checksums / 0.3.1 게시 상태·설치 검증·체크섬 | [0.3.1 release record / 릴리즈 기록](releases/v0.3.1.md) |
-| 0.3.2 changes being validated; not a download / 0.3.2 검증 중 변경·다운로드 아님 | [0.3.2 preparation record / 준비 기록](releases/v0.3.2.md) |
+| 0.3.2 publication, checksums and installation / 0.3.2 게시·체크섬·설치 | [0.3.2 release record / 릴리즈 기록](releases/v0.3.2.md) |
 | Small EXE, speed limit, retry/cache, manual fallback / 작은 EXE·속도 제한·재시도·캐시·수동 대안 | [Online installer / 온라인 설치](ONLINE-INSTALLER.md) |
 | Install, analyze, edit, export and recover / 설치·분석·편집·출력·복구 | [User guide / 사용자 가이드](USER-GUIDE.md) |
 | Features and boundaries / 기능과 한계 | [README](../README.md) |

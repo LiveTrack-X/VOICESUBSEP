@@ -1,12 +1,12 @@
 # Online Installer / 온라인 설치기
 
-This guide targets the **0.3.1 Windows 10/11 x64 online installer**. Check the [0.3.1 release record](releases/v0.3.1.md) for actual publication, download links, hashes and installation evidence. Public downloads require no GitHub account/token. The helper downloads a version-pinned app payload; it does not rebuild the application. Read the [dependency notices and distribution scope](BUNDLED-NOTICES.md) before redistribution.
+This guide targets the **0.3.2 Windows 10/11 x64 online installer**. Check the [0.3.2 release record](releases/v0.3.2.md) for actual publication, download links, hashes and installation evidence. Public downloads require no GitHub account/token. The helper downloads a version-pinned app payload; it does not rebuild the application. Read the [dependency notices and distribution scope](BUNDLED-NOTICES.md) before redistribution.
 
-Windows 10/11 x64용 **0.3.1 대상 안내**입니다. 실제 게시·다운로드 링크·해시·설치 검증은 [0.3.1 릴리즈 기록](releases/v0.3.1.md)을 확인하세요. 공개 다운로드에 GitHub 계정·토큰은 필요 없으며, 도우미는 해당 버전의 앱 데이터를 받아 설치할 뿐 재빌드하지 않습니다. 소스 공개가 자유로운 재배포 허용을 뜻하지 않으므로 [의존성 고지·재배포 범위](BUNDLED-NOTICES.md)를 확인하세요.
+Windows 10/11 x64용 **0.3.2 대상 안내**입니다. 실제 게시·다운로드 링크·해시·설치 검증은 [0.3.2 릴리즈 기록](releases/v0.3.2.md)을 확인하세요. 공개 다운로드에 GitHub 계정·토큰은 필요 없으며, 도우미는 해당 버전의 앱 데이터를 받아 설치할 뿐 재빌드하지 않습니다. 소스 공개가 자유로운 재배포 허용을 뜻하지 않으므로 [의존성 고지·재배포 범위](BUNDLED-NOTICES.md)를 확인하세요.
 
-**Online installer:** [VOICESUBSEP-0.3.1-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.1/VOICESUBSEP-0.3.1-Online-Setup-x64.exe) (166,912 bytes). Public availability and its SHA256 were verified; see the [release record](releases/v0.3.1.md). Manual assembly remains an alternative.
+**Online installer:** [VOICESUBSEP-0.3.2-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.2/VOICESUBSEP-0.3.2-Online-Setup-x64.exe) (166,912 bytes). Public availability and its SHA256 were verified; see the [release record](releases/v0.3.2.md). Manual assembly remains an alternative.
 
-**온라인 설치기:** [VOICESUBSEP-0.3.1-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.1/VOICESUBSEP-0.3.1-Online-Setup-x64.exe) (166,912바이트). 공개 다운로드와 SHA256을 검증했으며 [릴리즈 기록](releases/v0.3.1.md)에 남겼습니다. 수동 조립 방식도 유지합니다.
+**온라인 설치기:** [VOICESUBSEP-0.3.2-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.2/VOICESUBSEP-0.3.2-Online-Setup-x64.exe) (166,912바이트). 공개 다운로드와 SHA256을 검증했으며 [릴리즈 기록](releases/v0.3.2.md)에 남겼습니다. 수동 조립 방식도 유지합니다.
 
 ## Requirements / 준비 사항
 
@@ -19,19 +19,19 @@ Windows 10/11 x64용 **0.3.1 대상 안내**입니다. 실제 게시·다운로�
 | Free disk / 여유 공간 | 16 GiB or more recommended, plus models and projects / 16GiB 이상 권장, 모델·프로젝트 공간 별도 |
 | Minimum check / 시작 검사 | At least 12 GiB free on the cache drive / 캐시 드라이브 여유 공간 최소 12GiB 검사 |
 
-The payload includes Python, FFmpeg, speech libraries and CUDA runtime libraries, not speech-model weights or the NVIDIA driver. Before live use, connect a short audio/video file and complete a local analysis with the same Whisper model and Nemotron enabled; it downloads missing weights. Live mode only accepts those complete caches. Commercial VST3 effects are separate. Subtitle translation and automatic AI summaries are outside the 0.3.1 scope. The helper's speed limit does not limit later model downloads.
+The payload includes Python, FFmpeg, speech libraries and CUDA runtime libraries, not Whisper/Nemotron weights or the NVIDIA driver; the Silero VAD ONNX is bundled. Before live use, connect a short audio/video file and complete a local analysis with the same Whisper model and Nemotron enabled; it downloads missing weights. Live mode only accepts those complete caches. Commercial VST3 effects are separate. Subtitle translation and automatic AI summaries are outside the 0.3.2 scope. The helper's speed limit does not limit later model downloads.
 
-Python·FFmpeg·음성 라이브러리·CUDA 런타임은 포함하지만 음성 모델 가중치·NVIDIA 드라이버는 별도입니다. 라이브 전에 짧은 음성·영상 파일을 연결하고 `음성 분석`에서 같은 Whisper 모델·로컬 Nemotron 분석을 한 번 완료해 없는 가중치를 받습니다. 라이브는 이 완성된 캐시만 읽습니다. 상용 VST3도 별도이고 자막 번역·AI 자동 요약은 0.3.1 범위에서 제거했습니다. 도우미의 속도 제한은 이후 모델 다운로드에 적용되지 않습니다.
+Python·FFmpeg·음성 라이브러리·CUDA 런타임은 포함하지만 Whisper/Nemotron 가중치·NVIDIA 드라이버는 별도이며 Silero VAD ONNX는 포함합니다. 라이브 전에 짧은 음성·영상 파일을 연결하고 `음성 분석`에서 같은 Whisper 모델·로컬 Nemotron 분석을 한 번 완료해 없는 가중치를 받습니다. 라이브는 이 완성된 캐시만 읽습니다. 상용 VST3도 별도이고 자막 번역·AI 자동 요약은 0.3.2 범위에서 제거했습니다. 도우미의 속도 제한은 이후 모델 다운로드에 적용되지 않습니다.
 
 ## Install / 설치
 
-1. After publication is confirmed in the release record, download **`VOICESUBSEP-0.3.1-Online-Setup-x64.exe`** and run it. The Windows executable is Authenticode-unsigned; verify its source and published checksum.
+1. After publication is confirmed in the release record, download **`VOICESUBSEP-0.3.2-Online-Setup-x64.exe`** and run it. The Windows executable is Authenticode-unsigned; verify its source and published checksum.
 2. Choose **Download limit**: `40 Mbps (5 MB/s)`, `80 Mbps (10 MB/s)` or `Unlimited`. The default is **80 Mbps**. This limits this downloader, not all computer traffic or a guaranteed reserved bandwidth for other apps.
 3. Press **Download & install**. The helper downloads, verifies and assembles the existing installer data. Progress shows the current file/stage, not a prediction of total install time.
 4. After verification, the regular NSIS installation wizard opens. Follow its prompts. Save projects and close the old app before installing.
 5. Open VOICESUBSEP and prepare the speech models as needed. Download completion or starting the wizard is not the same as finishing installation.
 
-1. 릴리즈 기록에서 게시를 확인한 뒤 **`VOICESUBSEP-0.3.1-Online-Setup-x64.exe`**를 실행합니다. Windows Authenticode 미서명이므로 출처와 공개 체크섬을 확인하세요.
+1. 릴리즈 기록에서 게시를 확인한 뒤 **`VOICESUBSEP-0.3.2-Online-Setup-x64.exe`**를 실행합니다. Windows Authenticode 미서명이므로 출처와 공개 체크섬을 확인하세요.
 2. **다운로드 제한**에서 `40 Mbps (5 MB/s)`, `80 Mbps (10 MB/s)`, `제한 없음`을 선택합니다. 기본값은 **80Mbps**입니다. 이 도우미의 속도만 조절하며 컴퓨터 전체 트래픽을 제한하거나 다른 앱의 대역폭을 보장하지 않습니다.
 3. **다운로드 및 설치**를 누르면 기존 설치 데이터를 받고 검증·재조립합니다. 진행률은 현재 파일·단계를 표시하며 전체 설치 시간 예측은 아닙니다.
 4. 검증 후 일반 NSIS 설치 마법사가 열리면 안내에 따라 진행합니다. 설치 전 프로젝트를 저장하고 기존 앱을 종료하세요.
@@ -46,7 +46,7 @@ Python·FFmpeg·음성 라이브러리·CUDA 런타임은 포함하지만 음성
 Cache / 캐시:
 
 ```text
-%LOCALAPPDATA%\VOICESUBSEP\InstallerCache\0.3.1
+%LOCALAPPDATA%\VOICESUBSEP\InstallerCache\0.3.2
 ```
 
 - Completed files are reused only after size and SHA256 checks. Partial downloads are retained as `.partial` and requested with HTTP Range. If the server ignores Range and returns the whole file, that file starts over instead of appending duplicate bytes.
@@ -62,13 +62,13 @@ Each online EXE pins its own version's names, sizes and SHA256 hashes. It fetche
 
 온라인 EXE마다 해당 버전의 이름·크기·SHA256을 고정합니다. 공개 HTTPS로 같은 버전의 NSIS EXE·데이터 조각을 받고 각 파일·재조립 결과를 검증한 뒤 **`--package-file` 없이** EXE를 실행합니다. 같은 폴더 payload·NSIS SHA512 검사를 유지합니다. 해시 일치는 Windows 게시자 신뢰나 설치 성공을 증명하지 않습니다.
 
-Current publication/download/installation evidence belongs to [0.3.1](releases/v0.3.1.md). The historical [0.3.0](releases/v0.3.0.md), [0.2.1](releases/v0.2.1.md) and [0.2.0](releases/v0.2.0.md) records are unchanged and do not prove installation or GPU inference for a different build.
+Current publication/download/installation evidence belongs to [0.3.2](releases/v0.3.2.md). The historical [0.3.0](releases/v0.3.0.md), [0.2.1](releases/v0.2.1.md) and [0.2.0](releases/v0.2.0.md) records are unchanged and do not prove installation or GPU inference for a different build.
 
-현재 게시·다운로드·설치 증거는 [0.3.1 기록](releases/v0.3.1.md)을 따릅니다. 과거 [0.3.0](releases/v0.3.0.md)·[0.2.1](releases/v0.2.1.md)·[0.2.0](releases/v0.2.0.md) 기록은 그대로 보존하며 다른 빌드의 설치·GPU 추론 증거로 재사용하지 않습니다.
+현재 게시·다운로드·설치 증거는 [0.3.2 기록](releases/v0.3.2.md)을 따릅니다. 과거 [0.3.0](releases/v0.3.0.md)·[0.2.1](releases/v0.2.1.md)·[0.2.0](releases/v0.2.0.md) 기록은 그대로 보존하며 다른 빌드의 설치·GPU 추론 증거로 재사용하지 않습니다.
 
-The 0.3.1 app's **in-app updater is separate from this setup helper**. It uses a bundled Ed25519 public key to authenticate a GitHub release manifest and SHA256 to verify split files/payload, with explicit check/download/install and serial 80 Mbps transfers. Its incomplete individual downloads restart; only complete verified files are reused. This is manifest authentication, **not Windows Authenticode signing**. See [desktop updates](DESKTOP.md#사용자가-선택하는-업데이트).
+The 0.3.2 app's **in-app updater is separate from this setup helper**. It uses a bundled Ed25519 public key to authenticate a GitHub release manifest and SHA256 to verify split files/payload, with explicit check/download/install and serial 80 Mbps transfers. Its incomplete individual downloads restart; only complete verified files are reused. This is manifest authentication, **not Windows Authenticode signing**. See [desktop updates](DESKTOP.md#사용자가-선택하는-업데이트).
 
-0.3.1 **인앱 업데이트는 이 설치 도우미와 별도**입니다. 포함된 Ed25519 공개키로 GitHub 명세를 인증하고 SHA256로 조각·payload를 검증하며 확인·다운로드·설치를 직접 선택합니다. 순차 80Mbps이고 미완료 개별 파일은 다시 받으며 검증된 완료 파일만 재사용합니다. 이는 명세 인증이며 **Windows Authenticode 코드 서명은 아닙니다**. [업데이트 계약](DESKTOP.md#사용자가-선택하는-업데이트)을 참고하세요.
+0.3.2 **인앱 업데이트는 이 설치 도우미와 별도**입니다. 포함된 Ed25519 공개키로 GitHub 명세를 인증하고 SHA256로 조각·payload를 검증하며 확인·다운로드·설치를 직접 선택합니다. 순차 80Mbps이고 미완료 개별 파일은 다시 받으며 검증된 완료 파일만 재사용합니다. 이는 명세 인증이며 **Windows Authenticode 코드 서명은 아닙니다**. [업데이트 계약](DESKTOP.md#사용자가-선택하는-업데이트)을 참고하세요.
 
 ## Manual fallback / 수동 설치 대안
 

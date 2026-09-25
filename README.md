@@ -4,25 +4,25 @@
 
 **로컬 처리가 기본인 인물별 자막·편집 메모·인터뷰·수동 회의록 편집기입니다.** 로컬 Whisper가 내용을 전사하고 로컬 NVIDIA Nemotron이 화자 활동을 분석합니다. Groq·xAI·Gemini 음성 인식과 Deepgram 화자 구분은 고급 설정에서 직접 선택할 때만 사용합니다. 원본을 들으며 자막과 인물 배정을 검수합니다.
 
-[0.3.1 release record / 릴리즈 기록](docs/releases/v0.3.1.md) · [User guide / 사용자 가이드](docs/USER-GUIDE.md) · [Documentation / 문서 목차](docs/INDEX.md)
+[0.3.2 release record / 릴리즈 기록](docs/releases/v0.3.2.md) · [User guide / 사용자 가이드](docs/USER-GUIDE.md) · [Documentation / 문서 목차](docs/INDEX.md)
 
-**v0.3.1 Windows preview is published.** Download the [small online setup EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.1/VOICESUBSEP-0.3.1-Online-Setup-x64.exe). See the [release record](docs/releases/v0.3.1.md) for checksums, local installation and tests, and [feature status](docs/FEATURE-STATUS.md) for implemented scope and limits.
+**v0.3.2 Windows preview is published.** Download the [small online setup EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.2/VOICESUBSEP-0.3.2-Online-Setup-x64.exe). Public asset checks and local installation are recorded separately in the [release record](docs/releases/v0.3.2.md).
 
-**v0.3.1 Windows 프리뷰를 공개했습니다.** [작은 온라인 설치 EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.1/VOICESUBSEP-0.3.1-Online-Setup-x64.exe) 하나로 시작하세요. 검증·설치·체크섬은 [릴리즈 기록](docs/releases/v0.3.1.md), 구현 범위와 한계는 [기능 현황](docs/FEATURE-STATUS.md)에 있습니다.
+**v0.3.2 Windows 프리뷰를 공개했습니다.** [작은 온라인 설치 EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.2/VOICESUBSEP-0.3.2-Online-Setup-x64.exe)로 시작하세요. 공개 파일 검증과 로컬 설치는 [릴리즈 기록](docs/releases/v0.3.2.md)에서 구분합니다.
 
-**0.3.2 source is under validation; it is not published or installed yet.** It adds isolated analysis force-stop/priority controls, refreshed job history, SHA256-bound original relinking and pre-render verification, renewed review after manual edits, exact transcript-to-caption selection, remembered recording inputs and guarded VST residual-delay measurement. These changes are not in the 0.3.1 download above. See the [0.3.2 preparation record](docs/releases/v0.3.2.md) for current evidence and limits.
+**0.3.2 adds** isolated analysis force-stop/priority, refreshed history, SHA256-bound originals and render verification, renewed review after manual edits, exact transcript selection, remembered capture inputs, guarded VST residual-delay checks, YTT output and removal of the fixed source-upload cap. See the [release record](docs/releases/v0.3.2.md) for evidence and limits.
 
-**0.3.2 소스는 검증 중이며 아직 게시·설치하지 않았습니다.** 분석 전용 프로세스 강제 종료·우선 실행, 작업 이력 갱신, SHA256 기반 원본 재연결·렌더 직전 검증, 직접 수정 후 재검수, 발언록에서 정확한 자막 선택, 녹음 입력 기억, 신뢰도 조건을 둔 VST 잔여 지연 측정을 추가했습니다. 위 0.3.1 다운로드에는 이번 변경이 없습니다. 현재 증거와 한계는 [0.3.2 준비 기록](docs/releases/v0.3.2.md)을 확인하세요.
+**0.3.2는** 분석 격리·강제 종료·우선 실행, 이력 갱신, SHA256 원본 연결·렌더 검증, 수정 후 재검수·정확한 발언 선택, 녹음 입력 기억, VST 잔여 지연 검사, YTT 출력과 원본 업로드 고정 상한 제거를 포함합니다. 증거와 한계는 [릴리즈 기록](docs/releases/v0.3.2.md)을 확인하세요.
 
 Read [dependency notices and distribution obligations / 의존성 고지·재배포 의무](docs/BUNDLED-NOTICES.md) before redistributing. Public source access does not grant a permissive app license. / 재배포 전 고지를 확인하세요. 소스 공개가 앱에 자유로운 재배포 라이선스를 부여하지는 않습니다.
 
-**0.3.2 YTT export, under validation:** the source now exports speaker-name colors and subtitle styles to CC files on the original or cut-edited timeline. YouTube upload/playback is unverified; advanced animation/karaoke is outside the initial scope. / **0.3.2 YTT 출력 검증 중:** 인물 이름 색·자막 스타일을 원본 또는 컷 적용 시간의 CC 파일로 출력하는 소스를 추가했습니다. YouTube 업로드·재생은 미검증이며 고급 애니메이션·노래방 효과는 첫 범위에서 제외합니다. [Guide / 안내](docs/YOUTUBE-CAPTIONS.md).
+**0.3.2 YTT export:** the source now exports speaker-name colors and subtitle styles to CC files on the original or cut-edited timeline. YouTube upload/playback is unverified; advanced animation/karaoke is outside the initial scope. / **0.3.2 YTT 출력:** 인물 이름 색·자막 스타일을 원본 또는 컷 적용 시간의 CC 파일로 출력하는 소스를 추가했습니다. YouTube 업로드·재생은 미검증이며 고급 애니메이션·노래방 효과는 첫 범위에서 제외합니다. [Guide / 안내](docs/YOUTUBE-CAPTIONS.md).
 
 ## Install / 설치
 
-Download [VOICESUBSEP-0.3.1-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.1/VOICESUBSEP-0.3.1-Online-Setup-x64.exe) (166,912 bytes). It downloads the 2.42 GB runtime without GitHub login, verifies SHA256, assembles the payload, and opens the installation wizard. Model weights are separate. The source-code ZIP is not an installer.
+Download [VOICESUBSEP-0.3.2-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.2/VOICESUBSEP-0.3.2-Online-Setup-x64.exe) (166,912 bytes). It downloads the 2.42 GB runtime without GitHub login, verifies SHA256, assembles the payload, and opens the installation wizard. Whisper/Nemotron weights are separate; Silero VAD ONNX is included. The source-code ZIP is not an installer.
 
-게시된 설치 파일은 [0.3.1 릴리즈 기록](docs/releases/v0.3.1.md)에서 확인합니다. 작은 `VOICESUBSEP-0.3.1-Online-Setup-x64.exe`가 로그인 없이 설치 프로그램·데이터 조각을 받고 SHA256 검증·재조립 후 설치 마법사를 엽니다. 정확한 파일명·용량은 버전별 기록을 따르며 소스 코드 ZIP은 설치 파일이 아닙니다.
+게시된 설치 파일은 [0.3.2 릴리즈 기록](docs/releases/v0.3.2.md)에서 확인합니다. 작은 온라인 EXE가 로그인 없이 설치 파일을 받아 검증·재조립합니다. Whisper/Nemotron 가중치는 별도이며 Silero VAD ONNX는 실행환경에 포함합니다. 소스 ZIP은 설치기가 아닙니다.
 
 | Requirement / 항목 | Details / 내용 |
 | --- | --- |
@@ -32,17 +32,17 @@ Download [VOICESUBSEP-0.3.1-Online-Setup-x64.exe](https://github.com/LiveTrack-X
 | Included / 포함 | Python, FFmpeg, speech-analysis libraries, CUDA runtime libraries / Python·FFmpeg·음성 분석 라이브러리·CUDA 런타임 |
 | Separate / 별도 준비 | NVIDIA driver, Whisper/Nemotron weights and VST3 plugins / NVIDIA 드라이버·Whisper/Nemotron 가중치·VST3 플러그인 |
 
-The 0.3.1 desktop app supports explicit **check → download → install** updates from public GitHub releases. A bundled Ed25519 public key authenticates the release manifest; SHA256 verifies each part and the assembled installer payload. The private signing key stays outside the repository. **This is manifest authentication, not Windows Authenticode signing:** the Windows executables remain unsigned. Older builds without this updater need one manual installation. See [desktop update details](docs/DESKTOP.md#사용자가-선택하는-업데이트).
+The 0.3.2 desktop app supports explicit **check → download → install** updates from public GitHub releases. A bundled Ed25519 public key authenticates the release manifest; SHA256 verifies each part and the assembled installer payload. The private signing key stays outside the repository. **This is manifest authentication, not Windows Authenticode signing:** the Windows executables remain unsigned. Older builds without this updater need one manual installation. See [desktop update details](docs/DESKTOP.md#사용자가-선택하는-업데이트).
 
-0.3.1 설치형은 GitHub 공개 릴리즈에서 **확인 → 다운로드 → 설치**를 각각 선택하는 업데이트를 지원합니다. 앱에 포함한 Ed25519 공개키로 배포 명세의 서명을 확인하고 조각·재조립 파일을 SHA256로 검증합니다. 개인키는 저장소 밖에 보관합니다. **배포 명세 인증이며 Windows Authenticode 코드 서명은 아닙니다.** 실행 파일은 무서명이며, 이 업데이트 기능이 없는 이전 설치본은 한 번 수동 설치해야 합니다.
+0.3.2 설치형은 GitHub 공개 릴리즈에서 **확인 → 다운로드 → 설치**를 각각 선택하는 업데이트를 지원합니다. 앱에 포함한 Ed25519 공개키로 배포 명세의 서명을 확인하고 조각·재조립 파일을 SHA256로 검증합니다. 개인키는 저장소 밖에 보관합니다. **배포 명세 인증이며 Windows Authenticode 코드 서명은 아닙니다.** 실행 파일은 무서명이며, 이 업데이트 기능이 없는 이전 설치본은 한 번 수동 설치해야 합니다.
 
 The online helper defaults to **80 Mbps**, with 40 Mbps/unlimited options. In-app update files are downloaded serially at **80 Mbps**. These are download limits, not OS QoS or a guaranteed 10 Mbps reservation; they do not limit every model download. / 온라인 설치기는 기본 **80Mbps**, 40Mbps·제한 없음 선택입니다. 인앱 업데이트는 파일을 순차적으로 **80Mbps**로 받습니다. OS QoS·10Mbps 예약이나 모든 모델 다운로드에 적용되는 제한은 아닙니다.
 
 ## Features / 기능
 
-**0.3.1 adds continuous scrolling, theme controls and clearer long-job handling.** The rows marked “0.3.1” describe this release's changes. See the [0.3.1 release record](docs/releases/v0.3.1.md) for publication, installation and verification scope.
+**Earlier 0.3.1 added continuous scrolling, theme controls and clearer long-job handling.** The rows marked “0.3.1” identify the earlier feature revision. See the [0.3.1 release record](docs/releases/v0.3.1.md) for publication, installation and verification scope.
 
-**0.3.1은 연속 스크롤·테마 선택·긴 분석 작업 관리를 개선했습니다.** 아래 `0.3.1` 표시는 이번 변경이며 게시·설치·검증 범위는 [0.3.1 릴리즈 기록](docs/releases/v0.3.1.md)을 참고하세요.
+**이전 0.3.1은 연속 스크롤·테마 선택·긴 분석 작업 관리를 개선했습니다.** 아래 `0.3.1` 표시는 그때의 변경이며 게시·설치·검증 범위는 [0.3.1 릴리즈 기록](docs/releases/v0.3.1.md)을 참고하세요.
 
 | English | 한국어 |
 | --- | --- |
