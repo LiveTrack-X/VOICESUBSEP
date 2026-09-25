@@ -1,8 +1,8 @@
 # VOICESUBSEP User Guide / 사용자 가이드
 
-This guide describes the **current development source** on Windows 10/11 x64. The public installer is [v0.2.0 Preview](https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.2.0). v0.2.1 is a local installation checkpoint and an unpublished GitHub draft; the current source changes are not in either installer. Compare [feature status](FEATURE-STATUS.md), [audit evidence](BUG-AUDIT-2026-09-25.md), and the [local checkpoint record](releases/v0.2.1.md) before assuming a feature is installed.
+This guide targets **0.3.0 on Windows 10/11 x64**. The [0.3.0 release record](releases/v0.3.0.md) is the authority for published files, installation and validation status; this guide describes how the implemented features work. See [feature status](FEATURE-STATUS.md) for limits.
 
-이 가이드는 Windows 10/11 x64의 **현재 개발 소스**를 설명합니다. 공개 설치기는 [v0.2.0 Preview](https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.2.0)입니다. v0.2.1은 로컬 설치 확인본과 미공개 GitHub 초안이며, 이번 소스 수정은 두 설치기에 반영되지 않았습니다. 실제 사용 가능한 범위는 [기능 현황](FEATURE-STATUS.md), [감사 기록](BUG-AUDIT-2026-09-25.md), [로컬 확인본 기록](releases/v0.2.1.md)을 구분해 확인하세요.
+Windows 10/11 x64의 **0.3.0 대상 사용법**입니다. 게시 파일·설치·검증 상태는 [0.3.0 릴리즈 기록](releases/v0.3.0.md), 기능의 한계는 [기능 현황](FEATURE-STATUS.md)을 확인하세요. 과거 버전의 설치 성공을 새 버전의 성공으로 간주하지 않습니다.
 
 Whisper transcribes **what was said**; Nemotron identifies **who spoke when**. Review both against the source. Diarization does not separate mixed voices into audio stems or reconstruct inaudible speech.
 
@@ -12,19 +12,19 @@ VOICESUBSEP은 로컬 음성 인식과 화자 구분으로 자막을 만들고, 
 
 *Install and first launch*
 
-Download `VOICESUBSEP-0.2.0-Online-Setup-x64.exe` from the release. Run it, choose a download-speed limit, and start. It downloads the existing NSIS installer plus three data parts, verifies every file and the assembled SHA256, then opens the installation wizard. Completed verified downloads are reused when you return after cancellation; resumed data is verified before use. It needs .NET Framework 4.8. If the online asset is not available or cannot be used, the seven-file manual method below remains available. Publication and exercised test paths are tracked separately in [Online Installer](ONLINE-INSTALLER.md).
+When available in the release record, download `VOICESUBSEP-0.3.0-Online-Setup-x64.exe`, choose a speed limit, and start. It downloads the NSIS installer and data parts, verifies every file and the assembled SHA256, then opens the installation wizard. Verified downloads are reused; partial downloads resume when the server supports Range. It needs .NET Framework 4.8. Use the manual method below if necessary.
 
-릴리즈에서 `VOICESUBSEP-0.2.0-Online-Setup-x64.exe`를 받아 실행하고 다운로드 속도 제한을 선택한 뒤 시작합니다. 기존 NSIS 설치 프로그램과 데이터 조각 3개를 받고, 각 파일과 재조립 결과의 SHA256을 검증한 뒤 설치 마법사를 엽니다. 취소 후 다시 시작하면 검증된 완료 파일을 재사용하고 이어받은 데이터도 사용 전에 검증합니다. .NET Framework 4.8이 필요합니다. 온라인 자산이 아직 없거나 사용할 수 없다면 아래 기존 7개 파일 수동 방식을 사용할 수 있습니다. 게시·실제 시험 상태는 [온라인 설치 안내](ONLINE-INSTALLER.md)에 구분합니다.
+릴리즈 기록에서 게시 여부를 확인한 뒤 `VOICESUBSEP-0.3.0-Online-Setup-x64.exe`를 실행하고 속도 제한을 선택합니다. NSIS 설치 프로그램·데이터 조각을 받고 각 파일과 재조립 결과를 SHA256로 검증한 뒤 설치 마법사를 엽니다. 검증된 파일은 재사용하고 미완료 파일은 서버의 Range 지원 시 이어받습니다. .NET Framework 4.8이 필요하며 문제가 있으면 아래 수동 방법을 사용합니다.
 
-The payload is about **2.42 GB** before installation. Allow **at least 16 GiB free**, plus room for models and projects; the helper checks a 12 GiB minimum on its cache drive. Speeds are 40/80 Mbps or unlimited, with 80 Mbps as default. Save project JSON, finish recording/analysis/rendering, and close the old app before installing. This unsigned Preview may trigger Windows trust warnings; check the official source and checksums. The source-code ZIP is not an installer. Read the [dependency notices](BUNDLED-NOTICES.md) before redistribution.
+The app data is several GB; exact sizes are in the release record. Allow **at least 16 GiB free**, plus models/projects; the helper checks a 12 GiB cache-drive minimum. Speeds are 40/80 Mbps or unlimited, default 80 Mbps. Save project JSON and finish recording/analysis/rendering before replacing the app. The Windows executables are **not Authenticode-signed**. In-app manifest authentication is a separate check, explained in section 11. The source-code ZIP is not an installer. Read the [dependency notices](BUNDLED-NOTICES.md) before redistribution.
 
-설치 전 앱 데이터는 약 **2.42GB**입니다. 다운로드·재조립·설치를 위해 **여유 공간 16GiB 이상**과 모델·프로젝트 공간을 추가로 준비하세요. 도우미는 캐시 드라이브의 최소 12GiB를 검사합니다. 속도는 40/80Mbps·제한 없음이며 기본값은 80Mbps입니다. 기존 앱을 바꾸기 전 프로젝트 JSON을 저장하고 녹음·분석·렌더를 끝낸 뒤 앱을 종료하세요. 무서명 Preview라 Windows 신뢰도 경고가 나타날 수 있으므로 출처와 체크섬을 확인하세요. 소스 코드 ZIP은 설치 파일이 아닙니다. 재배포 전 [의존성 고지](BUNDLED-NOTICES.md)를 확인하세요.
+앱 데이터는 수 GB이며 정확한 크기는 릴리즈 기록을 따릅니다. **여유 공간 16GiB 이상**과 모델·프로젝트 공간을 준비하세요. 도우미는 캐시 드라이브 최소 12GiB를 검사하며 속도는 기본 80Mbps, 40Mbps·제한 없음도 선택합니다. 앱 교체 전 프로젝트 JSON을 저장하고 녹음·분석·렌더를 끝내세요. Windows EXE는 **Authenticode 미서명**이며 11절의 배포 명세 인증과 다릅니다. 소스 ZIP은 설치 파일이 아니며 재배포 전 [의존성 고지](BUNDLED-NOTICES.md)를 확인합니다.
 
 **Manual fallback / 수동 설치 대안**
 
-Download these seven files into one folder: the Offline Setup EXE, `.part001`, `.part002`, `.part003`, `installer-manifest.json`, `SHA256SUMS.txt`, and `Assemble-Installer.ps1`. Run the command below to verify and assemble `voicesubsep-0.2.0-x64.nsis.7z`, then manually run the colocated EXE. Do not extract the 7z yourself. A failed hash check must be resolved before installation. The assembly script does not launch the installer.
+Download the matching Offline Setup EXE, **all** `.partNNN` files listed in the release manifest, `installer-manifest.json`, `SHA256SUMS.txt`, and `Assemble-Installer.ps1` into one folder. The command below verifies and assembles `voicesubsep-0.3.0-x64.nsis.7z`; then run the colocated EXE yourself. Do not manually extract the 7z or continue after a hash mismatch. The assembly script does not launch the installer.
 
-기존 자산 7개를 같은 폴더에 받습니다: Offline Setup EXE, `.part001`, `.part002`, `.part003`, `installer-manifest.json`, `SHA256SUMS.txt`, `Assemble-Installer.ps1`. 아래 명령으로 검증·재조립한 `voicesubsep-0.2.0-x64.nsis.7z`와 같은 폴더의 EXE를 직접 실행합니다. 7z를 직접 압축 해제할 필요는 없습니다. 해시 검증에 실패하면 해당 파일을 다시 확인한 뒤 설치하세요. 조립 스크립트는 설치기를 자동 실행하지 않습니다.
+같은 버전의 Offline Setup EXE, 명세에 적힌 **모든** `.partNNN`, `installer-manifest.json`, `SHA256SUMS.txt`, `Assemble-Installer.ps1`을 같은 폴더에 받습니다. 아래 명령으로 `voicesubsep-0.3.0-x64.nsis.7z`를 검증·재조립한 뒤 같은 폴더의 EXE를 실행합니다. 7z 직접 압축 해제는 필요 없으며 해시가 다르면 설치하지 마세요. 조립 스크립트는 설치기를 자동 실행하지 않습니다.
 
 ```powershell
 powershell -NoProfile -File .\Assemble-Installer.ps1
@@ -34,9 +34,9 @@ If Windows blocks the downloaded script, compare `Get-FileHash .\Assemble-Instal
 
 다운로드한 스크립트가 Windows 파일 차단 때문에 실행되지 않으면 `Get-FileHash .\Assemble-Installer.ps1 -Algorithm SHA256`을 릴리즈의 `SHA256SUMS.txt`와 대조하세요. 출처와 해시를 확인한 파일만 속성의 **차단 해제**로 허용합니다. 이 절차 때문에 시스템 전체 실행 정책이나 조직 정책을 바꾸지 마세요.
 
-The installed app includes Python, FFmpeg, speech-analysis libraries and CUDA runtime libraries. You do not need the developer's Node/Python setup. A compatible NVIDIA driver is still required for GPU use. **Whisper/Nemotron weights are separate** and may download in the app on first analysis. Commercial VST3 plugins are separate optional components. Ollama and text models are not required or called. macOS/Linux installers are not included.
+The installed app includes Python, FFmpeg, speech-analysis libraries and CUDA runtime libraries. No developer Node/Python setup is needed. GPU use still needs a compatible NVIDIA driver. **Whisper/Nemotron weights are separate**: prepare them in model management before a live session; live mode uses cached models only. File analysis may download missing weights. Commercial VST3 plugins are separate. Text-generation models and macOS/Linux installers are not included.
 
-설치형에는 Python·FFmpeg·음성 분석 라이브러리·CUDA 런타임을 포함하므로 개발용 Node/Python 설치가 필요하지 않습니다. GPU에는 호환되는 NVIDIA 드라이버가 필요합니다. **Whisper/Nemotron 가중치는 별도**이며 앱의 첫 분석 때 다운로드할 수 있습니다. 상용 VST3는 별도 선택 구성요소입니다. Ollama·텍스트 모델은 필요하지 않으며 호출하지 않습니다. macOS/Linux 설치 패키지는 제공하지 않습니다.
+Python·FFmpeg·음성 분석 라이브러리·CUDA 런타임은 포함하므로 개발 환경을 따로 설치할 필요가 없습니다. GPU에는 호환 NVIDIA 드라이버가 필요합니다. **Whisper/Nemotron 가중치는 별도**이며 라이브 전에 모델 관리에서 준비합니다. 라이브는 캐시만 사용하고 파일 분석은 없는 모델을 받을 수 있습니다. 상용 VST3·텍스트 생성 모델·macOS/Linux 설치기는 포함하지 않습니다.
 
 ## 2. 원본 열기와 프로젝트 관리
 
@@ -98,7 +98,7 @@ In the current development source, wide layouts place a compact preview beside t
 
 *Cuts and export*
 
-Exclude time ranges without overwriting the source, preview the kept material, and restore cuts or undo. Project captions/notes retain source times. Save project JSON for continued editing; export SRT for plain subtitles, ASS for styles, or a ZIP for all/speaker SRTs, notes and a manifest. These regular exports use **source time**. Render MP4/WAV/MP3/M4A and use that completed render's SRT/notes for **output time**. Cuts across captions may block export until you split/review the text at the boundary. MP4 can use the detected source rate, 30 or 60 fps, always re-encoded at a constant rate. Rendering selects one audio track; final multitrack mixing, multiple-video arrangements and burned-in subtitles are not implemented.
+Exclude time ranges without overwriting the source, preview the kept material, and restore cuts or undo. Project captions/notes retain source times. Save project JSON for continued editing; export SRT for plain subtitles, ASS for styles, or a ZIP for all/speaker SRTs, notes and a manifest. These regular exports use **source time**. Render MP4/WAV/MP3/M4A and use that completed render's SRT/notes for **output time**. Cuts across captions may block export until reviewed. The basic renderer selects one audio track; use the separate **Audio mixer** for multiple file/OBS tracks. Multiple-video arrangements and burned-in subtitles are not included.
 
 `간단한 컷편집`에서 시작·끝을 지정해 구간을 제외합니다. 원본을 덮어쓰지 않고 편집 결정을 저장하며, 제외 구간 복원과 실행 취소를 지원합니다. 편집본 미리보기는 해당 구간을 건너뜁니다. 원본 편집 화면의 자막·노트 시간은 계속 원본 기준입니다.
 
@@ -113,7 +113,11 @@ Exclude time ranges without overwriting the source, preview the kept material, a
 
 일반 내보내기의 SRT·ASS·ZIP은 **원본 시간**입니다. 렌더 결과의 SRT·메모는 **출력 시간**입니다. 컷이 자막 중간을 가로지르는데 유효한 단어 시간이 없으면 편집본 SRT 저장이 차단될 수 있습니다. 원본 편집기에서 컷 경계에 맞게 자막을 나누고 내용·시간을 검수하세요.
 
-MP4는 원본 프레임률·30·60fps를 선택합니다. `원본`도 탐지된 프레임률로 고정 프레임률 재인코딩하며 가변 프레임률을 그대로 복사하지 않습니다. 영상에 자막을 직접 입히기, 여러 영상 배치, 최종 렌더의 다중 오디오 트랙 믹스는 아직 지원하지 않습니다.
+MP4는 원본 프레임률·30·60fps를 선택합니다. `원본`도 고정 프레임률로 재인코딩하며 가변 프레임률을 그대로 복사하지 않습니다. 기본 렌더는 한 오디오 트랙을 고릅니다. 여러 파일·OBS 트랙을 합치려면 별도의 **오디오 믹서**를 사용하세요. 자막 직접 입히기와 여러 영상 배치는 지원하지 않습니다.
+
+In the mixer, use **Listen to this track**, **Solo**, or **Preview mix** before exporting. Up to ten seconds from the current playback position are rendered from the selected audio streams. Adjust the start field to check another section. The displayed peaks are pre-limiter and playback **sample peaks for that window**, not whole-file or true-peak certification. Solo/listen do not change saved mutes. See [Audio mixer](AUDIO-MIXER.md).
+
+믹서에서 **이 트랙 듣기·솔로·믹스 미리듣기**로 출력 전에 확인합니다. 현재 재생 위치부터 최대 10초 동안 선택한 실제 스트림을 추출하고 시작 시간을 바꿔 다른 구간도 들을 수 있습니다. 리미터 전·재생 피크는 **이 구간의 샘플 피크**이며 전체 파일·true-peak 검사가 아닙니다. 솔로·트랙 듣기는 저장할 음소거 설정을 바꾸지 않습니다. [믹서 사용법](AUDIO-MIXER.md)을 참고하세요.
 
 ## 6. 화면 언어와 음성 언어
 
@@ -152,21 +156,33 @@ Reports show pending review and stale evidence. Export timestamps are not the me
 
 보고서에는 검수 대기·변경된 근거 상태를 표시합니다. 내보낸 시각을 회의 일시로 표시하지 않으며, 원본 미디어 시간은 컷편집 뒤에도 유지합니다. 편집을 계속하려면 프로젝트 JSON도 보관하세요. PDF는 자동 파일 저장이 아니며, 인쇄를 지원하지 않는 내장 브라우저에서는 HTML·XLSX를 내려받을 수 있습니다.
 
-## 8. 마이크·시스템 소리 녹음
+## 8. 라이브 자막·마이크·시스템 소리 녹음
 
-*Microphone and system audio recording*
+*Live captions and recording*
 
-Use **Microphone permission / refresh devices** to reveal available device names. The temporary permission stream is released after enumeration; this does not start a saved recording. Refresh after attaching an interface or changing permissions. If a fixed input disappears, choose a device again; the app does not silently switch to the OS default. Default input follows the OS default. Individual WASAPI playback-endpoint selection is not yet implemented.
+Open **Recording** and choose **Record then analyze** or **Live captions + recording**. Both modes capture microphone, system audio, or both in the browser/Electron. Use **Microphone permission / refresh devices** to reveal device names; this temporary permission check releases the microphone without creating a recording. A fixed missing input is never silently replaced by the OS default. System sharing depends on the browser/OS and can include calls, games and notifications; only audio is stored. Individual WASAPI playback endpoints and ASIO channel routing are not supported.
 
-**마이크 권한 확인·장치 새로고침**으로 사용 가능한 장치 이름을 확인합니다. 권한 확인용 임시 스트림은 목록 조회 뒤 해제하며 저장 녹음을 시작하지 않습니다. 오인페 연결이나 권한 변경 뒤 다시 새로고침하세요. 고정 입력이 사라지면 장치를 다시 선택해야 하며 OS 기본 장치로 자동 전환하지 않습니다. `기본 입력 장치`는 OS 기본값을 따릅니다. 개별 WASAPI 재생 출력 선택은 아직 구현되지 않았습니다.
+상단 **녹음**에서 **녹음 후 분석** 또는 **라이브 자막 + 녹음**을 고릅니다. 브라우저·Electron 모두 마이크·시스템 소리·둘 다를 선택합니다. **마이크 권한 확인·장치 새로고침**은 이름을 확인한 뒤 임시 마이크 접근을 해제하며 파일 녹음을 시작하지 않습니다. 고정 입력이 사라지면 직접 다시 선택해야 합니다. 시스템 공유는 브라우저·OS에 따라 달라지고 통화·게임·알림까지 담길 수 있으며 영상은 저장하지 않습니다. 개별 WASAPI 출력 장치·ASIO 채널 라우팅은 지원하지 않습니다.
 
-Choose microphone/system/both and explicitly approve capture. System output may include calls, games and notifications; shared video is not stored in the recording. Support depends on the browser, OS and shared source. Approximately one-second chunks are saved locally. After stopping, download source files/mix/metadata or open the mix in a new project for analysis. **This is post-recording analysis, not live transcription.** Stable streaming speaker IDs, automatic device reconnection and external clock-drift correction are not implemented. Completed chunks may survive interruptions, but the last unwritten chunk and playability of every interrupted file are not guaranteed. Sessions are limited to 2 GiB across all sources and available browser storage.
+**Live workflow / 라이브 순서**
 
-상단 `녹음`을 눌러 연 `라이브 녹음·복구` 창에서 마이크·시스템 소리·둘 다 중 하나를 선택합니다. 시작 버튼을 누른 뒤 권한 요청과 소리 공유 대상을 확인하세요. 시스템 소리에는 게임·통화·알림 등이 함께 들어갈 수 있습니다. 화면 공유 허가를 사용하더라도 저장 파일에는 오디오만 넣습니다. 브라우저·OS·선택 대상에 따라 시스템 소리 공유가 지원되지 않을 수 있습니다.
+1. Prepare Whisper and Nemotron in model management **before** starting. Live mode only reads complete local caches; a missing model produces a preparation error, never an automatic download. Select the Whisper size, AUTO/explicit language, and CPU/NVIDIA GPU, then click **Prepare live engine**. This loads both models once and does not open the input yet.
+2. Choose the input and click **Start live recording**, approving microphone/system sharing as needed. The level meter shows received sound. Whisper commits approximately four-second segments with context; the first result needs roughly five seconds of audio **plus model inference**, not a guaranteed five-second latency. Check received/processed/lag indicators. If processing falls behind, use a faster model for the next session.
+3. Copy **OBS subtitle URL** into an OBS Browser Source on the same computer. The loopback URL contains a read-only token. **Turn subtitle output off** and **Clear output captions** only affect the overlay, preserving recording and editable captions. Do not publish the token URL. Restarting the backend invalidates old tokens; copy the current URL again.
+4. Click **Stop recording and save**, wait for the remaining audio, then **Open captions and recording as a new project** to review names, words and boundaries. Cancelling analysis preserves available recorded source data but does not promise a completed transcript.
 
-약 1초 단위로 기기의 브라우저 저장소에 보관합니다. 녹음을 종료하면 소스별 파일·혼합본·메타데이터를 내려받거나 혼합본을 `새 프로젝트로 분석`할 수 있습니다. **녹음 종료 후 분석이며 실시간 자막 생성은 아닙니다.** 스트리밍 화자 고정, 장치 자동 재연결, 외부 오디오 드리프트 보정은 없습니다.
+1. **먼저 모델 관리에서 Whisper·Nemotron을 준비**합니다. 라이브는 완성된 로컬 캐시만 사용하며 없으면 오류를 표시합니다. 모델 크기·AUTO/직접 언어·CPU/NVIDIA GPU를 고르고 **라이브 엔진 준비**를 누릅니다. 두 모델을 한 번 불러와 유지하며 이때 입력 장치는 아직 열지 않습니다.
+2. 소스·입력 장치를 고른 뒤 **라이브 녹음 시작**을 눌러 권한을 승인합니다. 레벨 미터로 입력을 확인하세요. 약 4초 구간 단위로 전사하며 첫 결과에는 음성 약 5초 수집과 **추론 시간**이 필요합니다. 수신·처리·지연 수치를 보고, 계속 밀리면 다음 세션에 더 빠른 모델을 선택합니다.
+3. **OBS 주소 복사**의 주소를 같은 컴퓨터의 OBS 브라우저 소스에 넣습니다. 로컬 주소에는 읽기 전용 토큰이 있으므로 공개하지 마세요. **자막 송출 끄기·송출 자막 지우기**는 화면에만 적용하고 녹음·편집 자막은 남깁니다. 백엔드 재시작 뒤에는 새 주소를 복사합니다.
+4. **녹음 종료·저장** 후 남은 처리를 기다리고 **자막과 녹음을 새 프로젝트로 열기**에서 이름·내용·경계를 검수합니다. 분석 취소는 저장된 원본을 보존하지만 완성된 전사문을 보장하지 않습니다.
 
-비정상 종료 뒤 저장을 마친 조각은 복구 목록에 남지만 마지막 미저장 조각과 모든 중단 파일의 재생을 보장하지 않습니다. 모든 소스 합계 2GiB 제한과 브라우저 저장 공간을 확인하고 중요한 녹음은 내려받아 보관하세요. [녹음·복구의 상세 한계](EDITING-WORKFLOWS.md#마이크시스템-소리-녹음과-복구)를 참고하세요.
+Nemotron keeps its streaming speaker cache for the session; labels remain provisional during adaptation, overlapping speech and short utterances. This is incremental segment recognition, not token-by-token ASR or voice separation. Live mode is local Whisper + Nemotron only: optional cloud providers and VST preprocessing belong to file analysis. One live session is allowed at a time, up to **two hours**; automatic device reconnection and clock-drift correction are not included.
+
+Nemotron은 세션 내 화자 캐시를 유지하지만 초기 적응·동시 발화·짧은 발언의 인물은 임시 배정입니다. 구간 단위 갱신이며 단어마다 즉시 확정하거나 섞인 목소리를 분리하는 기능은 아닙니다. 라이브는 로컬 Whisper+Nemotron 전용이며 클라우드·VST 전처리는 파일 분석에서 사용합니다. 동시 라이브 세션은 하나, 최대 **2시간**이며 장치 자동 재연결·드리프트 보정은 없습니다.
+
+Both recording modes journal approximately one-second chunks locally. After stopping, download source tracks, mix and metadata; record-only mode can start file analysis in a new project. The recorder has a **2 GiB total per-session** limit plus available browser storage. Completed chunks can survive interruption; the last unwritten chunk and every interrupted file's playability are not guaranteed. Save important recordings separately. Live PCM/state is also retained in backend storage, but an interrupted inference session does not automatically resume after restart.
+
+두 방식 모두 약 1초 조각을 로컬 저장소에 보관합니다. 종료 후 소스별 파일·혼합본·메타데이터를 저장하고, 녹음 전용 결과도 새 프로젝트에서 분석할 수 있습니다. 녹음 보관 한도는 **모든 소스 합계 2GiB/세션**과 브라우저 여유 공간입니다. 저장 완료 조각은 복구할 수 있지만 마지막 조각·모든 중단 파일의 재생은 보장하지 않습니다. 라이브 PCM·상태는 백엔드에도 남지만 재시작 뒤 중단된 추론을 자동 재개하지 않습니다. 중요한 파일은 별도로 내려받으세요.
 
 ## 9. VST3 사전처리
 
@@ -199,12 +215,10 @@ Autosave Recovery lists current/previous/damaged JSON; download before restoring
 
 *App updates*
 
-**The public preview and the local v0.2.1 checkpoint have no update feed or code signature; in-app updating is `unconfigured`.** Public downloads and the online bootstrap do not configure electron-updater. Install a supplied newer setup manually. The future configured flow is check → download → save and restart, with no automatic download/install-on-quit. Back up project JSON before replacement; consult version-specific evidence for tested migration paths.
+The 0.3.0 desktop updater uses the project's public GitHub releases. Open **App update**, explicitly **check**, then **download** a newer offered version. Save project JSON and finish live/analysis/render jobs before choosing **save and restart/install**. It does not automatically download or install on ordinary quit. Browser development mode has no installer update. Older builds with an unconfigured updater need a manual 0.3.0 installation first. See the [release record](releases/v0.3.0.md) for published assets and actual upgrade evidence.
 
-**공개 Preview와 로컬 v0.2.1 확인본은 업데이트 feed와 코드 서명이 없어 인앱 업데이트가 `unconfigured`입니다.** 공개 다운로드나 온라인 설치기는 electron-updater를 설정하지 않습니다. 이후 버전은 제공된 새 설치 파일로 교체합니다.
+0.3.0 설치형의 **앱 업데이트**는 프로젝트의 GitHub 공개 릴리즈를 사용합니다. **확인 → 다운로드 → 저장 후 다시 시작/설치**를 각각 누릅니다. 설치 전 프로젝트 JSON을 저장하고 라이브·분석·렌더를 끝내세요. 자동 다운로드·일반 종료 시 자동 설치는 하지 않습니다. 브라우저 개발 화면에는 설치 업데이트가 없으며, 업데이트 미설정인 이전 설치본은 0.3.0을 먼저 수동 설치해야 합니다. 게시·실제 업그레이드 검증은 [릴리즈 기록](releases/v0.3.0.md)을 확인하세요.
 
-The app and Python backend report version 0.2.1. During analysis, the latest two completed recognition segments appear as a draft. Elapsed time also updates before the first segment; a ticking timer alone is not evidence of new recognition activity. Draft text is not applied to captions until the completed result is explicitly applied. See the [release scope](releases/v0.2.1.md).
+The updater authenticates `installer-manifest.json` with its bundled **Ed25519 public key**, then checks each file and the assembled payload with SHA256, including another check before launching the installer. The private key is outside the repository. This authenticates the release manifest; **Windows EXEs remain Authenticode-unsigned**. Downloads run serially at **80 Mbps** and reuse complete verified files; an interrupted file restarts on retry. This differs from the online setup's partial Range resume. Neither feature reserves OS bandwidth or limits all model downloads. User data/model caches remain outside the install folder; keep a separate project backup.
 
-앱과 Python 백엔드는 0.2.1을 표시합니다. 분석 중 최근 인식 구간 두 개를 초안으로 보여주며 첫 구간 전에도 경과 시간을 표시합니다. 시간 증가만으로 새 인식 결과가 생성되었다고 판단하지 않습니다. 초안은 자막을 자동으로 바꾸지 않으며 완료 후 결과 적용을 눌러야 합니다. [릴리즈 범위](releases/v0.2.1.md)를 참고하세요.
-
-향후 feed가 구성된 설치형에서는 `앱 업데이트`에서 확인 → 다운로드 → 저장 후 다시 시작을 각각 선택하는 구조입니다. 자동 다운로드·종료 시 자동 설치는 하지 않습니다. 브라우저 개발 화면에서는 설치형 업데이트를 사용할 수 없습니다. GitHub 게시와 feed 연결은 별개이며 버전별 실제 검증 여부는 [릴리즈 기록](releases/v0.2.1.md)을 따릅니다. 프로젝트·모델 캐시를 유지하도록 구성하지만 수동 교체 전 별도 프로젝트 백업을 권장합니다.
+업데이트는 포함된 **Ed25519 공개키**로 `installer-manifest.json` 서명을 확인하고 파일·재조립 payload의 SHA256을 검증하며 설치 직전에도 다시 확인합니다. 개인키는 저장소 밖에 있습니다. 이는 배포 명세 인증이며 **Windows EXE의 Authenticode 서명은 없습니다**. 파일은 순차적으로 **80Mbps**로 받고 검증된 완료 파일은 재사용합니다. 중단된 개별 파일은 재시도 때 처음부터 받으며 온라인 설치기의 Range 이어받기와 다릅니다. OS 대역폭 예약이나 전체 모델 다운로드 제한은 아닙니다. 사용자 데이터·모델 캐시는 설치 폴더 밖에 유지하고 프로젝트는 별도 백업하세요.

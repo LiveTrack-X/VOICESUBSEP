@@ -1,10 +1,10 @@
 # OBS live speaker captions: separate development plan / OBS 실시간 인물별 자막 개발 계획
 
-Status: **planned, not implemented in v0.2.1**. Received from the user's separate planning conversation on 2026-09-25. This unit must not delay or be confused with the current API/report/installer work. Existing recording is analyzed after stopping; upload-based Groq/xAI jobs are not streaming transcription.
+**Archived design, partly superseded by the 0.3.0 implementation.** The plan below was received on 2026-09-25 and includes both implemented work and broader routing proposals. Current behavior is defined by [feature status](FEATURE-STATUS.md) and the [live user guide](USER-GUIDE.md#8-라이브-자막마이크시스템-소리-녹음); publication/installation evidence is in the [0.3.0 release record](releases/v0.3.0.md).
 
-상태: **기획, v0.2.1 미구현**. 2026-09-25 사용자의 별도 기획 대화에서 전달받았습니다. 현재 API·보고서·설치 작업과 분리합니다. 기존 녹음 기능은 종료 후 분석하며, 파일을 올리는 Groq·xAI 작업도 실시간 전사가 아닙니다.
+**초기 설계 보관본이며 일부는 0.3.0 구현으로 대체되었습니다.** 아래 미래형 문구는 당시 제안입니다. 현재는 마이크·시스템·둘 다 입력, 캐시 전용 로컬 Whisper+Nemotron 지속 세션, 약 4초 구간 갱신(첫 약 5초 음성+추론), 최대 2시간, 읽기 전용 OBS URL·송출 끄기·지우기·종료 후 편집 전환 경로가 있습니다. 임의 WASAPI 출력 선택·ASIO·앱별 라우팅·자동 드리프트 보정은 남은 별도 범위입니다. 정확한 사용법과 게시·설치 여부는 위 최신 문서를 따릅니다.
 
-## Outcome and flow / 목표와 사용 흐름
+## Original proposed outcome and flow / 당시 제안한 목표와 흐름
 
 During a broadcast, capture audio continuously, recognize text and speaker activity in VOICESUBSEP, and display names/colors on a transparent OBS browser source. After stopping, open the final captions with the same recording and source clock in the editor.
 

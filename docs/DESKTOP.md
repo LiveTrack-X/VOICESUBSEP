@@ -1,22 +1,20 @@
 # Windows Desktop and Updates / 설치형 앱과 업데이트
 
-This document describes the desktop runtime, developer builds and future update contract. For the public Preview, use the [bilingual user guide](USER-GUIDE.md) and [online installer guide](ONLINE-INSTALLER.md). The small online EXE downloads the existing installer/payload without authentication, checks every file and the assembled SHA256, then opens the original NSIS wizard. The seven-file manual method remains a fallback. See [release evidence](releases/v0.2.1.md) for actual publication and verification; downloading/assembling is not proof of a full installation or new GPU inference.
+This document targets **0.3.0**: desktop architecture, packaging and the signed-manifest GitHub updater. Actual publication, immutable artifacts, installation and test results belong in the [0.3.0 release record](releases/v0.3.0.md). The [user guide](USER-GUIDE.md) covers normal use. Earlier [0.2.0](releases/v0.2.0.md) and [0.2.1](releases/v0.2.1.md) records remain historical evidence.
 
-이 문서는 Electron 설치형 앱의 실행·빌드·업데이트 계약입니다. **v0.2.1 설치 파일·검증·GitHub 게시·서명·feed 구성의 현재 상태는 [v0.2.1 릴리즈 기록](releases/v0.2.1.md)을 기준으로 확인합니다.** 원격 업데이트 서버 공개나 코드 서명 완료를 뜻하지 않습니다. 설치와 일반 사용은 [사용자 가이드](USER-GUIDE.md), 웹 개발 실행은 `npm start`를 참고하세요.
+**0.3.0 대상** 실행·빌드·업데이트 문서입니다. 실제 게시·산출물·설치·검증은 [0.3.0 기록](releases/v0.3.0.md), 일반 사용은 [사용자 가이드](USER-GUIDE.md)를 확인하세요. 소스 구현이나 빌드 성공만으로 배포·설치 성공을 주장하지 않습니다.
 
-v0.2.1은 공개 저장소의 **Windows Preview 시험 릴리즈**입니다. 작은 온라인 EXE는 로그인 없이 기존 설치 EXE와 조각 3개를 받아 각 파일·재조립 SHA256 검증 후 원래 NSIS 마법사를 엽니다. 기존 자산 7개와 `Assemble-Installer.ps1`을 이용하는 수동 설치도 유지합니다. 온라인 도우미의 실제 게시·동작·캐시는 [온라인 설치 안내](ONLINE-INSTALLER.md)를 따릅니다. 아래 빌드 명령의 `.nsis.7z`는 분할 전 로컬 산출물입니다.
+The small online setup downloads the matching NSIS EXE and split payload without GitHub login, verifies SHA256, and opens the installer. Windows 10/11 x64 and .NET Framework 4.8 are required. It offers 40/80 Mbps or unlimited, default 80 Mbps; cache is `%LOCALAPPDATA%\VOICESUBSEP\InstallerCache\<version>`. Verified files are reused; incomplete files resume with Range when supported. Allow at least 16 GiB free plus models/projects (the helper checks a 12 GiB minimum). File counts and sizes follow the versioned release manifest. The manual assembly method remains available.
 
-The online helper requires Windows 10/11 x64 and .NET Framework 4.8. It defaults to 80 Mbps, with 40 Mbps/unlimited options. It checks 12 GiB free on the cache drive and recommends at least 16 GiB plus models/projects. Cache: `%LOCALAPPDATA%\VOICESUBSEP\InstallerCache\0.2.1`. Verified files are reused; partial downloads use Range when supported, while interrupted assembly restarts from verified parts. It passes no `--package-file`, preserving the original NSIS colocated-payload check. This unsigned Preview still has no in-app update feed (`unconfigured`). Read [dependency notices](BUNDLED-NOTICES.md) before redistributing.
+작은 온라인 설치기는 로그인 없이 해당 버전의 NSIS EXE·데이터 조각을 받고 SHA256 검증 후 설치기를 엽니다. Windows 10/11 x64·.NET Framework 4.8이 필요합니다. 기본 80Mbps, 40Mbps·제한 없음 선택이며 캐시는 `%LOCALAPPDATA%\VOICESUBSEP\InstallerCache\<version>`입니다. 완료 파일은 검증 후 재사용하고 미완료 파일은 Range 지원 시 이어받습니다. 여유 공간 16GiB 이상과 모델·프로젝트 공간을 준비하세요(도우미 최소 검사 12GiB). 정확한 파일 수·크기는 버전별 명세를 따릅니다. 수동 조립 방법도 유지합니다.
 
-온라인 도우미에는 Windows 10/11 x64와 .NET Framework 4.8이 필요합니다. 기본 80Mbps, 40Mbps·제한 없음 선택을 지원합니다. 캐시 드라이브 여유 공간 12GiB를 검사하고 최소 16GiB 및 모델·프로젝트 공간을 권장합니다. 캐시는 `%LOCALAPPDATA%\VOICESUBSEP\InstallerCache\0.2.1`이며 검증된 파일을 재사용합니다. 미완료 다운로드는 서버가 지원하면 Range로 이어받고 조립 중단 시에는 검증된 조각으로 처음부터 다시 조립합니다. `--package-file` 없이 실행하여 원래 NSIS의 같은 폴더 payload 검사를 유지합니다. 무서명 Preview이며 인앱 업데이트 feed는 계속 `unconfigured`입니다. 재배포 전 [의존성 고지](BUNDLED-NOTICES.md)를 확인하세요.
+**Windows executables are Authenticode-unsigned.** The in-app updater authenticates the release manifest using Ed25519; these are different signatures. Redistribution still requires the [dependency notices and obligations](BUNDLED-NOTICES.md). / **Windows 실행 파일은 Authenticode 미서명**입니다. 인앱 업데이트의 Ed25519 서명은 배포 명세를 인증하는 별도 장치이며, [의존성 재배포 의무](BUNDLED-NOTICES.md)는 그대로 적용됩니다.
 
 ## 설치형 앱의 구조
 
-*Runtime architecture.* Electron launches the bundled Python backend on a random loopback port, exposes a stable `voicesubsep://app/` origin, and keeps user data outside the install folder. Python, FFmpeg/FFprobe, speech libraries and CUDA runtime DLLs are bundled. Model weights, a compatible NVIDIA driver, optional Ollama/text models and third-party VST3 plugins are separate. On shutdown, the app requests graceful backend cleanup, waits up to 12 seconds and terminates only its own remaining process tree. Jobs do not automatically resume after restart.
+*Runtime architecture.* Electron launches the bundled Python backend on a random loopback port, exposes a stable `voicesubsep://app/` origin, and keeps user data outside the install folder. Python, FFmpeg/FFprobe, speech libraries and CUDA runtime DLLs are bundled. Model weights, a compatible NVIDIA driver and third-party VST3 plugins are separate. No Ollama or automatic text-generation runtime is used. On shutdown, the app requests backend cleanup, waits up to 12 seconds and terminates only its own remaining process tree. Interrupted analysis is not automatically resumed.
 
-The v0.2.1 app adds the responsive caption editor and sets the native window's minimum width to 480 px. Its rebuilt backend reports API version 0.2.1 and exposes a bounded draft preview as ASR segments complete. The speech-model dependencies remain the same. See [v0.2.1](releases/v0.2.1.md) for current verification and [v0.2.0](releases/v0.2.0.md) for earlier runtime evidence.
-
-v0.2.1은 좁은 창 자막 편집과 네이티브 최소 너비 480px을 지원합니다. 백엔드를 API 0.2.1로 다시 빌드하여 ASR 구간이 나올 때 제한된 길이의 초안을 제공합니다. 음성 모델 의존성은 동일합니다. 현재 검증은 [v0.2.1](releases/v0.2.1.md), 이전 런타임 증거는 [v0.2.0](releases/v0.2.0.md)을 참고하세요.
+Electron은 임의 loopback 포트의 번들 백엔드를 실행하고 고정 `voicesubsep://app/` 주소를 사용합니다. 사용자 데이터는 설치 폴더 밖에 유지합니다. 앱·API의 버전과 실제 번들 식별자는 [릴리즈 기록](releases/v0.3.0.md)에서 확인하며, 창 최소 너비 480px과 자막 중심 반응형 화면을 지원합니다.
 
 - 제품명 `VOICESUBSEP`, 앱 ID `com.livetrack.voicesubsep`, Windows x64 NSIS 설치 프로그램입니다.
 - Electron이 `resources/backend/voicesubsep-server.exe`를 임의의 `127.0.0.1` 포트로 실행합니다. 이 서버 하나가 웹 편집기와 API를 제공합니다. 개발용 5173·8787 포트를 사용하지 않습니다.
@@ -77,32 +75,35 @@ v0.1.1 로컬 패키징은 `electronDist`와 `ELECTRON_BUILDER_7ZIP_PATH`, `ELEC
 
 ## 사용자가 선택하는 업데이트
 
-*User-controlled updates.* **The current Preview remains unconfigured.** Making the repository public and adding an online installer do not configure electron-updater. A future configured build requires an HTTPS feed, appropriate signed/publisher configuration and real migration tests. Check, download, and restart/install are separate user actions; automatic download and install-on-quit are disabled. A URL without an actual usable feed is not an update service.
+The default 0.3.0 build uses `desktop/release-updater.cjs` with public releases from `LiveTrack-X/VOICESUBSEP`. The user separately chooses **check → download → save and restart/install**. There is no automatic download or install on ordinary quit. Development/browser mode cannot install updates. A previous build with no configured updater needs one manual replacement before this path is available.
 
-**이번 v0.2.1 Preview는 feed 미구성 상태이며 아래는 향후 feed를 연결할 때의 계약입니다.** 저장소 공개와 온라인 설치기 추가만으로 electron-updater가 구성되지 않습니다. 실제 사용 가능한 HTTPS feed·서명/publisher 구성·이전 버전 이동 검증이 별도로 필요합니다.
+0.3.0 기본 빌드는 `LiveTrack-X/VOICESUBSEP`의 공개 릴리즈를 조회합니다. **확인 → 다운로드 → 저장 후 다시 시작/설치**를 각각 선택하며 자동 다운로드·일반 종료 시 자동 설치는 하지 않습니다. 개발·브라우저 모드에서는 설치할 수 없습니다. 업데이트가 미설정인 이전 버전은 이 경로를 쓰기 전에 한 번 수동 교체해야 합니다.
 
-자동 확인·자동 다운로드·종료 시 자동 설치는 하지 않습니다. 업데이트 확인 → 다운로드 → 저장 후 다시 시작을 각각 눌러야 합니다. `electron-updater`의 `autoDownload`와 `autoInstallOnAppQuit`은 모두 `false`입니다.
+- Release discovery excludes drafts, accepts newer semantic `major.minor.patch` versions, and requires both `installer-manifest.json` and `installer-manifest.sig`. Preview releases are allowed for this 0.x application.
+- The bundled `desktop/update-public-key.pem` verifies the raw manifest's Ed25519 signature before download. The manifest pins the version, safe exact filenames, lengths, part order and SHA256. Only the configured GitHub repository's release asset URLs and allowlisted HTTPS redirects are used; no GitHub credential is embedded.
+- Files download serially at **80 Mbps** into `<userData>/updates/<version>`. A completed file is reused only after size/hash verification. An interrupted individual download restarts; it does not have the online helper's Range resume. Assembly verifies the full payload again, and installer/payload hashes are checked immediately before launch.
+- Install requires the app's backend to exit. Failure to stop it blocks installation; launch failure attempts backend recovery. Save project JSON and finish active work before installing. Data and model caches remain outside the install folder.
 
-업데이트 서버가 없으면 `unconfigured` 상태와 “이 설치본에는 업데이트 서버가 설정되지 않았습니다” 메시지를 표시합니다. 이 상태에서는 확인 버튼을 호출해도 네트워크 요청이 발생하지 않습니다. 현재 버전을 무조건 최신이라고 표시하지 않습니다. 나중에 서버를 준비하더라도, 업데이트 주소가 설정된 설치본으로 한 번 수동 교체해야 앱 안에서 업데이트할 수 있습니다.
+- 초안은 제외하고 더 높은 `major.minor.patch` 버전의 `installer-manifest.json`·`installer-manifest.sig`가 있는 릴리즈를 찾습니다. 0.x 앱의 Preview 릴리즈는 허용합니다.
+- 앱의 `desktop/update-public-key.pem`으로 명세 원본 바이트의 Ed25519 서명을 먼저 검증합니다. 명세에는 버전·정확한 파일명·크기·조각 순서·SHA256이 묶입니다. 지정 저장소 자산과 허용된 HTTPS 리다이렉트만 사용하며 GitHub 인증 정보는 넣지 않습니다.
+- `<userData>/updates/<version>`에 **순차 80Mbps**로 받습니다. 완료 파일은 크기·해시 확인 후 재사용하며 중단된 개별 파일은 다시 받습니다. 온라인 도우미의 Range 이어받기와 다릅니다. 조립 결과와 설치 직전 EXE·payload를 다시 검증합니다.
+- 백엔드 종료가 확인되어야 설치합니다. 종료 실패 시 차단하고 설치기 시작 실패 시 백엔드 복구를 시도합니다. 실행 중 작업을 마치고 프로젝트 JSON을 저장하세요. 사용자 데이터·모델 캐시는 설치 폴더 밖에 남습니다.
 
-배포 담당자가 사용할 **인증 정보 없는 HTTPS generic feed**를 준비한 뒤 빌드 시 지정할 수 있습니다.
+### Release signing / 릴리즈 서명
+
+Build the final installer/payload, prepare the split release assets, then sign the **final unchanged** manifest:
 
 ```powershell
-$env:VOICESUBSEP_UPDATE_URL = 'https://updates.example.com/voicesubsep/windows/'
-npm run desktop:installer:split
-Remove-Item Env:VOICESUBSEP_UPDATE_URL
+node scripts/sign-update-manifest.cjs release/github-v0.3.0
 ```
 
-주소는 빌드된 앱 메타데이터와 updater 설정에 들어갑니다. HTTPS 외 프로토콜, URL 사용자명·암호, 쿼리 토큰, fragment는 거부합니다. GitHub 개인 액세스 토큰을 앱·브리지·저장소에 넣지 않습니다. 공개 다운로드 링크를 지정하는 것만으로 `latest.yml`·패키지 메타데이터·서명 검증이 준비되는 것은 아닙니다. 올바른 업데이트 feed를 별도로 준비해야 합니다.
+The signing script reads a private key outside the repository (`VOICESUBSEP_RELEASE_KEY`, or the local release-key directory), verifies that it matches the bundled public key, and writes only `installer-manifest.sig`. Never package the private key. Publish the matching installer, every part, manifest and signature together after validation. The signature authenticates the manifest and its pinned hashes; **it does not sign the Windows EXE with Authenticode or establish SmartScreen reputation**. Key rotation requires an explicit trust transition, not simply replacing the release's signature.
 
-새 버전 배포 절차는 다음과 같습니다.
+최종 설치 파일과 분할 자산을 만든 뒤 **더 이상 바꾸지 않을 명세**를 서명합니다. 스크립트는 저장소 밖 개인키(`VOICESUBSEP_RELEASE_KEY` 또는 로컬 릴리즈 키 폴더)를 읽어 포함 공개키와 일치하는지 확인하고 `installer-manifest.sig`만 생성합니다. 개인키를 패키지에 넣지 않습니다. 검증된 설치기·모든 조각·명세·서명을 함께 게시합니다. 서명은 명세와 해시를 인증하며 **Windows EXE의 Authenticode 서명·SmartScreen 신뢰도를 제공하지 않습니다**. 개인키 교체만으로 기존 앱의 신뢰 키가 바뀌지 않습니다.
 
-1. `package.json`의 버전을 올리고 동일한 앱 ID·feed 주소로 빌드합니다.
-2. 코드 서명 인증서를 설정하고 설치본 및 업데이트 파일의 서명을 검증합니다.
-3. 빌드 결과의 설치 EXE, `.blockmap`, 분리 설치기의 `.nsis.7z` 데이터 파일, `latest.yml`을 같은 feed 경로에 게시합니다. `latest.yml`의 `packages` 메타데이터와 파일 이름·크기·해시를 유지하고, 업로드 완료 후 `latest.yml`을 마지막에 교체합니다. NSIS의 표준 `--package-file` 경로는 updater가 내려받은 데이터 파일에도 사용할 수 있습니다.
-4. 이전 버전 설치 상태에서 확인·다운로드·명시적 재시작·새 버전 확인·프로젝트와 캐시 보존을 실제 검증합니다.
+An explicit `VOICESUBSEP_UPDATE_URL` at build time selects the separate legacy generic/electron-updater path instead of GitHub split updates. It requires its own valid HTTPS feed and signature/publisher configuration; it is not the default 0.3.0 delivery path. Do not set it when building the normal GitHub release. Published status and actual upgrade acceptance remain in the [release record](releases/v0.3.0.md).
 
-빌더의 `win.verifyUpdateCodeSignature`는 `true`이지만 이 값만으로 실제 업데이트의 서명 검증을 입증하지 않습니다. 유효한 서명·publisher 설정과 실제 feed를 연결해 검증 경로가 실행되는지 확인해야 합니다. **이번 Preview에는 서명 인증서와 업데이트 feed가 없으며 원격 업데이트 전체 과정은 미검증입니다.** 서명 없는 설치본은 Windows 신뢰도 경고가 발생할 수 있습니다. 로컬 설치 성공을 원격 업데이트 성공으로 간주하지 않습니다.
+빌드 때 `VOICESUBSEP_UPDATE_URL`을 지정하면 별도 generic/electron-updater 경로를 선택합니다. 유효한 HTTPS feed·서명/publisher 설정이 따로 필요하며 일반 0.3.0 GitHub 배포에서는 지정하지 않습니다. 실제 게시·업그레이드 수용 결과는 [릴리즈 기록](releases/v0.3.0.md)을 따릅니다.
 
 ## UI 브리지
 
@@ -136,17 +137,17 @@ interface DesktopBridge {
 
 ### 녹음 권한
 
-*Capture permissions.* Microphone access is explicitly approved for the app's own main frame. Windows display/system audio capture additionally checks the user gesture and explicit selection. Shared video is not stored in recordings; system audio can contain calls, games and notifications. Recording uses local chunks and post-recording analysis, not streaming ASR. Device and long-duration tests are distinct from permission-handler tests.
+*Capture permissions.* Microphone access is explicitly approved for the app's own main frame. Windows display/system audio capture additionally checks the user gesture and explicit selection. Shared video is not stored in recordings; system audio can contain calls, games and notifications. Recording uses local chunks. Optional live mode feeds PCM to persistent cached-only Whisper + Nemotron; the record-only mode analyzes after stopping. Device and long-duration tests are distinct from permission-handler tests.
 
 장치 권한은 기본 거부하며 녹음 기능에 필요한 요청만 별도 확인합니다. 마이크 요청은 앱의 현재 메인 창·최상위 프레임·origin과 오디오 전용 요청을 검사한 뒤 사용자의 네이티브 확인창 응답으로 허용합니다. Windows 시스템 캡처는 해당 프레임의 사용자 동작, 오디오·영상 요청을 확인하고 화면 선택창에서 명시적으로 선택한 경우에만 loopback을 제공합니다. 외부 origin과 iframe 요청, 겹친 권한 요청은 허용하지 않습니다.
 
-시스템 캡처에는 게임·통화·알림 등 전체 출력음이 섞일 수 있음을 안내합니다. 공유 권한에 필요한 화면 트랙은 최종 녹음 파일에 넣지 않습니다. 녹음은 약 1초 단위 IndexedDB 저장과 종료 후 분석이며 별도 WASAPI 워커·스트리밍 ASR 구현을 뜻하지 않습니다. 실제 마이크·시스템 소리·장시간 녹음의 장치 검증은 [릴리즈 검증 표](releases/v0.2.1.md)에서 확인합니다.
+시스템 캡처에는 게임·통화·알림 등 전체 출력음이 섞일 수 있음을 안내합니다. 공유 권한에 필요한 화면 트랙은 최종 녹음 파일에 넣지 않습니다. 녹음은 약 1초 단위 IndexedDB 저장을 사용합니다. 선택한 라이브 모드는 캐시의 Whisper·Nemotron을 유지하며 약 4초 구간을 계속 처리하고, 녹음 전용 모드는 종료 후 분석합니다. 첫 결과에는 약 5초 음성 수집과 추론 시간이 필요합니다. 최대 2시간 라이브·세션 녹음 합계 2GiB이며, 개별 WASAPI 출력·ASIO 라우팅은 없습니다. OBS에는 같은 컴퓨터에서 접근하는 읽기 전용 토큰 URL을 제공하고 송출 끄기·지우기는 원본과 편집 자막을 보존합니다. 실제 장치·장시간 검증은 [릴리즈 기록](releases/v0.3.0.md)에서 확인합니다.
 
 ## 검증과 한계
 
 *Evidence boundaries.* Current results are in the versioned release record. The historical v0.1.1 data below is retained for provenance and does not validate a newer installer. Developer Electron smoke uses a mock server/profile and is not proof of packaged-main behavior, actual NSIS installation, microphone capture, driver compatibility or a signed remote upgrade.
 
-**현재 v0.2.1의 검증은 [릴리즈 기록](releases/v0.2.1.md)에 모읍니다.** 아래는 v0.1.1 당시의 역사적 실행 기록이며 새 설치 파일의 성공 증거로 재사용하지 않습니다.
+**0.3.0의 게시·설치·검증 상태는 [릴리즈 기록](releases/v0.3.0.md)에 모읍니다.** 아래는 v0.1.1 당시의 역사적 실행 기록이며 새 설치 파일의 성공 증거로 재사용하지 않습니다.
 
 ### v0.1.1 이전 검증 기록
 

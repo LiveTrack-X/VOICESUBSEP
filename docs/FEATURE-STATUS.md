@@ -1,8 +1,8 @@
 # Feature status / 요청 기능 현황
 
-Audited against the current working source on 2026-09-25. **Not every proposal is implemented, and current source changes are not deployed.** Implemented means code and a usable path exist; it does not establish real-device quality, paid-provider access or semantic accuracy. Public v0.2.0, the earlier local v0.2.1 checkpoint, and the empty unpublished v0.2.1 GitHub draft are separate states. See the [checkpoint record](releases/v0.2.1.md) and [current bug audit](BUG-AUDIT-2026-09-25.md).
+Scope of the **0.3.0 target implementation**, reviewed on 2026-09-25. Implemented means code and a usable path exist, not proof of device quality, paid-provider access or semantic accuracy. Publication, installation and exact verification results belong in the [0.3.0 release record](releases/v0.3.0.md). Earlier [0.2.0](releases/v0.2.0.md) and [0.2.1](releases/v0.2.1.md) records remain historical evidence.
 
-2026-09-25 현재 작업 소스를 이전 요청과 대조했습니다. **모든 제안이 구현된 것은 아니며 현재 변경은 미배포입니다.** `구현`은 코드와 사용 경로가 있다는 뜻이며 실제 장치 품질·유료 계정 접근·인식 정확도 보증이 아닙니다. 공개 v0.2.0, 이전 로컬 v0.2.1 설치 checkpoint, 자산 없는 GitHub v0.2.1 초안은 서로 구분합니다.
+2026-09-25 기준 **0.3.0 대상 구현**을 요청과 대조했습니다. `구현`은 코드와 사용 경로가 있다는 뜻이며 장치 품질·유료 접근·인식 정확도 보증이 아닙니다. 실제 게시·설치·검증 수치는 [0.3.0 릴리즈 기록](releases/v0.3.0.md)으로 확인합니다.
 
 ## Editing / 자막 편집
 
@@ -15,7 +15,7 @@ Audited against the current working source on 2026-09-25. **Not every proposal i
 | Editing notes on timeline / 편집 메모·타임라인 | Implemented / 구현 | Timed point/range, category, completion and jump-to-card / 시점·범위·분류·완료·메모 카드 이동 |
 | Audio files MP3/M4A/etc. / 음성 파일 | Implemented / 구현 | FFmpeg/FFprobe analysis; browser preview depends on codec support / 오디오 분석 지원, 미리보기는 브라우저 코덱에 따름 |
 | Simple cuts and actual output / 간단 컷·파일 출력 | Implemented / 구현 | Non-destructive exclusions, kept-range preview, MP4/WAV/MP3/M4A rendering and output-time SRT/notes / 원본 보존 제외·미리보기·렌더·편집본 시간 자막과 메모 |
-| Audio track mixing / 여러 파일·트랙 합치기 | Implemented in source / 소스 구현 | Up to 16 file/OBS tracks, gain/offset/mute/limiter, optional project cuts, WAV/MP3/M4A/MP4 and history. No drift correction, VST mix rendering or editable multitrack session export / 최대 16트랙·음량·시간 이동·음소거·리미터·컷·출력·이력. 드리프트·VST 믹스·편집용 멀티트랙 세션은 없음 |
+| Audio track mixing / 여러 파일·트랙 합치기 | Implemented / 구현 | Up to 16 file/OBS tracks, gain/offset/mute/limiter, project cuts, WAV/MP3/M4A/MP4 and history. Individual/solo previews extract the selected stream for up to 10 seconds and show pre-limiter/playback sample peaks. No whole-file true-peak guarantee, drift correction or VST mix rendering / 최대 16트랙·음량·시간 이동·음소거·리미터·컷·출력·이력, 선택 OBS 스트림 개별/솔로 최대 10초·샘플 피크. 전체 true-peak·드리프트·VST 믹스 없음 |
 | Cutback-like automation / Cutback 수준 자동 편집 | Not implemented / 미구현 | No Premiere plug-in, clip rearrangement/transitions, automatic silence/filler removal or complete NLE / 프리미어 플러그인·클립 재배열·전환·자동 무음/군더더기 제거 없음 |
 | Undo, bulk editing, search/replace / 실행 취소·일괄 수정·치환 | Implemented / 구현 | Bounded undo, 100-row pages, literal replacement and review navigation / 제한된 실행 취소·100행 페이지·문자열 치환·검수 이동 |
 | New project retains names / 새 프로젝트 이름 잔존 | Main reset fixed / 주요 경로 수정 | New/open/sample project changes reset session/undo. Old job results cannot silently apply to another project / 프로젝트 전환 시 세션·실행 취소 분리 |
@@ -66,25 +66,25 @@ Sources / 근거: [transcript export](../src/transcriptDocument.ts), [documents 
 
 | Request / 요청 | Status / 상태 | Actual scope / 실제 범위 |
 | --- | --- | --- |
-| Microphone/system recording / 입력·컴퓨터 소리 녹음 | Implemented / 구현 | Source selection, local chunks, microphone+system mix, recovery and analysis after stopping / 소스 선택·조각 저장·혼합·복구·종료 후 분석 |
+| Microphone/system recording / 입력·컴퓨터 소리 녹음 | Implemented / 구현 | Browser/Electron mic/system/both, local chunk journal, input level, recovery; record-only or optional live analysis / 브라우저·Electron 마이크/시스템/둘 다, 조각 저장·레벨·복구·녹음 후 분석 또는 라이브 선택 |
 | Full microphone list / 마이크 목록 | Implemented permission flow / 권한 흐름 구현 | Permission refresh reveals available device names, fixed selection, no silent default fallback / 권한 후 실제 이름·고정 선택, 임의 기본 전환 방지 |
-| Real-time captions and OBS output / 실시간 자막·OBS 송출 | Planned / 설계만 | Not present; current recorder processes after stopping / 현재는 종료 후 분석 |
+| Real-time captions and OBS output / 실시간 자막·OBS 송출 | Implemented with latency / 지연 있는 구간 인식 구현 | Persistent cached-only local Whisper + Nemotron; roughly 4-second commits, first result needs about 5 seconds of audio plus inference. Read-only loopback OBS URL, output mute/clear; one session up to 2h. Provisional speaker labels, not acoustic separation / 로컬 캐시 전용 모델 유지·약 4초 단위·첫 약 5초+추론, 읽기 전용 OBS 주소·송출 끄기/지우기·한 세션 최대 2시간, 화자는 검수할 초안 |
 | WASAPI endpoint/ASIO/routing / 출력 장치별 선택·라우팅 | Planned / 설계만 | No arbitrary playback-device endpoint or ASIO channel routing / 재생 출력 장치별·ASIO 채널 라우팅 없음 |
 | Settings and error logs / 설정·오류 로그 | Implemented / 구현 | Language/analysis/VST backup and sanitized diagnostic export; API keys are memory-only / 설정·진단 출력, API 키는 메모리 전용 |
 | Autosave and recovery / 자동 저장·복구 | Implemented with limits / 제한 있음 | Current/previous/damaged JSON, job history; not unlimited versions or original-media backup / 현재·직전·손상 JSON·작업 이력, 원본 미디어 백업 아님 |
-| Public repo, bilingual docs, small EXE / 공개·한영 문서·작은 EXE | Public v0.2.0; newer source unshipped / v0.2.0 공개·최신 변경 미배포 | SHA256-pinned downloader, resume/verify/assemble. v0.2.1 only has a prior local installation checkpoint and empty GitHub draft / 체크섬·이어받기·조립, v0.2.1은 이전 로컬 설치·빈 초안만 존재 |
-| In-app update / 인앱 업데이트 | Partial / 부분 | UI and updater controller exist; release feed and signing are not configured / 화면·코드만 있고 배포 feed·서명 미설정 |
-| Bandwidth cap / 대역폭 제한 | Partial / 부분 | Setup downloader offers 80/40 Mbps/unlimited. No OS QoS reservation or model-download global limit; temporary development throttles are not an app-wide promise / 설치 다운로드 제한, OS 10Mbps 예약·전체 모델 다운로드 제한은 없음. 일시 개발 제한과 제품 기능 구분 |
+| Public repo, bilingual docs, small EXE / 공개·한영 문서·작은 EXE | 0.3.0 delivery target / 0.3.0 배포 대상 | Public no-login setup, SHA256-pinned download/resume/assembly; exact publication/installation status in the release record / 로그인 없는 설치기·체크섬·이어받기·조립, 실제 게시·설치는 릴리즈 기록 확인 |
+| In-app update / 인앱 업데이트 | Implemented; acceptance tracked per release / 구현·실제 검증 별도 | Explicit check/download/install using public GitHub split assets, Ed25519-authenticated manifest plus SHA256, bundled public key/private key outside repo. Windows EXEs remain Authenticode-unsigned / 확인·다운로드·설치 직접 선택, Ed25519 명세 인증·SHA256, 공개키 포함·개인키 외부, Windows 코드 서명 아님 |
+| Bandwidth cap / 대역폭 제한 | Scoped download limits / 다운로드별 제한 | Online setup 80/40 Mbps/unlimited; in-app update serial 80 Mbps. No OS QoS reservation or all-model-download limit / 온라인 설치기 선택 제한·인앱 순차 80Mbps, OS 10Mbps 예약·전체 모델 다운로드 제한은 없음 |
 | SDAD adoption / SDAD 도입 | Not adopted / 미도입 | Documents/tests exist, but no SDAD adapter/state workflow; earlier question was not treated as completed adoption / 문서·테스트는 있으나 SDAD 체계 도입은 아님 |
 
-Sources / 근거: [live capture](../src/liveCapture.ts), [microphone devices](../src/microphoneDevices.ts), [settings](../src/settings.ts), [updater](../desktop/updater.cjs), [online installer](ONLINE-INSTALLER.md), [OBS and routing plan](OBS-LIVE-CAPTIONS-PLAN.md).
+Sources / 근거: [live capture](../src/liveCapture.ts), [persistent live engine](../backend/voicesubsep/live_native.py), [live sessions and OBS](../backend/voicesubsep/live_api.py), [microphone devices](../src/microphoneDevices.ts), [settings](../src/settings.ts), [GitHub updater](../desktop/release-updater.cjs), [desktop/update contract](DESKTOP.md).
 
 ## Remaining priorities / 남은 우선순위
 
-1. Make real recording-device selection and long-session recovery reliable on the user's audio interface; add native playback-endpoint capture. / 실제 오인페 장치 선택·장시간 녹음 검증과 네이티브 출력 캡처.
-2. Build incremental ASR/diarization and OBS delivery as a separate unit. / 스트리밍 인식·화자 유지·OBS 송출을 별도 단위로 구현.
-3. Validate mixer timing, Word/Excel rendering and native PDF saving with real user files; rebuild and validate a new installer before distributing current changes. / 실사용 파일의 믹스 시간·Word/Excel 표시·네이티브 PDF 저장 확인 후 새 설치본 재빌드·검증·배포.
-4. Configure a signed update distribution before claiming in-app updates are operational. / 인앱 업데이트 운영 전 서명·배포 경로 구성.
-5. Resolve Qwen dependency distribution declarations before bundling; separately validate real models and paid ASR/diarization quality. / Qwen 배포 고지 불일치 해소 후 번들 검토, 실제 모델·유료 인식·화자 구분 품질은 별도 검증.
+1. Validate the user's real microphone/interface/system capture, sustained GPU throughput, speaker stability and long-session recovery; native output endpoint/ASIO routing remains separate scope. / 실제 마이크·오인페·시스템 캡처, 지속 처리 속도·화자 안정성·장시간 복구 검증. 출력 endpoint·ASIO는 별도 범위.
+2. Validate OBS Browser Source display and live-to-editor handoff in a real broadcast; four-second segmentation and model time remain visible latency. / 실제 방송의 OBS 표시·편집 전환 검증, 4초 구간·추론 지연 확인.
+3. Check mixer timing, Word/Excel rendering and native PDF saving with real user files; use the release record for final packaged/installed evidence. / 실사용 믹서·Word/Excel·PDF 검증, 최종 패키지·설치 증거는 릴리즈 기록 확인.
+4. Exercise signed-manifest updates from an installed previous version through restart and data preservation. Windows Authenticode signing remains separate and incomplete. / 설치본의 명세 서명 업데이트·재시작·데이터 보존 검증, Windows Authenticode 서명은 별도 미완료.
+5. Resolve Qwen distribution declarations before bundling, and separately validate real models and paid ASR/diarization quality. / Qwen 배포 고지 해소 후 번들 검토, 실제 모델·유료 인식·화자 품질 검증.
 
 These are open work items, not promises that they are already in the installer. Removed translation and AI summarization are intentional scope decisions, not outstanding implementation tasks. / 위 항목은 남은 작업이며 설치기에 포함됐다는 뜻이 아닙니다. 제거한 번역·AI 요약은 사용자의 범위 결정이며 미완료 개발 항목으로 계산하지 않습니다.

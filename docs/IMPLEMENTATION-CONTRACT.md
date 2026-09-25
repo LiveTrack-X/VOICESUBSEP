@@ -1,10 +1,10 @@
 # v0.1 implementation contract
 
-This is the implementation boundary for the first runnable local version, 2026-09-24.
+**Historical v0.1 contract — superseded for current behavior.** This preserves the first runnable local version's boundary from 2026-09-24. For the 0.3.0 target, use [feature status](FEATURE-STATUS.md), the [user guide](USER-GUIDE.md), and [release record](releases/v0.3.0.md). The record, not this design snapshot, determines publication/installation status.
 
-**Current source extension:** [Cuts and languages](CUTS-AND-LANGUAGES.md) defines the implemented non-destructive cut workflow, schema-v2 `cuts`, original-time storage, effective render boundary mapping, five UI locales, independent ASR language selection, and source-preserving local subtitle translations. It takes precedence for those extensions; the type sketch below describes the original v1 baseline, not the complete current schema. These source changes are not evidence of an updated installer or release. Optional denoising/VST hosting remains a [design proposal](AUDIO-PREPROCESSING.md).
+**역사적 v0.1 계약입니다.** 아래 형식·화면·기능 설명은 당시 기준이며 현재 전체 스키마가 아닙니다. 0.3.0 대상 구현은 [기능 현황](FEATURE-STATUS.md)·[사용자 가이드](USER-GUIDE.md)를 우선하고 게시·설치는 [릴리즈 기록](releases/v0.3.0.md)에서 확인하세요. 자막 번역·AI 요약은 제거했고, VST 전처리·오디오 믹서·라이브 자막은 별도 현재 계약을 따릅니다: [VST](VST-CHAIN.md), [믹서](AUDIO-MIXER.md), [라이브 사용법](USER-GUIDE.md#8-라이브-자막마이크시스템-소리-녹음).
 
-## Editor layout (current source)
+## Archived editor layout snapshot
 
 The timeline can collapse to its heading or resize by dragging its top edge. The focused separator also accepts Up/Down, Shift for larger steps, Home/End, and double-click to reset. Expanded height defaults to 180px, with bounds based on the available workspace. Caption focus view keeps the same mounted player and caption editor, reduces the preview, and hides the project, notes, translation and cut panels until the user restores all panels. Selecting a timeline note restores the notes panel before measuring its selected card. Compact caption rows keep editable start/end times and speaker/review controls; long text remains editable in a bounded scrolling field. The preview shrinks before the caption panel loses its minimum editing space.
 
