@@ -7,6 +7,7 @@
 **인터뷰·회의·영상의 음성을 화자별 자막으로 만들고 직접 검수하세요.** VOICESUBSEP은 기본적으로 내 컴퓨터에서 음성 인식과 화자 분석을 실행하고, 원본을 들으며 결과를 고치는 타임라인 편집기를 제공합니다.
 
 [![Download VOICESUBSEP for Windows](https://img.shields.io/badge/Download-Windows%20x64-6846e8?style=for-the-badge)](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.5-Online-Setup-x64.exe)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/livetrack)
 
 [Windows 다운로드](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.5-Online-Setup-x64.exe) · [모든 릴리즈](https://github.com/LiveTrack-X/VOICESUBSEP/releases) · [사용자 가이드](docs/USER-GUIDE.md) · [기능 현황과 제한](docs/FEATURE-STATUS.md)
 
