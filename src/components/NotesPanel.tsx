@@ -1,7 +1,9 @@
 import { useI18n } from "../i18n";
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
   Check,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   MessageSquareText,
   Play,
@@ -44,6 +46,11 @@ export function NotesPanel({
 }: NotesPanelProps) {
   const { t } = useI18n();
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const previousReveal = useRef<typeof reveal>(null);
+  const contentId = useId();
+  // The CSS collapse applies only to narrow screens; never replace saved workspace preferences.
+  const expandedView = expanded || Boolean(reveal && previousReveal.current !== reveal);
   const textInputs = useRef(new Map<string, HTMLTextAreaElement>());
   const cards = useRef(new Map<string, HTMLElement>());
   const list = useRef<HTMLDivElement>(null);
@@ -52,6 +59,10 @@ export function NotesPanel({
   const currentTime = Number.isFinite(time)
     ? Math.max(0, Math.min(time, project.duration || MAX_TIME_SECONDS))
     : 0;
+  useLayoutEffect(() => {
+    if (reveal && previousReveal.current !== reveal) setExpanded(true);
+    previousReveal.current = reveal;
+  }, [reveal]);
   useLayoutEffect(() => {
     const card = reveal && cards.current.get(reveal.id);
     const container = list.current;
@@ -85,6 +96,7 @@ export function NotesPanel({
       return;
     }
     const id = crypto.randomUUID();
+    setExpanded(true);
     update((previous) => ({
       ...previous,
       notes: [
@@ -147,7 +159,7 @@ export function NotesPanel({
   }
 
   return (
-    <aside className="notes-panel panel" aria-label={t("편집 메모")}>
+    <aside className={`notes-panel panel${expandedView ? " notes-expanded" : ""}`} aria-label={t("편집 메모")}>
       <div className="panel-heading">
         <div className="notes-heading">
           <MessageSquareText size={18} aria-hidden="true" />
@@ -161,12 +173,23 @@ export function NotesPanel({
         </div>
         <button
           type="button"
+          className="notes-toggle"
+          aria-expanded={expandedView}
+          aria-controls={contentId}
+          onClick={() => setExpanded(value => !value)}
+        >
+          {expandedView ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
+          {t(expandedView ? "메모 접기" : "메모 펼치기")}
+        </button>
+        <button
+          type="button"
           className="subtle-button"
           onClick={addNote}
           aria-label={t("현재 시간에 메모 추가")}
         >
           <Plus size={15} aria-hidden="true" />{t('메모 추가')}</button>
       </div>
+      <div className="notes-content" id={contentId}>
       <p className="notes-hint">
         <Clock3 size={13} aria-hidden="true" />
         <span>{t("현재 위치 {time} · 원본 영상 기준", { time: formatTime(currentTime) })}</span>
@@ -293,6 +316,7 @@ export function NotesPanel({
             </article>
           ))
         )}
+      </div>
       </div>
     </aside>
   );

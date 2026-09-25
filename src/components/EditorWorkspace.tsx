@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Columns2, PanelLeftClose } from "lucide-react";
 import { useI18n } from "../i18n";
+import { SubtitleFocusContext } from "../workspaceFocus";
 
 const FOCUS_STORAGE_KEY = "voicesubsep-editor-focus-v1";
 
@@ -27,7 +28,7 @@ export function EditorWorkspace({ children, noteReveal, tools }: {
     previousNoteReveal.current = noteReveal;
   }, [noteReveal]);
 
-  return <div className={`editor-workspace${focusedView ? " subtitle-focus" : ""}`}>
+  return <SubtitleFocusContext.Provider value={focusedView}><div className={`editor-workspace${focusedView ? " subtitle-focus" : ""}`}>
     <div className="workspace-view-bar">
       <span className="workspace-view-label">{t(focusedView ? "자막 편집에 집중하는 화면입니다." : "편집 화면")}</span>
       {tools && <div className="workspace-tools">{tools}</div>}
@@ -42,5 +43,5 @@ export function EditorWorkspace({ children, noteReveal, tools }: {
       </button>
     </div>
     {children}
-  </div>;
+  </div></SubtitleFocusContext.Provider>;
 }

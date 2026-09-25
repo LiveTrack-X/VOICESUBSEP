@@ -187,7 +187,7 @@ async function start() {
   });
   installIpc(updates);
   mainWindow = new BrowserWindow({
-    title: 'VOICESUBSEP', width: 1440, height: 940, minWidth: 1000, minHeight: 680,
+    title: 'VOICESUBSEP', width: 1440, height: 940, minWidth: 480, minHeight: 640,
     icon: path.join(__dirname, 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     backgroundColor: '#101114', show: false, autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, webviewTag: false },

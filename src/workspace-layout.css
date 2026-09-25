@@ -39,11 +39,15 @@
 .editor-center .play-circle svg { width: 24px; }
 .editor-center > .caption-editor {
   min-height: 250px;
-  flex: 1 0 250px;
+  /* Let toolbar height participate in intrinsic sizing. A fixed 250px basis
+     previously clipped the entire list once controls wrapped on small screens. */
+  flex: 1 0 auto;
   border-bottom: 1px solid var(--border);
   border-radius: 7px;
 }
-.editor-center .caption-list { min-height: 80px; }
+.editor-center .caption-list { height: 250px; min-height: 250px; flex: 1 0 250px; }
+.notes-content { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
+.notes-panel .notes-toggle { display: none; }
 .workspace:has(> .subtitle-focus) > .sidebar,
 .subtitle-focus .notes-panel,
 .subtitle-focus .subtitle-language-bar,
@@ -57,12 +61,44 @@
 .subtitle-focus .play-circle svg { width: 20px; }
 
 @media (max-width: 1000px) {
+  .editor-upper { flex-direction: column; flex-wrap: nowrap; overflow-y: auto; min-width: 0; }
+  .editor-center { width: 100%; min-width: 0; height: auto; flex: 1 0 auto; overflow: visible; }
+  .editor-center > .caption-editor { flex: 1 0 auto; }
+  .editor-center .caption-list { flex: 1 0 250px; min-height: 250px; max-height: 55dvh; }
+  .editor-upper > .notes-panel { width: 100%; height: auto; min-width: 0; flex: 0 0 auto; }
+  .notes-panel .panel-heading { padding: 8px 12px; }
+  .notes-panel .notes-toggle { display: inline-flex; }
+  .notes-panel:not(.notes-expanded) > .notes-content { display: none; }
+  .notes-expanded .notes-content { max-height: 360px; }
+  .notes-panel .notes-list { display: block; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+  .notes-panel .note-card { width: 100%; min-width: 0; }
+  .notes-panel .note-body { max-width: 100%; }
+  .caption-editor .caption-toolbar { min-height: 40px; }
+  .caption-editor .caption-columns { padding-block: 6px; }
+  .caption-editor .edit-actions { padding-block: 5px; gap: 4px; }
+  .caption-editor .caption-navigation { padding-block: 4px; }
   .app-shell:has(.subtitle-focus) { height: 100dvh; min-height: 540px; }
   .workspace:has(> .subtitle-focus) { display: flex; min-height: 0; }
   .subtitle-focus .editor-upper { flex-wrap: nowrap; }
   .subtitle-focus .editor-center { height: auto; width: 100%; }
+  .subtitle-focus .editor-center { padding-top: 6px; }
+  .subtitle-focus .editor-center > .media-player:not(.media-player-expanded):not(:fullscreen) { min-height: 0; flex: 0 0 auto; }
+  .subtitle-focus .media-player:not(.media-player-expanded):not(:fullscreen) > .video-stage { height: 76px; min-height: 76px; flex: 0 0 76px; }
+  .subtitle-focus .media-player:not(.media-player-expanded):not(:fullscreen) > .player-controls { padding: 3px 10px 5px; }
+  .subtitle-focus .media-player:not(.media-player-expanded):not(:fullscreen) > .player-controls > input { margin-bottom: 5px; }
+  .subtitle-focus .caption-editor { margin-top: 7px; }
 }
 @media (max-width: 680px) {
+  .workspace, .editor-workspace, .editor-upper { width: 100%; max-width: 100%; min-width: 0; }
+  .sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .editor-center { min-width: 0; height: auto; }
+  .caption-editor .caption-toolbar { flex-wrap: wrap; padding-block: 3px; }
+  .caption-editor .tabs { min-height: 32px; }
+  .caption-editor .caption-columns, .caption-editor .caption-row { grid-template-columns: 75px 65px minmax(0, 1fr) 25px; }
+  .caption-editor .edit-actions select { max-width: 130px; }
+  .timeline-adjustable .timeline-heading { height: auto; min-height: 41px; flex-wrap: wrap; gap: 4px; }
+  .timeline-adjustable .timeline-heading-actions { flex-shrink: 1; min-width: 0; gap: 4px; flex-wrap: wrap; }
+  .timeline-adjustable .timeline-heading-actions > select { max-width: 90px; }
   .workspace-view-bar { padding-inline: 10px; }
   .workspace-view-bar > span { font-size: 10px; }
   .subtitle-focus .transport { height: auto; min-height: 24px; flex-wrap: wrap; }

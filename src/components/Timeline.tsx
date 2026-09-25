@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, ZoomIn, ZoomOut } from "lucide-react";
 import { formatTime, type Project } from "../domain";
 import { request, uploadMedia, type MediaInfo } from "../api";
@@ -7,6 +7,7 @@ import { resizeCaption, waveformPath } from "../timelineEditing";
 import { NoteTimelineLane } from "./NoteTimelineLane";
 import { normalizeCuts } from "../cuts";
 import { useI18n } from "../i18n";
+import { SubtitleFocusContext } from "../workspaceFocus";
 import "./timeline-layout.css";
 
 const LAYOUT_STORAGE_KEY = "voicesubsep-timeline-layout-v1";
@@ -59,6 +60,19 @@ export function Timeline({
   const {t}=useI18n();
   const [zoom, setZoom] = useState(1);
   const [layout, setLayout] = useState(readLayout);
+  const focused = useContext(SubtitleFocusContext);
+  const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 1000px)").matches);
+  const [focusExpanded, setFocusExpanded] = useState(false);
+  const compactFocus = focused && narrow;
+  const collapsed = compactFocus ? !focusExpanded : layout.collapsed;
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 1000px)");
+    const changed = () => setNarrow(query.matches);
+    changed();
+    query.addEventListener("change", changed);
+    return () => query.removeEventListener("change", changed);
+  }, []);
+  useEffect(() => { if (!compactFocus) setFocusExpanded(false); }, [compactFocus]);
   const [maxHeight, setMaxHeight] = useState(MAX_HEIGHT);
   const [resizing, setResizing] = useState(false);
   const [waveform,setWaveform] = useState<{peaks:{values:number[];secondsPerPoint:number};duration:number}|null>(null);
@@ -145,11 +159,11 @@ export function Timeline({
   return (
     <section
       ref={sectionRef}
-      className={`timeline timeline-adjustable${layout.collapsed ? " timeline-collapsed" : ""}${resizing ? " timeline-resizing" : ""}`}
-      style={{ height: layout.collapsed ? 42 : height }}
+      className={`timeline timeline-adjustable${collapsed ? " timeline-collapsed" : ""}${resizing ? " timeline-resizing" : ""}`}
+      style={{ height: collapsed ? 42 : height }}
       aria-label={t("인물별 타임라인")}
     >
-      {!layout.collapsed && <div
+      {!collapsed && <div
         className="timeline-resize-handle"
         role="separator"
         tabIndex={0}
@@ -200,11 +214,11 @@ export function Timeline({
         <h2>{t("타임라인")}</h2>
         <span className="timeline-heading-hint">{t("클릭하면 해당 위치부터 재생 · 원본 시간 기준")}</span>
         <div className="timeline-heading-actions">
-          {!layout.collapsed&&<>
+          {!collapsed&&<>
             {!!media&&media.audioTracks.length>1&&<select aria-label={t("파형 오디오 트랙")} disabled={waveBusy} value={audioTrack} onChange={e=>{setAudioTrack(Number(e.target.value));setWaveform(null);}}>{media.audioTracks.map(track=><option key={track.index} value={track.index}>{track.label}</option>)}</select>}
             <button disabled={!file||waveBusy} onClick={()=>void loadWaveform()}>{t(waveBusy?"파형 준비 중":"파형 불러오기")}</button>
           </>}
-          {!layout.collapsed && <div className="timeline-zoom-controls">
+          {!collapsed && <div className="timeline-zoom-controls">
           <button
             aria-label={t("타임라인 축소")}
             disabled={zoom <= 1}
@@ -223,18 +237,18 @@ export function Timeline({
           </div>}
           <button
             className="timeline-collapse-button"
-            aria-expanded={!layout.collapsed}
+            aria-expanded={!collapsed}
             aria-controls={contentId}
-            aria-label={t(layout.collapsed ? "타임라인 펼치기" : "타임라인 접기")}
-            title={t(layout.collapsed ? "타임라인 펼치기" : "타임라인 접기")}
-            onClick={() => commitLayout({ ...layout, collapsed: !layout.collapsed })}
+            aria-label={t(collapsed ? "타임라인 펼치기" : "타임라인 접기")}
+            title={t(collapsed ? "타임라인 펼치기" : "타임라인 접기")}
+            onClick={() => compactFocus ? setFocusExpanded(value => !value) : commitLayout({ ...layout, collapsed: !layout.collapsed })}
           >
-            {layout.collapsed ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-            <span>{t(layout.collapsed ? "펼치기" : "접기")}</span>
+            {collapsed ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            <span>{t(collapsed ? "펼치기" : "접기")}</span>
           </button>
         </div>
       </div>
-      <div className="timeline-scroll" id={contentId} hidden={layout.collapsed}>
+      <div className="timeline-scroll" id={contentId} hidden={collapsed}>
         <div
           className="timeline-content"
           style={{ minWidth: `${zoom * 100}%` }}
