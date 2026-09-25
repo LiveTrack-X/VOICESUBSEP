@@ -1,6 +1,6 @@
 {
   "version": "0.3.4",
-  "verifiedAt": "2026-09-25T14:04:38.636197+00:00",
+  "verifiedAt": "2026-09-25T14:14:11.290526+00:00",
   "tests": {
     "vitest": 843,
     "node": 84,
@@ -277,9 +277,57 @@
     "Cache protection applies to the current application cleanup UI, not external API clients.",
     "Package/public download/installation states below are independent gates."
   ],
-  "sourceCommit": null,
+  "sourceCommit": "9447dc13e2b63325c21f490e1e5cf419054c8660",
   "package": {
-    "status": "pending"
+    "passed": true,
+    "sourceCommit": "9447dc13e2b63325c21f490e1e5cf419054c8660",
+    "asarSha256": "1966ed74434d762a4fc38804ce4679503faea6ca59b0a34c004b9fa47a08d0dc",
+    "backendExeSha256": "1b32e5894ad29b77584995cb4641a1e7497fdd74b2260c0335c4f760757e5126",
+    "backendFileCount": 4392,
+    "resourceFileCount": 4401,
+    "unpackedPassed": true,
+    "archiveCrc": {
+      "exitCode": 0,
+      "signal": null,
+      "everythingIsOk": true,
+      "files": 4472,
+      "folders": 711,
+      "uncompressedBytes": 5446266876,
+      "archiveBytes": 2392172286,
+      "trailingBytes": 2482834,
+      "log": "tmp/v0.3.4-archive-crc.log",
+      "warning": "There are data after the end of archive",
+      "warningExplanation": "NSIS payload appends a compressed updater blockmap and four-byte length; account for every trailing byte below.",
+      "embeddedBlockMap": {
+        "compressedBytes": 2482830,
+        "lengthTrailerBytes": 4,
+        "version": "2",
+        "fileEntries": 1,
+        "chunksVerified": 114110,
+        "checksumAlgorithm": "BLAKE2b-144",
+        "allChunkChecksumsPassed": true,
+        "trailingBytesFullyAccountedFor": true
+      }
+    },
+    "artifacts": [
+      {
+        "name": "VOICESUBSEP-0.3.4-Offline-Setup-x64.exe",
+        "bytes": 1045608,
+        "sha256": "070dd57c2af3349a892588ba2e2c5b575047ebff736968359b32791203c785bd"
+      },
+      {
+        "name": "voicesubsep-0.3.4-x64.nsis.7z",
+        "bytes": 2394655120,
+        "sha256": "4f78c6bf8f66046c1ba9399fc21881ac69ea05fb7291ff5173b88e524ac697d1"
+      }
+    ],
+    "boundaries": [
+      "Read-only source and package inspection; no installer or packaged backend executed by this audit.",
+      "Final runtime evidence is bound to the exact packaged backend executable SHA-256.",
+      "No user profile, credentials, personal media or private signing key read.",
+      "Whisper/Nemotron weights excluded; bundled RNNoise model/license/provenance and ONNX assets listed separately.",
+      "Integrity and inventory checks do not establish transcription quality, native GUI behavior or installation success."
+    ]
   },
   "publication": {
     "status": "pending"
@@ -328,5 +376,14 @@
       "Actual plugin native GUI was not opened in this task.",
       "Backend/process/API remained unchanged."
     ]
+  },
+  "sourceCI": {
+    "conclusion": "success",
+    "createdAt": "2026-09-25T14:06:18Z",
+    "headSha": "9447dc13e2b63325c21f490e1e5cf419054c8660",
+    "status": "completed",
+    "updatedAt": "2026-09-25T14:07:51Z",
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/36145258833",
+    "workflowName": "Checks"
   }
 }

@@ -3,5 +3,5 @@ using System.Reflection;
 [assembly: AssemblyDescription("Downloads and verifies the VOICESUBSEP Windows installer")]
 [assembly: AssemblyCompany("LiveTrack-X")]
 [assembly: AssemblyProduct("VOICESUBSEP")]
-[assembly: AssemblyVersion("0.3.3.0")]
-[assembly: AssemblyFileVersion("0.3.3.0")]
+[assembly: AssemblyVersion("0.3.4.0")]
+[assembly: AssemblyFileVersion("0.3.4.0")]
