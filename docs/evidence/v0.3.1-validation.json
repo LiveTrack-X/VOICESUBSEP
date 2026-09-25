@@ -84,12 +84,52 @@
     "origin": "voicesubsep://app"
   },
   "publication": {
-    "published": false
+    "published": true,
+    "checkedAt": "2026-09-25T10:12:43.217Z",
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.3.1",
+    "publishedAt": "2026-09-25T10:12:35Z",
+    "targetCommit": "415af2b306e862f45494af265c412639de7f4156",
+    "prerelease": true,
+    "assetCount": 10,
+    "allGitHubDigestsMatch": true,
+    "anonymousDownloadsVerified": [
+      "installer-manifest.json",
+      "installer-manifest.sig",
+      "SHA256SUMS.txt",
+      "VOICESUBSEP-0.3.1-Online-Setup-x64.exe"
+    ],
+    "signatureValid": true,
+    "updaterEvents": [
+      {
+        "version": "0.3.0",
+        "event": "available",
+        "offeredVersion": "0.3.1"
+      },
+      {
+        "version": "0.3.1",
+        "event": "not-available",
+        "offeredVersion": "0.3.1"
+      }
+    ],
+    "downloadedExecutablesExecuted": false,
+    "fullPayloadDownloaded": false
   },
   "localInstallation": {
-    "version": "0.3.0",
-    "newVersionInstalled": false,
-    "reason": "User chose to update manually after finishing current work."
+    "newVersionInstalled": true,
+    "status": "completed",
+    "installedVersion": "0.3.1.0",
+    "installerExitCode": 0,
+    "elapsedSeconds": 172.5200558,
+    "profileFilesChecked": 22,
+    "profileFilesChanged": 0,
+    "profileBackupCreated": true,
+    "usedLocallyBuiltInstaller": true,
+    "installedPackageHashesMatch": true,
+    "startupLogConfirmed": true,
+    "cleanBackendExitCode": 0,
+    "processRunningAtFollowup": false,
+    "liveApiCheckPerformed": false,
+    "modelInferencePerformed": false
   },
   "limits": [
     "GPU inference accuracy was not re-evaluated on the user recording.",
@@ -166,5 +206,20 @@
     "name": "VOICESUBSEP-0.3.1-Online-Setup-x64.exe",
     "size": 166912,
     "sha256": "1fb3e2a376efdb888beb73c36150145d62927758a7550758db15fee610a36ddb"
+  },
+  "releaseCI": {
+    "sourceCommit": "415af2b306e862f45494af265c412639de7f4156",
+    "runId": 36121770897,
+    "conclusion": "success"
+  },
+  "independentReleaseAudit": {
+    "passed": true,
+    "partCount": 3,
+    "payloadBytes": 2419022088,
+    "payloadSha256": "f2a5c0b6e9aa534857933a6cf9685b5075eda7e61f12bf8c3a668771abfd4b04",
+    "ed25519SignatureVerifiedWithPackagedKey": true,
+    "sha256EntriesChecked": 9,
+    "pinnedHelperConfigFilesMatched": 3,
+    "publicAssets": 10
   }
 }

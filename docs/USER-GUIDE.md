@@ -1,8 +1,8 @@
 # VOICESUBSEP User Guide / 사용자 가이드
 
-This guide covers **the published 0.3.0 Windows app and explicitly marked 0.3.1 source changes**. 0.3.1 is being prepared, not yet claimed as released or installed. The [0.3.0 release record](releases/v0.3.0.md) remains the authority for current downloads and historical validation; see the [0.3.1 preparation record](releases/v0.3.1.md) and [feature status](FEATURE-STATUS.md) for the new scope and limits.
+This guide covers the **published 0.3.1 Windows preview**. Download, local installation and verification scope are recorded in the [0.3.1 release record](releases/v0.3.1.md); see [feature status](FEATURE-STATUS.md) for limits. The [0.3.0 record](releases/v0.3.0.md) remains historical evidence for that version.
 
-Windows 10/11 x64의 **배포된 0.3.0과 별도 표시한 0.3.1 소스 변경 사용법**입니다. 0.3.1은 준비 중이며 출시·설치 성공을 뜻하지 않습니다. 현재 다운로드·과거 검증은 [0.3.0 릴리즈 기록](releases/v0.3.0.md), 새 범위는 [0.3.1 준비 기록](releases/v0.3.1.md)·[기능 현황](FEATURE-STATUS.md)을 확인하세요. 이전 설치 성공을 새 버전의 증거로 간주하지 않습니다.
+Windows 10/11 x64의 **공개된 0.3.1 프리뷰 사용법**입니다. 다운로드·로컬 설치·검증 범위는 [0.3.1 릴리즈 기록](releases/v0.3.1.md), 한계는 [기능 현황](FEATURE-STATUS.md)을 확인하세요. [0.3.0 기록](releases/v0.3.0.md)은 해당 버전의 역사적 증거로 보존합니다.
 
 Whisper transcribes **what was said**; Nemotron identifies **who spoke when**. Review both against the source. Diarization does not separate mixed voices into audio stems or reconstruct inaudible speech.
 
@@ -12,9 +12,9 @@ VOICESUBSEP은 로컬 음성 인식과 화자 구분으로 자막을 만들고, 
 
 *Install and first launch*
 
-When available in the release record, download `VOICESUBSEP-0.3.0-Online-Setup-x64.exe`, choose a speed limit, and start. It downloads the NSIS installer and data parts, verifies every file and the assembled SHA256, then opens the installation wizard. Verified downloads are reused; partial downloads resume when the server supports Range. It needs .NET Framework 4.8. Use the manual method below if necessary.
+Download `VOICESUBSEP-0.3.1-Online-Setup-x64.exe`, choose a speed limit, and start. It downloads the NSIS installer and data parts, verifies every file and the assembled SHA256, then opens the installation wizard. Verified downloads are reused; partial downloads resume when the server supports Range. It needs .NET Framework 4.8. Use the manual method below if necessary.
 
-릴리즈 기록에서 게시 여부를 확인한 뒤 `VOICESUBSEP-0.3.0-Online-Setup-x64.exe`를 실행하고 속도 제한을 선택합니다. NSIS 설치 프로그램·데이터 조각을 받고 각 파일과 재조립 결과를 SHA256로 검증한 뒤 설치 마법사를 엽니다. 검증된 파일은 재사용하고 미완료 파일은 서버의 Range 지원 시 이어받습니다. .NET Framework 4.8이 필요하며 문제가 있으면 아래 수동 방법을 사용합니다.
+[릴리즈 기록](releases/v0.3.1.md)의 `VOICESUBSEP-0.3.1-Online-Setup-x64.exe`를 실행하고 속도 제한을 선택합니다. NSIS 설치 프로그램·데이터 조각을 받고 각 파일과 재조립 결과를 SHA256로 검증한 뒤 설치 마법사를 엽니다. 검증된 파일은 재사용하고 미완료 파일은 서버의 Range 지원 시 이어받습니다. .NET Framework 4.8이 필요하며 문제가 있으면 아래 수동 방법을 사용합니다.
 
 The app data is several GB; exact sizes are in the release record. Allow **at least 16 GiB free**, plus models/projects; the helper checks a 12 GiB cache-drive minimum. Speeds are 40/80 Mbps or unlimited, default 80 Mbps. Save project JSON and finish recording/analysis/rendering before replacing the app. The Windows executables are **not Authenticode-signed**. In-app manifest authentication is a separate check, explained in section 11. The source-code ZIP is not an installer. Read the [dependency notices](BUNDLED-NOTICES.md) before redistribution.
 
@@ -22,9 +22,9 @@ The app data is several GB; exact sizes are in the release record. Allow **at le
 
 **Manual fallback / 수동 설치 대안**
 
-Download the matching Offline Setup EXE, **all** `.partNNN` files listed in the release manifest, `installer-manifest.json`, `SHA256SUMS.txt`, and `Assemble-Installer.ps1` into one folder. The command below verifies and assembles `voicesubsep-0.3.0-x64.nsis.7z`; then run the colocated EXE yourself. Do not manually extract the 7z or continue after a hash mismatch. The assembly script does not launch the installer.
+Download the matching Offline Setup EXE, **all** `.partNNN` files listed in the release manifest, `installer-manifest.json`, `SHA256SUMS.txt`, and `Assemble-Installer.ps1` into one folder. The command below verifies and assembles `voicesubsep-0.3.1-x64.nsis.7z`; then run the colocated EXE yourself. Do not manually extract the 7z or continue after a hash mismatch. The assembly script does not launch the installer.
 
-같은 버전의 Offline Setup EXE, 명세에 적힌 **모든** `.partNNN`, `installer-manifest.json`, `SHA256SUMS.txt`, `Assemble-Installer.ps1`을 같은 폴더에 받습니다. 아래 명령으로 `voicesubsep-0.3.0-x64.nsis.7z`를 검증·재조립한 뒤 같은 폴더의 EXE를 실행합니다. 7z 직접 압축 해제는 필요 없으며 해시가 다르면 설치하지 마세요. 조립 스크립트는 설치기를 자동 실행하지 않습니다.
+같은 버전의 Offline Setup EXE, 명세에 적힌 **모든** `.partNNN`, `installer-manifest.json`, `SHA256SUMS.txt`, `Assemble-Installer.ps1`을 같은 폴더에 받습니다. 아래 명령으로 `voicesubsep-0.3.1-x64.nsis.7z`를 검증·재조립한 뒤 같은 폴더의 EXE를 실행합니다. 7z 직접 압축 해제는 필요 없으며 해시가 다르면 설치하지 마세요. 조립 스크립트는 설치기를 자동 실행하지 않습니다.
 
 ```powershell
 powershell -NoProfile -File .\Assemble-Installer.ps1
@@ -266,9 +266,9 @@ There is **no automatic age/quota deletion**. Retained job history continues to 
 
 *App updates*
 
-The 0.3.0 desktop updater uses the project's public GitHub releases. Open **App update**, explicitly **check**, then **download** a newer offered version. Save project JSON and finish live/analysis/render jobs before choosing **save and restart/install**. It does not automatically download or install on ordinary quit. Browser development mode has no installer update. Older builds with an unconfigured updater need a manual 0.3.0 installation first. See the [release record](releases/v0.3.0.md) for published assets and actual upgrade evidence.
+The 0.3.1 desktop updater uses the project's public GitHub releases. Open **App update**, explicitly **check**, then **download** a newer offered version. Save project JSON and finish live/analysis/render jobs before choosing **save and restart/install**. It does not automatically download or install on ordinary quit. Browser development mode has no installer update. Older builds with an unconfigured updater need a manual 0.3.1 installation first. See the [release record](releases/v0.3.1.md) for published assets and actual upgrade evidence.
 
-0.3.0 설치형의 **앱 업데이트**는 프로젝트의 GitHub 공개 릴리즈를 사용합니다. **확인 → 다운로드 → 저장 후 다시 시작/설치**를 각각 누릅니다. 설치 전 프로젝트 JSON을 저장하고 라이브·분석·렌더를 끝내세요. 자동 다운로드·일반 종료 시 자동 설치는 하지 않습니다. 브라우저 개발 화면에는 설치 업데이트가 없으며, 업데이트 미설정인 이전 설치본은 0.3.0을 먼저 수동 설치해야 합니다. 게시·실제 업그레이드 검증은 [릴리즈 기록](releases/v0.3.0.md)을 확인하세요.
+0.3.1 설치형의 **앱 업데이트**는 프로젝트의 GitHub 공개 릴리즈를 사용합니다. **확인 → 다운로드 → 저장 후 다시 시작/설치**를 각각 누릅니다. 설치 전 프로젝트 JSON을 저장하고 라이브·분석·렌더를 끝내세요. 자동 다운로드·일반 종료 시 자동 설치는 하지 않습니다. 브라우저 개발 화면에는 설치 업데이트가 없으며, 업데이트 미설정인 이전 설치본은 0.3.1을 먼저 수동 설치해야 합니다. 게시·실제 업그레이드 검증은 [릴리즈 기록](releases/v0.3.1.md)을 확인하세요.
 
 The updater authenticates `installer-manifest.json` with its bundled **Ed25519 public key**, then checks each file and the assembled payload with SHA256, including another check before launching the installer. The private key is outside the repository. This authenticates the release manifest; **Windows EXEs remain Authenticode-unsigned**. Downloads run serially at **80 Mbps** and reuse complete verified files; an interrupted file restarts on retry. This differs from the online setup's partial Range resume. Neither feature reserves OS bandwidth or limits all model downloads. User data/model caches remain outside the install folder; keep a separate project backup.
 
