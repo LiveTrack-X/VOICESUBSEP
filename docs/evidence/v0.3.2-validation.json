@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "appVersion": "0.3.2",
-  "status": "source-verified-package-validation-in-progress",
+  "status": "source-and-frozen-runtime-verified-packaging-in-progress",
   "tests": {
     "backendPassed": 905,
     "backendSkipped": 1,
@@ -180,5 +180,109 @@
     "No physical microphone/system capture, paid provider request or user recording accuracy test.",
     "No giant user file was copied for limit validation.",
     "Force stop verifies owned Windows process cleanup, not a GPU driver hard-hang deadline."
-  ]
+  ],
+  "sourceCommit": "9f5abe34722e4164c3b10359bf4932e17f4b9c4a",
+  "sourceCI": {
+    "runId": 36128243349,
+    "conclusion": "success"
+  },
+  "packagedBackend": {
+    "passed": true,
+    "runtimePassed": true,
+    "inferenceRun": false,
+    "offline": true,
+    "apiVersion": "0.3.2",
+    "shutdown": {
+      "requested": true,
+      "clean": true,
+      "forced": false,
+      "exitCode": 0,
+      "portClosed": true
+    },
+    "elapsedSeconds": 10.391,
+    "engines": {
+      "whisper": true,
+      "nemotron": true,
+      "qwen": false
+    },
+    "gpu": "NVIDIA GeForce RTX 3080 Ti",
+    "noticeFilesSha256Verified": 38,
+    "executableSha256": "41eb39e7367dace6799c92c4b35626a12ecad7baab99e2ead064620e5f3fdcb9"
+  },
+  "frozenVstEmptyChain": {
+    "format": "voicesubsep-release-vst-smoke",
+    "schemaVersion": 1,
+    "expectedVersion": "0.3.2",
+    "scope": "frozen-vst-worker-empty-chain",
+    "startedAt": "2026-09-25T11:15:53.854805+00:00",
+    "passed": true,
+    "thirdPartyPluginsOpened": false,
+    "inferenceRun": false,
+    "gpuRequired": false,
+    "offlineRequested": true,
+    "systemOnlyPath": true,
+    "timeoutSeconds": 60,
+    "executableSha256": "41eb39e7367dace6799c92c4b35626a12ecad7baab99e2ead064620e5f3fdcb9",
+    "inputAudio": {
+      "sampleRate": 48000,
+      "channels": 1,
+      "sampleWidth": 2,
+      "frames": 9600,
+      "compression": "NONE",
+      "sha256": "1b5ce5e6ebd6dcd9f055d91e2c52979a1a1b69b47ca29d4ad151ff016b598e5d",
+      "durationSeconds": 0.2
+    },
+    "exitCode": 0,
+    "workerResult": {
+      "ok": true,
+      "bypassed": true,
+      "pluginCount": 0,
+      "inputFrames": 9600,
+      "outputFrames": 9600,
+      "sampleRate": 48000,
+      "channels": 1,
+      "totalReportedLatencySamples": 0,
+      "compensatedLatencySamples": 0
+    },
+    "outputAudio": {
+      "sampleRate": 48000,
+      "channels": 1,
+      "sampleWidth": 2,
+      "frames": 9600,
+      "compression": "NONE",
+      "sha256": "1b5ce5e6ebd6dcd9f055d91e2c52979a1a1b69b47ca29d4ad151ff016b598e5d",
+      "durationSeconds": 0.2
+    },
+    "sourcePreserved": true,
+    "outputByteIdentical": true,
+    "elapsedSeconds": 1.547
+  },
+  "frozenInference": {
+    "passed": true,
+    "analysisPassed": true,
+    "model": "large-v3-turbo",
+    "device": "cuda",
+    "diarization": true,
+    "language": "auto",
+    "offline": true,
+    "shutdown": {
+      "requested": true,
+      "clean": true,
+      "forced": false,
+      "exitCode": 0,
+      "portClosed": true
+    },
+    "elapsedSeconds": 43.625,
+    "fixture": "39.47-second synthetic two-voice speech; no user recording",
+    "captionCount": 25,
+    "wordCount": 83,
+    "duration": 39.466625,
+    "detectedSpeakerCount": 2,
+    "assignedCaptionCountBySpeaker": {
+      "speaker-1": 7,
+      "speaker-2": 12
+    },
+    "unassignedCaptionCount": 6,
+    "accuracyBenchmark": false
+  }
 }

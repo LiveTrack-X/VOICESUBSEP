@@ -23,9 +23,9 @@ if ($LASTEXITCODE -ne 0) { throw 'The project Python runtime is not suitable for
 $metadataCheck = @'
 import importlib.metadata as metadata
 from pathlib import Path
-import sys, tomllib
+import ast, re, sys
 text = (Path(sys.argv[1]) / 'backend' / 'pyproject.toml').read_text(encoding='utf-8')
-expected = tomllib.loads(text)['project']['version']
+expected = ast.literal_eval(re.search(r'^version\s*=\s*(.+)$', text, re.M).group(1))
 if metadata.version('voicesubsep') != expected:
     raise SystemExit('Refresh local package metadata before bundling: uv pip install --python .venv/Scripts/python.exe --no-deps --no-build-isolation --offline -e ./backend')
 '@
