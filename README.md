@@ -36,7 +36,7 @@ The online helper defaults to **80 Mbps**, with 40 Mbps/unlimited options. In-ap
 
 | English | 한국어 |
 | --- | --- |
-| Three clear entry points: Subtitles & video, Interviews & minutes, and Recording; the project is shared across these workflows | 자막·영상 편집 / 인터뷰·회의록 / 녹음 진입점 구분, 같은 프로젝트의 작업 내용 유지 |
+| Three clear entry points: Subtitles & video, Interviews & minutes, and Live captions and recording; the project is shared across these workflows | 자막·영상 편집 / 인터뷰·회의록 / 실시간 자막·녹음 진입점 구분, 같은 프로젝트의 작업 내용 유지 |
 | Local large-v3 / large-v3-turbo transcription, AUTO or explicit speech language, Nemotron diarization, isolated OBS track-to-speaker mapping | 로컬 large-v3 / large-v3-turbo 전사, AUTO·직접 음성 언어 선택, Nemotron 화자 구분, OBS 분리 트랙→인물 연결 |
 | Speaker names, colors and subtitle styles; timeline playback, notes, waveform and boundary adjustment | 인물 이름·색·자막 스타일, 타임라인 재생·메모·파형·경계 조절 |
 | 100-row pages, bulk edits, literal find/replace, autosave recovery and job history | 100행 페이지, 일괄 편집·문자열 치환, 자동 저장 복구·작업 이력 |
@@ -57,8 +57,8 @@ Detailed workflows: [editing and recovery](docs/EDITING-WORKFLOWS.md), [audio mi
 
 - **Diarization is not voice separation.** Mixed overlapping voices may remain unassigned or incomplete. `4+` means at least four expected speakers; detected speakers 5–8 are retained, not merged into four. Automatic numbers need human naming.
 - **화자 구분은 음원 분리가 아닙니다.** 섞인 동시 발화는 미배정·누락될 수 있습니다. `4명 이상`은 최소 4명이며 검출된 5~8명을 4명으로 합치지 않습니다. 자동 번호의 실제 이름은 직접 지정합니다.
-- Live captions reuse loaded local Whisper and Nemotron models throughout one session. Whisper commits roughly four-second segments; the first result needs about five seconds of audio plus inference time. Models must already be cached; live mode never downloads them. Speaker labels remain drafts, especially during adaptation and overlapping speech. Live sessions are limited to two hours. Arbitrary WASAPI playback endpoints, ASIO routing and automatic clock-drift correction are not included.
-- 라이브 자막은 한 세션에서 로컬 Whisper·Nemotron을 계속 유지합니다. 약 4초 구간 단위이며 첫 결과는 음성 약 5초 수집에 추론 시간을 더한 뒤 나옵니다. **미리 준비한 모델 캐시만 사용**하고 라이브 중에는 모델을 받지 않습니다. 초기 적응·동시 발화의 화자는 검수할 초안이며 라이브 세션은 최대 2시간입니다. 개별 WASAPI 출력·ASIO 라우팅·자동 드리프트 보정은 지원하지 않습니다.
+- Live captions reuse loaded local Whisper and Nemotron models throughout one session. Whisper commits roughly four-second segments; the first result needs about five seconds of audio plus inference time. First complete one local analysis of a short file with the same Whisper model and Nemotron to download/cache any missing weights. Live mode uses those complete caches only and never downloads them. Speaker labels remain drafts, especially during adaptation and overlapping speech. Live sessions are limited to two hours. Arbitrary WASAPI playback endpoints, ASIO routing and automatic clock-drift correction are not included.
+- 라이브 자막은 한 세션에서 로컬 Whisper·Nemotron을 계속 유지합니다. 약 4초 구간 단위이며 첫 결과는 음성 약 5초 수집에 추론 시간을 더한 뒤 나옵니다. 먼저 짧은 파일의 `음성 분석`에서 **같은 Whisper 모델과 로컬 Nemotron 분석을 한 번 완료**해 가중치를 준비합니다. 라이브는 완성된 캐시만 쓰며 모델을 받지 않습니다. 초기 적응·동시 발화의 화자는 검수할 초안이며 라이브 세션은 최대 2시간입니다. 개별 WASAPI 출력·ASIO 라우팅·자동 드리프트 보정은 지원하지 않습니다.
 - Mixer offsets do not move captions. Previews measure sample peaks only within the selected window; other sections and lossy-codec peaks can differ. A stereo mix is not an editable multitrack session. / 믹서 시간 이동은 자막을 옮기지 않습니다. 미리듣기 피크는 선택 구간의 샘플만 측정하며 다른 구간·압축 코덱에서는 달라질 수 있습니다. 결과는 스테레오 파일입니다.
 - Project JSON contains edits, not the original media. Keep both and reconnect the same source when reopening. Autosave is local to the app/browser profile; save a separate JSON backup.
 - 프로젝트 JSON에는 편집 내용만 들어가며 원본 미디어는 없습니다. 둘 다 보관하고 재열기 때 같은 원본을 연결하세요. 자동 저장은 앱/브라우저 프로필에 남으므로 별도 JSON도 저장하세요.

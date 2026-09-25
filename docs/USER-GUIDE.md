@@ -34,17 +34,17 @@ If Windows blocks the downloaded script, compare `Get-FileHash .\Assemble-Instal
 
 다운로드한 스크립트가 Windows 파일 차단 때문에 실행되지 않으면 `Get-FileHash .\Assemble-Installer.ps1 -Algorithm SHA256`을 릴리즈의 `SHA256SUMS.txt`와 대조하세요. 출처와 해시를 확인한 파일만 속성의 **차단 해제**로 허용합니다. 이 절차 때문에 시스템 전체 실행 정책이나 조직 정책을 바꾸지 마세요.
 
-The installed app includes Python, FFmpeg, speech-analysis libraries and CUDA runtime libraries. No developer Node/Python setup is needed. GPU use still needs a compatible NVIDIA driver. **Whisper/Nemotron weights are separate**: prepare them in model management before a live session; live mode uses cached models only. File analysis may download missing weights. Commercial VST3 plugins are separate. Text-generation models and macOS/Linux installers are not included.
+The installed app includes Python, FFmpeg, speech-analysis libraries and CUDA runtime libraries. No developer Node/Python setup is needed. GPU use still needs a compatible NVIDIA driver. **Whisper/Nemotron weights are separate**: before a live session, connect a short audio/video file and complete one local speech analysis with the same Whisper model and Nemotron enabled. That file analysis downloads missing weights; live mode only uses the resulting complete caches. Commercial VST3 plugins are separate. Text-generation models and macOS/Linux installers are not included.
 
-Python·FFmpeg·음성 분석 라이브러리·CUDA 런타임은 포함하므로 개발 환경을 따로 설치할 필요가 없습니다. GPU에는 호환 NVIDIA 드라이버가 필요합니다. **Whisper/Nemotron 가중치는 별도**이며 라이브 전에 모델 관리에서 준비합니다. 라이브는 캐시만 사용하고 파일 분석은 없는 모델을 받을 수 있습니다. 상용 VST3·텍스트 생성 모델·macOS/Linux 설치기는 포함하지 않습니다.
+Python·FFmpeg·음성 분석 라이브러리·CUDA 런타임은 포함하므로 개발 환경을 따로 설치할 필요가 없습니다. GPU에는 호환 NVIDIA 드라이버가 필요합니다. **Whisper/Nemotron 가중치는 별도**이며 라이브 전에 짧은 음성·영상 파일을 연결하고 `음성 분석`에서 라이브에 사용할 같은 Whisper 모델과 로컬 Nemotron을 선택해 분석을 한 번 완료합니다. 이때 없는 가중치를 받으며 라이브는 완성된 캐시만 읽습니다. 상용 VST3·텍스트 생성 모델·macOS/Linux 설치기는 포함하지 않습니다.
 
 ## 2. 원본 열기와 프로젝트 관리
 
 *Open media and manage projects*
 
-Use the three **Workspace** buttons below the header: **Subtitles & video** for the timeline editor, **Interviews & minutes** to open document editing, and **Recording** to open microphone/system capture and recovery. These are entry points into the same project: switching does not reset captions, notes or speakers. Closing document/recording windows returns to editing. To start a different recording as a new project, use the separate **New project** action or the recorder's explicit analysis action.
+Use the three **Workspace** buttons below the header: **Subtitles & video** for the timeline editor, **Interviews & minutes** to open document editing, and **Live captions and recording** to open microphone/system capture and recovery. These are entry points into the same project: switching does not reset captions, notes or speakers. Closing document/recording windows returns to editing. To start a different recording as a new project, use the separate **New project** action or the recorder's explicit analysis action.
 
-상단의 작업 모드에서 **자막·영상 편집 / 인터뷰·회의록 / 녹음**을 선택합니다. 편집은 타임라인, 인터뷰·회의록은 문서 창, 녹음은 마이크·시스템 소리 녹음 및 복구 창을 엽니다. 같은 프로젝트를 사용하므로 전환만으로 자막·메모·인물을 초기화하지 않으며, 문서·녹음 창을 닫으면 편집으로 돌아갑니다. 다른 자료를 새 프로젝트로 시작하려면 별도의 `새로` 또는 녹음 결과의 `새 프로젝트로 분석`을 사용하세요.
+상단의 작업 모드에서 **자막·영상 편집 / 인터뷰·회의록 / 실시간 자막·녹음**을 선택합니다. 편집은 타임라인, 인터뷰·회의록은 문서 창, 실시간 자막·녹음은 라이브·녹음 및 복구 창을 엽니다. 같은 프로젝트를 사용하므로 전환만으로 자막·메모·인물을 초기화하지 않으며, 문서·녹음 창을 닫으면 편집으로 돌아갑니다. 다른 자료를 새 프로젝트로 시작하려면 별도의 `새로` 또는 녹음 결과의 `새 프로젝트로 분석`을 사용하세요.
 
 Open video or MP3/M4A/WAV/FLAC audio; preview support depends on the codec even when analysis is possible. The default upload limit is 8 GiB. Start unrelated work with **New project**, which resets speakers and edits. Merely replacing the media can keep captions and notes.
 
@@ -160,18 +160,18 @@ Reports show pending review and stale evidence. Export timestamps are not the me
 
 *Live captions and recording*
 
-Open **Recording** and choose **Record then analyze** or **Live captions + recording**. Both modes capture microphone, system audio, or both in the browser/Electron. Use **Microphone permission / refresh devices** to reveal device names; this temporary permission check releases the microphone without creating a recording. A fixed missing input is never silently replaced by the OS default. System sharing depends on the browser/OS and can include calls, games and notifications; only audio is stored. Individual WASAPI playback endpoints and ASIO channel routing are not supported.
+Open **Live captions and recording** and choose **Record, then analyze** or **Live captions + recording**. Both modes capture microphone, system audio, or both in the browser/Electron. Use **Microphone permission / refresh devices** to reveal device names; this temporary permission check releases the microphone without creating a recording. A fixed missing input is never silently replaced by the OS default. System sharing depends on the browser/OS and can include calls, games and notifications; only audio is stored. Individual WASAPI playback endpoints and ASIO channel routing are not supported.
 
-상단 **녹음**에서 **녹음 후 분석** 또는 **라이브 자막 + 녹음**을 고릅니다. 브라우저·Electron 모두 마이크·시스템 소리·둘 다를 선택합니다. **마이크 권한 확인·장치 새로고침**은 이름을 확인한 뒤 임시 마이크 접근을 해제하며 파일 녹음을 시작하지 않습니다. 고정 입력이 사라지면 직접 다시 선택해야 합니다. 시스템 공유는 브라우저·OS에 따라 달라지고 통화·게임·알림까지 담길 수 있으며 영상은 저장하지 않습니다. 개별 WASAPI 출력 장치·ASIO 채널 라우팅은 지원하지 않습니다.
+상단 **실시간 자막·녹음**에서 **녹음 후 분석** 또는 **라이브 자막 + 녹음**을 고릅니다. 브라우저·Electron 모두 마이크·시스템 소리·둘 다를 선택합니다. **마이크 권한 확인·장치 새로고침**은 이름을 확인한 뒤 임시 마이크 접근을 해제하며 파일 녹음을 시작하지 않습니다. 고정 입력이 사라지면 직접 다시 선택해야 합니다. 시스템 공유는 브라우저·OS에 따라 달라지고 통화·게임·알림까지 담길 수 있으며 영상은 저장하지 않습니다. 개별 WASAPI 출력 장치·ASIO 채널 라우팅은 지원하지 않습니다.
 
 **Live workflow / 라이브 순서**
 
-1. Prepare Whisper and Nemotron in model management **before** starting. Live mode only reads complete local caches; a missing model produces a preparation error, never an automatic download. Select the Whisper size, AUTO/explicit language, and CPU/NVIDIA GPU, then click **Prepare live engine**. This loads both models once and does not open the input yet.
+1. **Prepare the exact models first:** connect a short audio/video file, open speech analysis, select local Whisper with the model you intend to use live, enable local Nemotron, and complete one analysis. Missing weights download during that file analysis. There is no separate model-management screen. Then open live mode with the **same Whisper model**, choose AUTO/explicit language and CPU/NVIDIA GPU, and click **Prepare live engine**. Live preparation loads both complete caches once without downloading or opening the input; a missing/incomplete cache is an error.
 2. Choose the input and click **Start live recording**, approving microphone/system sharing as needed. The level meter shows received sound. Whisper commits approximately four-second segments with context; the first result needs roughly five seconds of audio **plus model inference**, not a guaranteed five-second latency. Check received/processed/lag indicators. If processing falls behind, use a faster model for the next session.
 3. Copy **OBS subtitle URL** into an OBS Browser Source on the same computer. The loopback URL contains a read-only token. **Turn subtitle output off** and **Clear output captions** only affect the overlay, preserving recording and editable captions. Do not publish the token URL. Restarting the backend invalidates old tokens; copy the current URL again.
 4. Click **Stop recording and save**, wait for the remaining audio, then **Open captions and recording as a new project** to review names, words and boundaries. Cancelling analysis preserves available recorded source data but does not promise a completed transcript.
 
-1. **먼저 모델 관리에서 Whisper·Nemotron을 준비**합니다. 라이브는 완성된 로컬 캐시만 사용하며 없으면 오류를 표시합니다. 모델 크기·AUTO/직접 언어·CPU/NVIDIA GPU를 고르고 **라이브 엔진 준비**를 누릅니다. 두 모델을 한 번 불러와 유지하며 이때 입력 장치는 아직 열지 않습니다.
+1. **짧은 영상·음성 파일 연결 → 음성 분석 → 로컬 Whisper 모델 선택 + 로컬 Nemotron 사용 → 분석 1회 완료**로 먼저 준비합니다. 라이브에서 사용할 바로 그 Whisper 모델을 고르세요. 없는 가중치는 이 파일 분석 때 받으며 별도 모델 관리 화면은 없습니다. 이어서 라이브에서도 **같은 Whisper 모델**과 AUTO/직접 언어·CPU/NVIDIA GPU를 선택하고 **라이브 엔진 준비**를 누릅니다. 라이브는 완성된 캐시만 한 번 불러와 유지하며, 없거나 불완전하면 오류를 표시합니다. 라이브 준비 중 다운로드나 입력 장치 접근은 하지 않습니다.
 2. 소스·입력 장치를 고른 뒤 **라이브 녹음 시작**을 눌러 권한을 승인합니다. 레벨 미터로 입력을 확인하세요. 약 4초 구간 단위로 전사하며 첫 결과에는 음성 약 5초 수집과 **추론 시간**이 필요합니다. 수신·처리·지연 수치를 보고, 계속 밀리면 다음 세션에 더 빠른 모델을 선택합니다.
 3. **OBS 주소 복사**의 주소를 같은 컴퓨터의 OBS 브라우저 소스에 넣습니다. 로컬 주소에는 읽기 전용 토큰이 있으므로 공개하지 마세요. **자막 송출 끄기·송출 자막 지우기**는 화면에만 적용하고 녹음·편집 자막은 남깁니다. 백엔드 재시작 뒤에는 새 주소를 복사합니다.
 4. **녹음 종료·저장** 후 남은 처리를 기다리고 **자막과 녹음을 새 프로젝트로 열기**에서 이름·내용·경계를 검수합니다. 분석 취소는 저장된 원본을 보존하지만 완성된 전사문을 보장하지 않습니다.

@@ -19,9 +19,9 @@ Windows 10/11 x64용 **0.3.0 대상 안내**입니다. 실제 게시·다운로�
 | Free disk / 여유 공간 | 16 GiB or more recommended, plus models and projects / 16GiB 이상 권장, 모델·프로젝트 공간 별도 |
 | Minimum check / 시작 검사 | At least 12 GiB free on the cache drive / 캐시 드라이브 여유 공간 최소 12GiB 검사 |
 
-The payload includes Python, FFmpeg, speech libraries and CUDA runtime libraries, not speech-model weights or the NVIDIA driver. File analysis may download missing Whisper/Nemotron weights; prepare them before live use, which only accepts complete local caches. Commercial VST3 effects are separate. Subtitle translation and automatic AI summaries are outside the 0.3.0 scope. The helper's speed limit does not limit later model downloads.
+The payload includes Python, FFmpeg, speech libraries and CUDA runtime libraries, not speech-model weights or the NVIDIA driver. Before live use, connect a short audio/video file and complete a local analysis with the same Whisper model and Nemotron enabled; it downloads missing weights. Live mode only accepts those complete caches. Commercial VST3 effects are separate. Subtitle translation and automatic AI summaries are outside the 0.3.0 scope. The helper's speed limit does not limit later model downloads.
 
-Python·FFmpeg·음성 라이브러리·CUDA 런타임은 포함하지만 음성 모델 가중치·NVIDIA 드라이버는 별도입니다. 파일 분석은 없는 가중치를 받을 수 있으며 라이브는 완성된 캐시만 읽으므로 미리 준비합니다. 상용 VST3도 별도이고 자막 번역·AI 자동 요약은 0.3.0 범위에서 제거했습니다. 도우미의 속도 제한은 이후 모델 다운로드에 적용되지 않습니다.
+Python·FFmpeg·음성 라이브러리·CUDA 런타임은 포함하지만 음성 모델 가중치·NVIDIA 드라이버는 별도입니다. 라이브 전에 짧은 음성·영상 파일을 연결하고 `음성 분석`에서 같은 Whisper 모델·로컬 Nemotron 분석을 한 번 완료해 없는 가중치를 받습니다. 라이브는 이 완성된 캐시만 읽습니다. 상용 VST3도 별도이고 자막 번역·AI 자동 요약은 0.3.0 범위에서 제거했습니다. 도우미의 속도 제한은 이후 모델 다운로드에 적용되지 않습니다.
 
 ## Install / 설치
 
