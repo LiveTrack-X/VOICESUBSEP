@@ -35,7 +35,8 @@ import { MediaPlayer, type MediaPlayerHandle } from "./components/MediaPlayer";
 import { CaptionEditor } from "./components/CaptionEditor";
 import { NotesPanel } from "./components/NotesPanel";
 import { Timeline } from "./components/Timeline";
-import { EditorWorkspace } from "./components/EditorWorkspace";
+import { EditorWorkspace, PreviewWidthResizer } from "./components/EditorWorkspace";
+import { WorkspaceShell } from "./components/WorkspaceShell";
 import { WorkspaceModeSwitcher, workspaceModeForDialog } from "./components/WorkspaceModeSwitcher";
 import { Dialog } from "./components/Dialog";
 import { AnalysisDialog } from "./components/AnalysisDialog";
@@ -60,13 +61,16 @@ import { useI18n } from "./i18n";
 import { useBackgroundJob } from "./backgroundJob";
 import { BackgroundJobStatus, BackgroundJobDialog } from "./components/BackgroundJobStatus";
 import { bindProjectMedia, mediaLinkDecision, MediaSelectionGuard, sameMediaIdentity, uploadedMediaIdentity, type MediaIdentity } from "./mediaIdentity";
+import { sourceUrl, type MediaSource } from "./mediaSource";
+import { MediaReconnect, reconnectMessage } from "./mediaReconnect";
+import "./branding-links.css";
 
 export default function App() {
   const {t} = useI18n();
   const background = useBackgroundJob();
   const { project, update, replace, undo, redo, canUndo, canRedo, saveState, recoveryWarning } =
     useProject();
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<MediaSource | null>(null);
   const [source, setSource] = useState<string | null>(null);
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -78,8 +82,11 @@ export default function App() {
   const [projectSession, setProjectSession] = useState(0);
   const [notice, setNotice] = useState("");
   const [mediaVerifying, setMediaVerifying] = useState(false);
+  const [mediaStatus, setMediaStatus] = useState("");
+  const mediaReconnect = useRef(new MediaReconnect());
+  const restoreAttempt = useRef("");
   const mediaSelection = useRef(new MediaSelectionGuard());
-  const connectedIdentity = useRef<{file:File;identity:MediaIdentity}|null>(null);
+  const connectedIdentity = useRef<{file:MediaSource;identity:MediaIdentity}|null>(null);
   const [confirm, setConfirm] = useState<{
     message: string;
     action: () => void;
@@ -94,7 +101,30 @@ export default function App() {
   const projectRef = useRef(project);
   projectRef.current = project;
   const shortcuts = useShortcuts(runShortcut, dialog !== null || confirm !== null);
-  useEffect(()=>()=>mediaSelection.current.cancel(),[]);
+  useEffect(()=>()=>{mediaSelection.current.cancel();mediaReconnect.current.cancel();},[]);
+  useEffect(() => {
+    const bridge = window.voicesubsepDesktop, identity = project.mediaIdentity;
+    if (!bridge?.restoreMedia || !identity || file) return;
+    const key = `${projectSession}:${project.id}:${identity.sha256}:${identity.bytes}`;
+    if (restoreAttempt.current === key) return;
+    restoreAttempt.current = key;
+    const token = mediaSelection.current.begin(project.id);
+    setMediaVerifying(true); setMediaStatus("");
+    void mediaReconnect.current.start(bridge, project.id, identity, result => {
+      if (!mediaSelection.current.current(token, projectRef.current.id) || !sameMediaIdentity(identity, projectRef.current.mediaIdentity)) return;
+      setMediaVerifying(false);
+      if (result.status === "ready") {
+        connectedIdentity.current = { file: result.source, identity };
+        setFile(result.source); setMediaStatus("");
+        setNotice(t("원본 위치와 내용을 확인하고 자동 연결했습니다."));
+      } else setMediaStatus(reconnectMessage(result.status));
+    });
+    return () => {
+      mediaReconnect.current.cancel();
+      if (restoreAttempt.current === key) restoreAttempt.current = "";
+      if (mediaSelection.current.current(token, projectRef.current.id)) setMediaVerifying(false);
+    };
+  }, [projectSession, project.id, project.mediaIdentity?.sha256, project.mediaIdentity?.bytes, file]);
   useEffect(() => {
     const input = mediaInput.current;
     const cancel = () => { analyzeAfterMedia.current = false; };
@@ -120,9 +150,9 @@ export default function App() {
       setSource(null);
       return;
     }
-    const url = URL.createObjectURL(file);
-    setSource(url);
-    return () => URL.revokeObjectURL(url);
+    const mediaSource = sourceUrl(file);
+    setSource(mediaSource.url);
+    return mediaSource.release;
   }, [file]);
   useEffect(() => {
     if (!notice) return;
@@ -222,6 +252,7 @@ export default function App() {
   }
   function changeProject(next: Project) {
     mediaSelection.current.cancel();
+    mediaReconnect.current.cancel();
     connectedIdentity.current=null;
     videoRef.current?.pause();
     analyzeAfterMedia.current = false;
@@ -230,6 +261,7 @@ export default function App() {
     flushSync(() => {
       replace(next);
       setMediaVerifying(false);
+      setMediaStatus("");
       setConfirm(null);
       setProjectSession((session) => session + 1);
       setFile(null);
@@ -254,6 +286,13 @@ export default function App() {
     analyzeAfterMedia.current = analyze;
     mediaInput.current?.click();
   }
+  function rememberOriginal(selectedFile: File, media: MediaInfo, projectId: string) {
+    const bridge = window.voicesubsepDesktop;
+    if (!bridge?.rememberMedia) return;
+    void bridge.rememberMedia(selectedFile, { projectId, identity: uploadedMediaIdentity(media, selectedFile.size), mediaId: media.id }).then(result => {
+      if (!result.remembered && projectRef.current.id === projectId && connectedIdentity.current?.file === selectedFile) setMediaStatus("원본 위치를 기억하지 못했습니다. 다음에 프로젝트를 열 때 다시 연결해야 합니다.");
+    }).catch(() => { if (projectRef.current.id === projectId && connectedIdentity.current?.file === selectedFile) setMediaStatus("원본 위치를 기억하지 못했습니다. 다음에 프로젝트를 열 때 다시 연결해야 합니다."); });
+  }
   function connectVerifiedFile(selectedFile:File,media:MediaInfo,analyze:boolean,allowLegacy=false) {
     const identity=uploadedMediaIdentity(media,selectedFile.size);
     // Update the project before connecting its File, so undo can disconnect a
@@ -261,12 +300,14 @@ export default function App() {
     const next=parseProject(JSON.stringify(bindProjectMedia(projectRef.current,media,selectedFile.name,allowLegacy)));
     connectedIdentity.current={file:selectedFile,identity};
     flushSync(()=>{update(next);setFile(selectedFile);setTime(0);setPlaying(false);});
+    setMediaStatus(""); rememberOriginal(selectedFile,media,next.id);
     setNotice(t("원본 파일을 확인하고 연결했습니다."));
     if(analyze)setDialog("analysis");
   }
   async function selectMedia(selectedFile:File,analyze:boolean) {
+    mediaReconnect.current.cancel();
     const token=mediaSelection.current.begin(projectRef.current.id);
-    setMediaVerifying(true);setNotice("");
+    setMediaVerifying(true);setMediaStatus("");setNotice("");
     try {
       const media=await uploadMedia(selectedFile);
       if(!mediaSelection.current.current(token,projectRef.current.id))return;
@@ -279,6 +320,7 @@ export default function App() {
             const next=bindProjectMedia({...createProject(projectRef.current.speakerCount),name:selectedFile.name.replace(/\.[^.]+$/u,"")||selectedFile.name},media,selectedFile.name);
             changeProject(parseProject(JSON.stringify(next)));
             connectedIdentity.current={file:selectedFile,identity};setFile(selectedFile);
+            rememberOriginal(selectedFile,media,next.id);
             if(analyze)setDialog("analysis");
           } else connectVerifiedFile(selectedFile,media,analyze,allowLegacy);
         }catch(error){setNotice(t((error as Error).message));}
@@ -296,6 +338,7 @@ export default function App() {
     finally{if(mediaSelection.current.current(token,projectRef.current.id))setMediaVerifying(false);}
   }
   async function openRecording(recording:File,result?:AnalysisResult) {
+    mediaReconnect.current.cancel();
     const token=mediaSelection.current.begin(projectRef.current.id);
     setDialog(null);setMediaVerifying(true);setNotice("");
     try {
@@ -382,9 +425,10 @@ export default function App() {
       <header className="app-header">
         <a
           className="brand"
-          href="#"
-          onClick={(e) => e.preventDefault()}
-          aria-label={t("VOICESUBSEP 홈")}
+          href="https://github.com/LiveTrack-X"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="VOICESUBSEP · LiveTrack GitHub"
         >
           <img className="brand-icon" src="/app-icon.png" width={30} height={30} alt="" />
           <span>VOICESUBSEP</span>
@@ -463,15 +507,16 @@ export default function App() {
         mode={workspaceModeForDialog(dialog)}
         onSelect={mode => setDialog(mode === "documents" ? "documents" : mode === "recording" ? "live" : null)}
       />
-      <main className="workspace" key={`${project.id}:${projectSession}`}>
-        <Sidebar
+      <WorkspaceShell key={`${project.id}:${projectSession}`} sidebar={<Sidebar
           project={project}
           update={update}
           hasMedia={!!file}
+          mediaVerifying={mediaVerifying}
+          mediaStatus={mediaStatus ? t(mediaStatus) : undefined}
           busy={dialog === "analysis" || mediaVerifying}
           onMedia={() => chooseMedia()}
           onAnalyze={() => file ? setDialog("analysis") : chooseMedia(true)}
-        />
+        />}>
         <EditorWorkspace noteReveal={revealNote} tools={<>
           <button onClick={() => setDialog("mixer")}>{t("오디오 트랙 믹서")}</button>
           <button onClick={()=>setDialog("history")}><History size={15}/>{t("작업 이력·저장 공간")}</button>
@@ -503,6 +548,7 @@ export default function App() {
               />
               <CutPanel project={project} update={update} time={time} selected={project.captions.find(c=>c.id===selected)} preview={preview} editedPreview={editedPreview} setEditedPreview={setEditedPreview} onExport={()=>setDialog("render")}
                 previewRange={(from,to)=>{flushSync(()=>setEditedPreview(false));playerRef.current?.previewRange(from,to);}} stopPreview={()=>videoRef.current?.pause()} mediaAvailable={!!source}/>
+              <PreviewWidthResizer/>
               <CaptionEditor
                 project={project}
                 playing={playing}
@@ -536,11 +582,16 @@ export default function App() {
             selected={selected}
             previewNote={previewNote}
             selectedNote={revealNote?.id ?? null}
+            seek={seek}
+            editCaption={(id) => { setSelected(id); setRevealCaption({ id }); setRevealNote(null); }}
+            editNote={(id) => setRevealNote({ id })}
           />
         </EditorWorkspace>
-      </main>
+      </WorkspaceShell>
       <footer className="status-bar">
-        <span>
+        <span className="status-attribution">
+          <a className="creator-link" href="https://github.com/LiveTrack-X" target="_blank" rel="noopener noreferrer">Created by LiveTrack</a>
+          <span className="status-dot" aria-hidden="true">·</span>
           <CheckCircle2 size={13} />
           {t(saveState)}
         </span>
@@ -553,7 +604,7 @@ export default function App() {
         <span>{t("로컬 작업")}<span className="status-dot">·</span>v{version}
         </span>
         <BackgroundJobStatus snapshot={background.snapshot} onOpen={()=>setDialog("background")} onDismiss={background.dismiss}/>
-        {mediaVerifying&&<span role="status">{t("원본 파일 확인 중… 큰 파일은 시간이 걸릴 수 있습니다.")} <button onClick={()=>{mediaSelection.current.cancel();setMediaVerifying(false);}}>{t("연결 취소")}</button></span>}
+        {mediaVerifying&&<span role="status">{t("원본 파일 확인 중… 큰 파일은 시간이 걸릴 수 있습니다.")} <button onClick={()=>{mediaSelection.current.cancel();mediaReconnect.current.cancel();setMediaVerifying(false);}}>{t("연결 취소")}</button></span>}
       </footer>
       <input
         className="sr-only"

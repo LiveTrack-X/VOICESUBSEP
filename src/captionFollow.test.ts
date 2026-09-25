@@ -120,7 +120,7 @@ describe("reading and typing take priority over automatic scrolling", () => {
     expect(gate.canFollow(true, true, false, 63999)).toBe(false);
     expect(gate.canFollow(true, true, false, 64000)).toBe(true);
   });
-  it.each(["input", "textarea", "select", '[contenteditable]:not([contenteditable="false"])', '[role="textbox"]', '[role="combobox"]', '[role="dialog"]'])("recognizes %s even outside the caption panel", selector => {
+  it.each(["input", "textarea", "select", '[contenteditable]:not([contenteditable="false"])', '[role="textbox"]', '[role="combobox"]', '[role="dialog"]', '[role="menu"]'])("recognizes %s even outside the caption panel", selector => {
     expect(followEditingTarget({ closest: (query: string) => query.split(", ").includes(selector) })).toBe(true);
     expect(followEditingTarget(null)).toBe(false);
     expect(followEditingTarget({ closest: () => null })).toBe(false);

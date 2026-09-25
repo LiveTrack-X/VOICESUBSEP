@@ -1,0 +1,332 @@
+{
+  "version": "0.3.4",
+  "verifiedAt": "2026-09-25T14:04:38.636197+00:00",
+  "tests": {
+    "vitest": 843,
+    "node": 84,
+    "backendPassed": 1023,
+    "backendSkipped": 1
+  },
+  "frozenSource": {
+    "passed": true,
+    "modules": 42
+  },
+  "workspace": {
+    "passed": true,
+    "environment": "CUA in-app Chromium, isolated localhost 4176 fixture and API 8792",
+    "source": "synthetic 180-second 640x360 test video, 120 synthetic captions, 2 notes",
+    "checks": {
+      "actualUiMediaUploadAndOriginalConfirmation": true,
+      "connectedMediaGreenCheckAndFilename": true,
+      "sidebarPointerResize": [
+        270,
+        310
+      ],
+      "previewPointerResize": [
+        572,
+        492
+      ],
+      "captionTimePointerResize": [
+        114,
+        138
+      ],
+      "captionSpeakerKeyboardResize": [
+        98,
+        106
+      ],
+      "notesKeyboardHeight": [
+        300,
+        316
+      ],
+      "notesPointerHeight": [
+        316,
+        256
+      ],
+      "notesNumericEndSeconds": [
+        36.5,
+        "00:00:36.500"
+      ],
+      "notesCurrentTimeEnd": 75,
+      "noteSeekDoesNotAutoplay": true,
+      "noteContextEditDoesNotSeekOrAutoplay": true,
+      "noteContextDeleteThenUndoCounts": [
+        2,
+        1,
+        2
+      ],
+      "previewExpandsWhenNotesCollapse": {
+        "width": 570.4,
+        "height": 321,
+        "objectFit": "contain"
+      },
+      "preferencesSurviveReload": {
+        "sidebar": 310,
+        "preview": 492,
+        "timeColumn": 138,
+        "speakerColumn": 106,
+        "notes": 256
+      },
+      "narrowViewport": {
+        "width": 950,
+        "documentScrollWidth": 950,
+        "sidebarResizeHidden": true,
+        "noteCardsWidth": 443
+      },
+      "returnToWideRestoresPreferences": true,
+      "consoleErrors": []
+    },
+    "limits": [
+      "Browser refresh cannot restore a browser File handle; desktop reconnection is covered by separate main-process integration.",
+      "This check does not claim actual installed native VST editor behavior or speaker recognition accuracy."
+    ]
+  },
+  "mediaReconnection": {
+    "createdAt": "2026-09-25T13:40:40.361Z",
+    "kind": "synthetic-only temporary backend; no physical capture or personal media",
+    "bytes": 96044,
+    "sampleRate": 48000,
+    "durationSeconds": 1,
+    "sourceSha256": "cd83018857ecc3722518b49cf8ac97a53f62c21a9c9d2ffd25200ab5635661db",
+    "checks": {
+      "existingCache": {
+        "status": "ready",
+        "reusedMediaId": true,
+        "nativeUploads": 0
+      },
+      "preview": {
+        "status": 206,
+        "contentRange": "bytes 0-43/96044",
+        "riffHeader": true
+      },
+      "cacheEviction": {
+        "status": "ready",
+        "createdNewMediaId": true,
+        "streamedNativeUploads": 1,
+        "restoredBytes": 96044,
+        "restoredSha256": "cd83018857ecc3722518b49cf8ac97a53f62c21a9c9d2ffd25200ab5635661db"
+      },
+      "sameSizeChangedOriginal": {
+        "refused": true,
+        "cacheQueried": false
+      },
+      "missingOriginal": {
+        "refused": true,
+        "cacheQueried": false
+      },
+      "persistedRegistry": {
+        "restoredByNewService": true
+      },
+      "originalPreservedAfterFixtures": true
+    },
+    "limitations": [
+      "Renderer UI and native Electron file-picker were not exercised.",
+      "No ASR, GPU inference, model downloads, or external network were used."
+    ],
+    "source": {
+      "mediaRelinkSha256": "ea36631e4c81d4573050585ce9d95d92dfcbe8a4172ef40cb306638752cdf932",
+      "preloadSha256": "43a223a19c7aeb9597a5f1c0c85495e4f5c4f5c0652c3606b3b5a5aeecf99752"
+    },
+    "passed": true,
+    "backendExit": {
+      "code": 0,
+      "signal": null
+    }
+  },
+  "progressReconciliation": {
+    "passed": true,
+    "scenarios": [
+      {
+        "legacy": true,
+        "backgroundMax": 24,
+        "historyMax": 1,
+        "backgroundPolls": 24,
+        "historyPolls": 24,
+        "confirmationPreserved": false,
+        "newJobReset": false,
+        "completedClean": false,
+        "duplicateWarnings": 73,
+        "apiMutations": 0,
+        "remainingPollTimers": 0
+      },
+      {
+        "legacy": false,
+        "backgroundMax": 1,
+        "historyMax": 1,
+        "backgroundPolls": 24,
+        "historyPolls": 24,
+        "confirmationPreserved": true,
+        "newJobReset": true,
+        "completedClean": true,
+        "duplicateWarnings": 0,
+        "apiMutations": 0,
+        "remainingPollTimers": 0
+      }
+    ]
+  },
+  "cacheProtection": {
+    "passed": true,
+    "scope": "Synthetic source data only; no real user cache or backend service was touched",
+    "reproduction": {
+      "isolatedUploadStatus": 201,
+      "beforeCleanupPlaybackStatus": 200,
+      "serverProtectedWithoutJob": false,
+      "isolatedCleanupRemovedCount": 1,
+      "afterCleanupPlaybackStatus": 404,
+      "afterCleanupMetadataStatus": 404
+    },
+    "validation": {
+      "focusedTestsPassed": 53,
+      "typecheckPassed": true,
+      "realReactDom": {
+        "connectedDeleteDisabled": true,
+        "reclaimableBytesExcludeConnected": true,
+        "staleSingleConfirmationDisabled": true,
+        "staleBulkRechecked": true,
+        "newUploadExcluded": true,
+        "remainingPollTimers": 0,
+        "duplicateKeyWarnings": 0,
+        "backgroundControlSectionsAfter24Polls": 1,
+        "historyControlSectionsAfter24Polls": 1
+      }
+    },
+    "limits": [
+      "Protection applies to this application cache cleanup UI; deletion by external API clients is not leased or blocked server-side.",
+      "No real user media, projects or cache entries were deleted."
+    ]
+  },
+  "timeline": {
+    "versionUnderDevelopment": "0.3.4",
+    "fixture": "tmp/timeline-density-qa.html",
+    "data": "Synthetic 1800 blue, 1200 pink, 900 unassigned and 100 sparse DOM cues; no user media or project storage",
+    "cause": "Dense lanes used a full-width canvas capped at 8192 backing pixels and then stretched it across the 8x timeline, without devicePixelRatio.",
+    "browser": "Chrome through CUA, isolated tab and Vite port 4199",
+    "runtimeMeasurements": {
+      "devicePixelRatio": 1.25,
+      "wideViewportCss": 2048,
+      "zoom": 8,
+      "trackWidthCss": 15987.2001953125,
+      "initialTile": {
+        "cssWidth": 2029.5999755859375,
+        "backingWidth": 2537,
+        "backingHeight": 29,
+        "rgbaBytesPerLane": 294292
+      },
+      "scrolledTile": {
+        "scrollLeft": 6144,
+        "leftCss": 5935.2,
+        "cssWidth": 2238.400146484375,
+        "backingWidth": 2798,
+        "backingHeight": 29
+      },
+      "narrowTile": {
+        "viewportCss": 618,
+        "trackWidthCss": 4563.2001953125,
+        "cssWidth": 601.6000366210938,
+        "backingWidth": 752,
+        "backingHeight": 29
+      },
+      "zoomOne": {
+        "trackWidthCss": 1900.4000244140625,
+        "cssWidth": 1900.800048828125,
+        "backingWidth": 2376
+      }
+    },
+    "additionalReproducedBug": {
+      "cause": "Browser focus on the very wide tabindex track moved the horizontal scroll before onClick read coordinates.",
+      "before": {
+        "scrollBefore": 6144,
+        "scrollAfter": 84.80000305175781,
+        "clickedTime": 38.506
+      },
+      "after": {
+        "scrollBefore": 6144,
+        "scrollAfterClick": 6144,
+        "scrollAfterContextMenu": 6144,
+        "clickedTime": 1402.917,
+        "contextCue": "blue-701"
+      },
+      "selectedCue": "blue-701 at 1402.070 seconds",
+      "selectedStartArrowRightCallback": 1402.08
+    },
+    "checks": {
+      "barsVisuallySharpAt8xAndAfterScroll": true,
+      "zoomAndViewportResizeRedraw": true,
+      "denseLeftAndRightClickPreserveScroll": true,
+      "selectedCueAndBoundaryControlsPreserved": true,
+      "applicationConsoleErrorsAfterReload": 0,
+      "applicationConsoleWarningsAfterReload": 0,
+      "developmentFixtureHmrNote": "The Vite terminal retained one temporary createRoot-again warning while a concurrent i18n edit invalidated this ad hoc fixture and triggered a full page reload. The final reloaded page console had no application errors or warnings; this fixture-only HMR warning is not counted as a clean whole-development-session log.",
+      "excludedConsoleWarnings": "Unrelated MetaMask extension messages",
+      "focusedTestsPassed": 31,
+      "typecheckPassed": true
+    },
+    "limits": [
+      "Actual display tested at DPR 1.25; helper tests additionally cover DPR 1, 1.5, 2 and 3.",
+      "No release build, package or user-project mutation performed."
+    ]
+  },
+  "voiceAssignment": {
+    "status": "proposal only",
+    "algorithmChanged": false,
+    "accuracyImprovementClaimed": false
+  },
+  "limitations": [
+    "No new inference run for this UI/desktop patch.",
+    "Desktop media service and renderer checks are separate; complete native picker-to-restart flow is not yet UI verified.",
+    "VST stale-lock path reproduced with mocked API; no new native plugin GUI execution.",
+    "Cache protection applies to the current application cleanup UI, not external API clients.",
+    "Package/public download/installation states below are independent gates."
+  ],
+  "sourceCommit": null,
+  "package": {
+    "status": "pending"
+  },
+  "publication": {
+    "status": "pending"
+  },
+  "installation": {
+    "status": "not applied",
+    "previousInstalledVersion": "0.3.3",
+    "reason": "Preserve user working session until update timing is confirmed."
+  },
+  "vstClick": {
+    "checkedAt": "2026-09-25T13:55:43.992939+00:00",
+    "scope": "isolated actual VstChainPanel UI with mocked API; no native plugin or user job mutation",
+    "beforeFix": {
+      "normalNativeClick": "POST once and busy status visible",
+      "afterRunningPreviewAndMediaChange": {
+        "buttonEnabled": true,
+        "editorPostsBeforeClick": 1,
+        "editorPostsAfterClick": 1,
+        "uiChanged": false
+      }
+    },
+    "cause": "context invalidation cleared preview state/polling while leaving synchronous busyRef lock set",
+    "afterFix": {
+      "runningPreviewContextInvalidation": "owned preview DELETE, lock released",
+      "nativeClickAfterContextChange": {
+        "editorPosts": 1,
+        "busy": true,
+        "inlineSlotStatusVisible": true
+      }
+    },
+    "automatedRegression": {
+      "focusedPassed": 124,
+      "files": 5,
+      "newLifecycleCases": [
+        "source change unlock",
+        "track change unlock",
+        "late POST cancelled without overriding native editor",
+        "late DELETE cannot override replacement preview",
+        "snapshot exception shown inline and lock released"
+      ],
+      "typecheck": "passed",
+      "diffCheck": "passed"
+    },
+    "limits": [
+      "Installed user exact click sequence is not observable and is not proven to be this context-invalidation path.",
+      "Actual plugin native GUI was not opened in this task.",
+      "Backend/process/API remained unchanged."
+    ]
+  }
+}

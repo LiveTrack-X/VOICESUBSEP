@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type FocusEvent } from "react";
 import { CaptionVirtualLayout, captionRenderIndexes, type CaptionRowMeasurement } from "./captionVirtualList";
 
-export function useCaptionVirtualList(ids: readonly string[], identity: string, density: "compact"|"comfortable", focusedId: string|null, setFocusedId: (id:string|null)=>void) {
+export function useCaptionVirtualList(ids: readonly string[], identity: string, density: "compact"|"comfortable", focusedId: string|null, setFocusedId: (id:string|null)=>void, columnContext = "") {
   const listRef=useRef<HTMLDivElement>(null);
   const rows=useRef(new Map<string,HTMLDivElement>());
   const rowCallbacks=useRef(new Map<string,(row:HTMLDivElement|null)=>void>());
@@ -11,7 +11,7 @@ export function useCaptionVirtualList(ids: readonly string[], identity: string, 
   const [resetRevision,setResetRevision]=useState(0);
   const resetPending=useRef(false);
   const previous=useRef<{identity:string;layout:CaptionVirtualLayout}|null>(null);
-  const context=`${identity}:${density}:${view.width}`;
+  const context=`${identity}:${density}:${view.width}:${columnContext}`;
   const layout=useMemo(()=>new CaptionVirtualLayout(ids,measurements.current,context,density==="compact"?60:96),[ids,context,density,revision]);
   const range=layout.range(view.top,view.height);
   const indexes=captionRenderIndexes(layout,range,focusedId);

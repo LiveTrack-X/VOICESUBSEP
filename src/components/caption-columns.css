@@ -1,0 +1,35 @@
+.caption-editor.caption-columns-resizable .caption-columns,
+.caption-editor.caption-columns-resizable .caption-row {
+  grid-template-columns: var(--caption-time-width) var(--caption-speaker-width) minmax(0, 1fr) var(--caption-review-width);
+  column-gap: var(--caption-column-gap);
+  padding-inline: var(--caption-column-padding);
+}
+.caption-editor.caption-columns-resizable .caption-columns { width: var(--caption-table-width, 100%); }
+.caption-columns-resizable .caption-column-heading { position: relative; min-width: 0; }
+.caption-column-resizer {
+  position: absolute;
+  top: -10px;
+  bottom: -10px;
+  right: calc(-1 * var(--caption-column-gap) / 2 - 6px);
+  width: 12px;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  z-index: 1;
+  border-radius: 3px;
+}
+.caption-column-resizer::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: 2px;
+  background: var(--border);
+  border-radius: 2px;
+}
+.caption-column-resizer:hover::after,
+.caption-column-resizer:focus-visible::after,
+.caption-columns-dragging .caption-column-resizer::after { background: var(--purple); }
+.caption-column-resizer:focus-visible { outline: 2px solid var(--purple); outline-offset: 1px; }
+.caption-columns-dragging .caption-columns { cursor: col-resize; user-select: none; }

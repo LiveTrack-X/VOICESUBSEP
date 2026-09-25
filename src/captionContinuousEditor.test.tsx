@@ -13,6 +13,16 @@ function editor(project:Project,selected:string|null=null){
   return renderToStaticMarkup(<I18nProvider><CaptionEditor project={project} update={()=>{}} preview={()=>{}} reveal={null} selected={selected} setSelected={()=>{}} onImport={()=>{}} onError={()=>{}} time={0}/></I18nProvider>);
 }
 describe("continuous subtitle editor rendering",()=>{
+  it("exposes two accessible column boundaries while retaining text, review and bounded rows",()=>{
+    const project=projectWithCaptions(2404),before=JSON.stringify(project),html=editor(project,"caption-2200");
+    expect(html.match(/role="separator"/g)).toHaveLength(2);
+    expect(html).toContain('aria-label="시간 열 너비"');expect(html).toContain('aria-label="인물 열 너비"');
+    expect(html.match(/aria-orientation="vertical"/g)).toHaveLength(2);
+    expect(html).toContain('aria-controls=');expect(html).toContain('aria-valuenow="106"');
+    expect(html).toContain('class="caption-content"');expect(html).toContain('class="caption-review-controls"');
+    expect(html.match(/data-caption-id=/g)?.length).toBeLessThan(22);
+    expect(JSON.stringify(project)).toBe(before);
+  });
   it("renders a full-length scroll surface and a bounded initial row window, without page controls",()=>{
     const project=projectWithCaptions(2404), before=JSON.stringify(project);const html=editor(project);
     expect(html).toContain('class="caption-virtual-space"');expect(html).toContain('aria-setsize="2404"');

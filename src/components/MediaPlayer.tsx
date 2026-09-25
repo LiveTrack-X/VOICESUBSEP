@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
   useId,
-  type CSSProperties,
   type RefObject,
 } from "react";
 import {
@@ -24,7 +23,7 @@ import { CaptionOverlay, captionAppearance } from "./CaptionOverlay";
 import { useMediaFullscreen } from "./useMediaFullscreen";
 import { sourceToOutput, outputToSource, type KeepSpan } from "../cuts";
 import { useI18n } from "../i18n";
-import { parsePreviewLayout, PREVIEW_LAYOUT_KEY, previewHeight } from "../previewLayout";
+import { parsePreviewLayout, PREVIEW_LAYOUT_KEY } from "../previewLayout";
 import "./media-fullscreen.css";
 
 export type MediaPlayerHandle = {
@@ -95,7 +94,6 @@ export function MediaPlayer({
     return () => cancelAnimationFrame(frame);
   }, [playing, source]);
   const kind = !source ? "empty" : audioOnly ? "audio" : "video";
-  const height = previewHeight(layout, kind);
   useEffect(() => {
     try { localStorage.setItem(PREVIEW_LAYOUT_KEY, JSON.stringify({ version: 1, ...layout })); }
     catch { /* Preview controls still work when storage is unavailable. */ }
@@ -209,8 +207,7 @@ export function MediaPlayer({
     .slice(0, 4);
   return (
     <section
-      className={`media-player media-kind-${kind}${layout.collapsed ? " preview-collapsed" : ""}${layout.height !== null ? " preview-custom-height" : ""}${fullscreen.expanded ? " media-player-expanded" : ""}`}
-      style={{ "--preview-height": `${height}px` } as CSSProperties}
+      className={`media-player media-kind-${kind}${layout.collapsed ? " preview-collapsed" : ""}${fullscreen.expanded ? " media-player-expanded" : ""}`}
       ref={container}
       aria-label={t("미디어 미리보기")}
       role={fullscreen.expanded ? "dialog" : undefined}
@@ -218,12 +215,7 @@ export function MediaPlayer({
     >
       <div className="preview-layout-toolbar" hidden={fullscreen.expanded}>
         <span>{t("미디어 미리보기")}</span>
-        <label className="preview-height-control" title={t("미리보기 높이")}>
-          <input type="range" aria-label={t("미리보기 높이")} min={48} max={360} step={8}
-            value={Math.max(48, height)} disabled={layout.collapsed}
-            onChange={event => setLayout(value => ({ ...value, height: Number(event.target.value) }))} />
-        </label>
-        <button onClick={() => setLayout({ height: null, collapsed: false })} title={t("미리보기 크기 자동 조절")}>{t("자동")}</button>
+        <span className="preview-fit-label" title={t("가로·세로 공간에 원본 비율을 유지하며 최대 크기로 맞춥니다.")}>{t("자동 맞춤")}</span>
         <button aria-expanded={!layout.collapsed} aria-controls={previewId}
           title={t("화면만 접고 재생 제어는 유지합니다.")}
           onClick={() => setLayout(value => ({ ...value, collapsed: !value.collapsed }))}>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Activity, X } from "lucide-react";
+import type { MediaSource } from "../mediaSource";
 import { download, uploadMedia, type AnalysisResult } from "../api";
 import { backgroundJobRunning, sameBackgroundSource, type BackgroundJobSnapshot } from "../backgroundJob";
 import type { Project } from "../domain";
@@ -23,9 +24,9 @@ export function BackgroundJobStatus({snapshot,onOpen,onDismiss}:{snapshot:Backgr
     {(job&&!backgroundJobRunning(job)||snapshot.missing)&&<button className="background-job-dismiss" aria-label={t("분석 상태 표시 닫기")} title={t("작업 기록은 유지됩니다.")} onClick={onDismiss}><X size={12}/></button>}
   </span>;
 }
-export function BackgroundJobDialog({snapshot,project,file,onClose,onApply,onRetry}:{snapshot:BackgroundJobSnapshot;project:Project;file:File|null;onClose:()=>void;onApply:(result:AnalysisResult)=>void;onRetry:()=>void}){
+export function BackgroundJobDialog({snapshot,project,file,onClose,onApply,onRetry}:{snapshot:BackgroundJobSnapshot;project:Project;file:MediaSource|null;onClose:()=>void;onApply:(result:AnalysisResult)=>void;onRetry:()=>void}){
   const {t}=useI18n();const [verifying,setVerifying]=useState(false),[error,setError]=useState("");
-  const [verified,setVerified]=useState<{file:File;mediaId:string;projectId:string;jobId:string}|null>(null);
+  const [verified,setVerified]=useState<{file:MediaSource;mediaId:string;projectId:string;jobId:string}|null>(null);
   const {pointer,job}=snapshot;if(!pointer)return null;
   const canApply=!!(job?.status==="completed"&&job.result&&file&&verified?.file===file&&verified.jobId===pointer.id&&verified.projectId===project.id&&sameBackgroundSource(pointer,project.id,verified.mediaId));
   async function verify(){
@@ -42,9 +43,9 @@ export function BackgroundJobDialog({snapshot,project,file,onClose,onApply,onRet
     {job&&<section className="analysis-job">
       <strong>{t(labels[job.status])} · {Math.round(job.progress*100)}%</strong><progress value={job.progress} max={1}/><p>{t(jobStageLabel(job.stage))}</p>
       {job.error&&<p className="error-box">{job.error}</p>}
-      <AnalysisQueueControls key={job.id} job={job} onUpdated={onRetry} showCancel/>
+      <AnalysisQueueControls key={`queue-${job.id}`} job={job} onUpdated={onRetry} showCancel/>
       {job.result&&<p>{t("자막 {captions}개 · 감지된 인물 {speakers}명",{captions:job.result.captions.length,speakers:job.result.speakers.length})}</p>}
-      <AnalysisJobDetails key={job.id} job={job}/>
+      <AnalysisJobDetails key={`details-${job.id}`} job={job}/>
       {job.result&&<>
         <button onClick={()=>download(`analysis-${job.id}.json`,JSON.stringify(job.result,null,2),"application/json;charset=utf-8")}>{t("분석 결과 JSON 저장")}</button>
         <p>{t("같은 프로젝트와 원본 파일이 연결된 경우에만 결과를 적용할 수 있습니다.")}</p>

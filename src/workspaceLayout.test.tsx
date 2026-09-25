@@ -51,7 +51,7 @@ describe("workspace layout preferences and accessible recovery controls", () => 
     const before = JSON.stringify(project), update = vi.fn();
     const html = renderToStaticMarkup(<I18nProvider><NotesPanel project={project} update={update} time={0} seek={() => {}}
       reveal={mode === "reveal" ? { id: "note-1" } : null} onError={() => {}}/></I18nProvider>);
-    expect(html).toContain('class="notes-panel panel notes-expanded"');
+    expect(html).toMatch(/class="notes-panel panel notes-expanded(?: |")/);
     expect(html).toContain('aria-expanded="true"');
     expect(html).toContain("Keep my note");
     expect(update).not.toHaveBeenCalled();
@@ -86,10 +86,10 @@ describe("automatic contained preview geometry", () => {
   it("fits portrait height and reserves expanding cut controls instead of cropping", () => {
     const portrait = calculateWorkspacePreview({ ...base, aspectRatio: 9 / 16 });
     expect(portrait.stageHeight).toBe(408);
-    expect(portrait.columnWidth).toBe(230);
+    expect(portrait.columnWidth).toBe(495);
     const expandedCut = calculateWorkspacePreview({ ...base, aspectRatio: 9 / 16, auxiliaryHeight: 210 });
     expect(expandedCut.stageHeight).toBe(258);
-    expect(expandedCut.columnWidth).toBe(210);
+    expect(expandedCut.columnWidth).toBe(portrait.columnWidth);
   });
 
   it("protects 324px of caption rows on stacked screens and bounds tall windows", () => {
@@ -100,36 +100,34 @@ describe("automatic contained preview geometry", () => {
     expect(calculateWorkspacePreview({ ...base, wide: false, width: 480, height: 300 }).stageHeight).toBe(48);
   });
 
-  it("preserves manual height, collapse, compact audio and empty states", () => {
-    expect(calculateWorkspacePreview({ ...base, manualHeight: 232 }).stageHeight).toBe(232);
-    expect(calculateWorkspacePreview({ ...base, manualHeight: 999 }).stageHeight).toBe(360);
-    expect(calculateWorkspacePreview({ ...base, collapsed: true, manualHeight: 232 }).stageHeight).toBe(0);
+  it("fits the selected width while keeping collapse, audio and empty states compact", () => {
+    expect(calculateWorkspacePreview({ ...base, manualWidth: 400 })).toEqual({ columnWidth: 400, stageHeight: 225 });
+    expect(calculateWorkspacePreview({ ...base, manualWidth: 999 })).toEqual({ columnWidth: 608, stageHeight: 342 });
+    expect(calculateWorkspacePreview({ ...base, collapsed: true, manualWidth: 400 })).toEqual({ columnWidth: 400, stageHeight: 0 });
     expect(calculateWorkspacePreview({ ...base, kind: "audio" }).stageHeight).toBe(48);
     expect(calculateWorkspacePreview({ ...base, kind: "audio", wide: false }).stageHeight).toBe(32);
     expect(calculateWorkspacePreview({ ...base, kind: "empty" }).stageHeight).toBe(40);
   });
 
-  it.each([16 / 9, 9 / 16, 1])("keeps both columns fixed through a complete height-slider sweep (aspect=%s)", aspectRatio => {
+  it.each([16 / 9, 9 / 16, 1])("never feeds height/cut wrapping back into either column (aspect=%s)", aspectRatio => {
     const measurement = { ...base, aspectRatio };
     const automatic = calculateWorkspacePreview(measurement);
-    const heights = Array.from({ length: 40 }, (_, index) => 48 + index * 8);
-    // Forward/backward pointer movement must never relocate the slider or
-    // caption pane. This used to change landscape width from 210px to 495px.
-    for (const manualHeight of [...heights, ...[...heights].reverse()]) {
-      const resized = calculateWorkspacePreview({ ...measurement, manualHeight });
+    const heights = Array.from({ length: 40 }, (_, index) => 280 + index * 16);
+    for (const height of [...heights, ...[...heights].reverse()]) {
+      const resized = calculateWorkspacePreview({ ...measurement, height, auxiliaryHeight: height % 110 });
       expect(resized.columnWidth).toBe(automatic.columnWidth);
-      expect(resized.stageHeight).toBe(manualHeight);
+      expect(calculateWorkspacePreview({ ...measurement, height, manualWidth: 400 }).columnWidth).toBe(400);
     }
-    expect(calculateWorkspacePreview({ ...measurement, manualHeight: null })).toEqual(automatic);
+    expect(calculateWorkspacePreview({ ...measurement, manualWidth: null })).toEqual(automatic);
   });
 
-  it("keeps manual sizing stable in short desktop and stacked layouts", () => {
-    for (const measurement of [{ ...base, height: 280 }, { ...base, wide: false, width: 640, height: 700 }]) {
-      const small = calculateWorkspacePreview({ ...measurement, manualHeight: 48 });
-      const large = calculateWorkspacePreview({ ...measurement, manualHeight: 360 });
-      expect(small.columnWidth).toBe(large.columnWidth);
-      expect([small.stageHeight, large.stageHeight]).toEqual([48, 360]);
-    }
+  it("uses both available dimensions without the old 360px ceiling and ignores width preferences when stacked", () => {
+    const full = calculateWorkspacePreview({ ...base, width: 1700, height: 1000, manualWidth: 900 });
+    expect(full).toEqual({ columnWidth: 900, stageHeight: 506 });
+    const constrained = calculateWorkspacePreview({ ...base, width: 1700, height: 480, manualWidth: 900 });
+    expect(constrained).toEqual({ columnWidth: 900, stageHeight: 328 });
+    const stacked = { ...base, wide: false, width: 640, height: 700 };
+    expect(calculateWorkspacePreview({ ...stacked, manualWidth: 240 })).toEqual(calculateWorkspacePreview({ ...stacked, manualWidth: 900 }));
   });
 
   it("uses a safe unknown-video aspect and never emits nonfinite geometry", () => {

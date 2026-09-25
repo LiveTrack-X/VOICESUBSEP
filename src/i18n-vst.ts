@@ -1,4 +1,6 @@
 export const vstMessages: Record<string, readonly [string, string, string, string]> = {
+  "플러그인 창 요청 중…": ["Opening plugin window…", "プラグイン画面を開いています…", "正在打开插件窗口…", "Abriendo la ventana del plugin…"],
+  "별도 창을 확인하세요. 보이지 않으면 아래의 닫기 또는 취소 버튼을 사용하세요.": ["Check the separate window. If it is not visible, use Close or Cancel below.", "別ウィンドウを確認してください。表示されない場合は下の閉じる・キャンセルボタンを使用してください。", "请查看独立窗口。若未显示，请使用下方的关闭或取消按钮。", "Revisa la ventana independiente. Si no aparece, usa Cerrar o Cancelar abajo."],
   "GUI 배율은 플러그인 자체 메뉴에서 조절합니다. 공통 배율 변경은 지원하지 않습니다.": ["Adjust GUI scaling in the plugin's own menu when available. A universal scale control is not supported.", "GUI倍率は対応するプラグイン自身のメニューで調整します。共通の倍率変更には対応していません。", "如支持，请在插件自身菜单中调整界面缩放。不支持统一的缩放控制。", "Ajusta la escala en el menú del plugin si lo permite. No se admite un control de escala universal."],
   "오디오 사전처리": ["Audio preprocessing", "音声の前処理", "音频预处理", "Preprocesamiento de audio"],
   "오디오 사전처리 사용": ["Enable audio preprocessing", "音声の前処理を使用", "启用音频预处理", "Activar preprocesamiento de audio"],

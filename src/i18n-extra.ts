@@ -1,4 +1,5 @@
 import { translationMessages } from "./i18n-translation";
+import { notesUiMessages } from "./i18n-notes-ui";
 import { editReviewMessages } from "./i18n-edit-review";
 import { mediaIdentityMessages } from "./i18n-media-identity";
 import { vstMessages } from "./i18n-vst";
@@ -25,8 +26,13 @@ import { queueMessages } from "./i18n-queue";
 import { yttMessages } from "./i18n-ytt";
 import { shortcutMessages } from "./i18n-shortcuts";
 import { cutUiMessages } from "./i18n-cuts-ui";
+import { captionColumnMessages } from "./i18n-caption-columns";
+import { timelineContextMessages } from "./i18n-timeline-context";
 
 export const extraMessages: Record<string, readonly [string, string, string, string]> = {
+  ...notesUiMessages,
+  ...captionColumnMessages,
+  ...timelineContextMessages,
   "상세 보기": ["View details", "詳細を見る", "查看详情", "Ver detalles"],
   ...shortcutMessages,
   ...cutUiMessages,

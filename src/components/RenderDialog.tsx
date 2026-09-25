@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog } from "./Dialog";
+import type { MediaSource } from "../mediaSource";
 import { useI18n } from "../i18n";
 import { buildKeepSpans } from "../cuts";
 import { exportSrt, exportNotesCsv, safeFilename, parseProject, type Project } from "../domain";
@@ -7,7 +8,7 @@ import { ApiError, download, request, uploadMedia, type MediaInfo } from "../api
 import { renderedProject, type RenderJob } from "../render";
 import { assertProjectMedia } from "../mediaIdentity";
 
-export function RenderDialog({project,file,onClose,resumeId}: {project:Project;file:File|null;onClose:()=>void;resumeId?:string}) {
+export function RenderDialog({project,file,onClose,resumeId}: {project:Project;file:MediaSource|null;onClose:()=>void;resumeId?:string}) {
   const {t}=useI18n();
   // An immutable snapshot keeps async render and sidecars on the same revision.
   const [snapshot,setSnapshot]=useState<Project|null>(()=>resumeId ? null : structuredClone(project));

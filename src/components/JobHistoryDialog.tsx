@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, download, request, uploadMedia, type AnalysisResult, type Job } from "../api";
 import type { Project } from "../domain";
-import { cacheCleanupSelection, cleanupMediaCache, jobUrl, readHistory, sameAnalysisSource, type CacheInfo, type HistoryItem } from "../jobHistory";
+import { isDesktopMediaSource, type MediaSource } from "../mediaSource";
+import { cacheCleanupSelection, cleanupMediaCache, jobUrl, protectConnectedMedia, readHistory, sameAnalysisSource, type CacheInfo, type HistoryItem } from "../jobHistory";
 import { useI18n } from "../i18n";
 import { Dialog } from "./Dialog";
 import { RenderDialog } from "./RenderDialog";
@@ -10,11 +11,14 @@ import { AnalysisQueueControls } from "./AnalysisQueueControls";
 import { jobStageLabel } from "../jobStage";
 
 export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
-  project:Project; file:File|null; onClose:()=>void; onApplyAnalysis:(result:AnalysisResult)=>void;
+  project:Project; file:MediaSource|null; onClose:()=>void; onApplyAnalysis:(result:AnalysisResult)=>void;
 }) {
   const {t}=useI18n();
   const [items,setItems]=useState<HistoryItem[]>([]);
   const [cache,setCache]=useState<CacheInfo|null>(null);
+  const visibleCache=cache?protectConnectedMedia(cache,file):null;
+  const latestCache=useRef(visibleCache);
+  latestCache.current=visibleCache;
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
@@ -22,7 +26,7 @@ export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
   const [analysis,setAnalysis]=useState<{item:HistoryItem;job:Job}|null>(null);
   const inspected=useRef<string|null>(null);
   const [mediaId,setMediaId]=useState<string|null>(null);
-  const [verifiedFile,setVerifiedFile]=useState<File|null>(null);
+  const [verifiedFile,setVerifiedFile]=useState<MediaSource|null>(null);
   const [confirm,setConfirm]=useState<string|null>(null);
   const [cleanup,setCleanup]=useState<{ids:string[];bytes:number}|null>(null);
   const [cleanupNotice,setCleanupNotice]=useState("");
@@ -60,7 +64,11 @@ export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
     }catch(e){if(alive.current)setError((e as Error).message);}
     finally{if(alive.current)setBusy(false);}
   }
-  async function remove(url:string){
+  async function remove(url:string,cachedMediaId?:string){
+    // A confirmation can outlive a source change or a cache refresh.
+    if(cachedMediaId&&!latestCache.current?.items.some(item=>item.id===cachedMediaId&&!item.protected)){
+      setConfirm(null);return;
+    }
     setBusy(true);setError("");
     try{await request(url,{method:"DELETE"});if(alive.current){setConfirm(null);setAnalysis(null);inspected.current=null;await refresh();}}
     catch(e){if(alive.current)setError((e as Error).message);}
@@ -74,9 +82,11 @@ export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
   }
   async function cleanCache(){
     if(!cleanup||busy)return;
+    const eligible=latestCache.current?cacheCleanupSelection(latestCache.current,cleanup.ids):null;
+    if(!eligible?.ids.length){setCleanup(null);return;}
     setBusy(true);setError("");setCleanupNotice("");
     try{
-      const result=await cleanupMediaCache(cleanup.ids);
+      const result=await cleanupMediaCache(eligible.ids);
       if(alive.current){
         setCleanup(null);
         setCleanupNotice(t("캐시 {count}개 · {bytes} 정리 완료. 보호되었거나 없는 항목 {skipped}개, 정리 실패 {failed}개.",{count:result.removedCount,bytes:bytes(result.removedBytes),skipped:result.skippedCount,failed:result.failedCount}));
@@ -86,7 +96,9 @@ export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
     finally{if(alive.current)setBusy(false);}
   }
   if(renderId)return <RenderDialog project={project} file={null} resumeId={renderId} onClose={()=>setRenderId(null)}/>;
-  const availableCleanup=cache?cacheCleanupSelection(cache):null;
+  const availableCleanup=visibleCache?cacheCleanupSelection(visibleCache):null;
+  const confirmedCleanup=cleanup&&visibleCache?cacheCleanupSelection(visibleCache,cleanup.ids):null;
+  const connectedCacheId=file&&isDesktopMediaSource(file)?file.media.id:null;
   const canApply=analysis&&file&&verifiedFile===file&&mediaId&&sameAnalysisSource(analysis.item,project.id,mediaId)&&analysis.job.status==="completed"&&analysis.job.result;
   return <Dialog title={t("작업 이력 및 저장 공간")} onClose={onClose} closeDisabled={busy}>
     <p>{t("분석과 내보내기는 창을 닫아도 계속됩니다. 완료된 결과를 여기서 다시 열 수 있습니다.")}</p>
@@ -111,29 +123,29 @@ export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
     {analysis&&<section className="export-section">
       <h3>{t("분석 결과 확인")}</h3><p>{analysis.item.mediaName} · {t(statusLabel[analysis.job.status])}</p>
       {(analysis.job.status==="running"||analysis.job.status==="queued")&&<><progress value={analysis.job.progress} max={1}/><p>{Math.round(analysis.job.progress*100)}% · {t(jobStageLabel(analysis.job.stage))}</p></>}
-      <AnalysisQueueControls key={analysis.job.id} job={analysis.job} showCancel onUpdated={job=>{setAnalysis(value=>value?.job.id===job.id?{...value,job}:value);void refresh();}}/>
+      <AnalysisQueueControls key={`queue-${analysis.job.id}`} job={analysis.job} showCancel onUpdated={job=>{setAnalysis(value=>value?.job.id===job.id?{...value,job}:value);void refresh();}}/>
       {analysis.job.error&&<p className="error-box">{analysis.job.error}</p>}
       {analysis.job.result&&<p>{t("자막 {captions}개 · 감지된 인물 {speakers}명",{captions:analysis.job.result.captions.length,speakers:analysis.job.result.speakers.length})}</p>}
-      <AnalysisJobDetails key={analysis.job.id} job={analysis.job}/>
+      <AnalysisJobDetails key={`details-${analysis.job.id}`} job={analysis.job}/>
       {analysis.job.result&&<>
         <p>{t("같은 프로젝트와 원본 파일이 연결된 경우에만 결과를 적용할 수 있습니다.")}</p>
         <p>{t("적용하면 기존 자막이 교체됩니다. 노트는 유지됩니다.")}</p>
         <div className="dialog-actions"><button onClick={()=>download(`analysis-${analysis.item.id}.json`,JSON.stringify(analysis.job.result,null,2),"application/json;charset=utf-8")}>{t("분석 결과 JSON 저장")}</button>
           <button className="primary" disabled={busy||!canApply} onClick={()=>{if(canApply)onApplyAnalysis(analysis.job.result!);}}>{t("결과 적용")}</button></div></>}
     </section>}
-    {cache&&<section className="export-section"><h3>{t("미디어 캐시")}</h3>
-      <p>{t("사용 중 {used} · 정리 가능 {free} · 디스크 여유 {disk}",{used:bytes(cache.bytes),free:bytes(cache.reclaimableBytes),disk:bytes(cache.freeBytes)})}</p>
+    {visibleCache&&<section className="export-section"><h3>{t("미디어 캐시")}</h3>
+      <p>{t("사용 중 {used} · 정리 가능 {free} · 디스크 여유 {disk}",{used:bytes(visibleCache.bytes),free:bytes(visibleCache.reclaimableBytes),disk:bytes(visibleCache.freeBytes)})}</p>
       <p>{t("앱이 복사한 원본만 정리합니다. 분석·내보내기·미리듣기에서 사용하는 파일은 보호됩니다. 사용자의 원본 파일은 삭제하지 않습니다.")}</p>
       <p className="muted">{t("자동 삭제 없이 사용하지 않는 복사본만 직접 정리합니다. 저장된 작업 결과와 모델·녹음은 유지합니다.")}</p>
       {cleanupNotice&&<p role="status">{cleanupNotice}</p>}
       {cleanup?<div className="export-section" role="group" aria-label={t("캐시 정리 확인")}>
-        <p>{t("표시한 복사본 {count}개 · {bytes}를 정리할까요? 삭제 직전에 사용 여부를 다시 확인합니다.",{count:cleanup.ids.length,bytes:bytes(cleanup.bytes)})}</p>
-        <div className="dialog-actions"><button disabled={busy} onClick={()=>void cleanCache()}>{t("정리 확인")}</button><button disabled={busy} onClick={()=>setCleanup(null)}>{t("취소")}</button></div>
+        <p>{t("표시한 복사본 {count}개 · {bytes}를 정리할까요? 삭제 직전에 사용 여부를 다시 확인합니다.",{count:confirmedCleanup?.ids.length??0,bytes:bytes(confirmedCleanup?.bytes??0)})}</p>
+        <div className="dialog-actions"><button disabled={busy||!confirmedCleanup?.ids.length} onClick={()=>void cleanCache()}>{t("정리 확인")}</button><button disabled={busy} onClick={()=>setCleanup(null)}>{t("취소")}</button></div>
       </div>:<button disabled={busy||!availableCleanup?.ids.length} onClick={()=>{setConfirm(null);setCleanupNotice("");setCleanup(availableCleanup);}}>{t("정리 가능한 캐시 정리")} · {availableCleanup?.ids.length} · {bytes(availableCleanup?.bytes??0)}</button>}
       <p>{t("작업 결과를 더 이상 보관하지 않을 때 작업 기록을 먼저 삭제하세요.")}</p>
-      {cache.items.map(item=><div key={item.id} className="dialog-actions" style={{justifyContent:"space-between"}}>
-        <span>{item.name} · {bytes(item.bytes)} {item.protected?`· ${t("작업에서 사용 중")}`:""}</span>
-        {confirm===item.id?<><button disabled={busy} onClick={()=>void remove(`/api/media/${item.id}`)}>{t("삭제 확인")}</button><button onClick={()=>setConfirm(null)}>{t("취소")}</button></>:
+      {visibleCache.items.map(item=><div key={item.id} className="dialog-actions" style={{justifyContent:"space-between"}}>
+        <span>{item.name} · {bytes(item.bytes)} {item.protected?`· ${t(item.id===connectedCacheId?"현재 편집기에 연결됨":"작업에서 사용 중")}`:""}</span>
+        {confirm===item.id?<><button disabled={busy||item.protected} onClick={()=>void remove(`/api/media/${item.id}`,item.id)}>{t("삭제 확인")}</button><button onClick={()=>setConfirm(null)}>{t("취소")}</button></>:
           <button disabled={busy||item.protected} onClick={()=>setConfirm(item.id)}>{t("복사본 삭제")}</button>}
       </div>)}
     </section>}

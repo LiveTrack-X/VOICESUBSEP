@@ -1,8 +1,18 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Columns2, PanelLeftClose } from "lucide-react";
 import { useI18n } from "../i18n";
 import { SubtitleFocusContext } from "../workspaceFocus";
 import { calculateWorkspacePreview } from "../workspaceLayout";
+import { previewWidthBounds } from "../panelWidths";
+import { usePanelWidth } from "../usePanelWidth";
+import { WidthResizeHandle, type WidthResizeHandleProps } from "./WidthResizeHandle";
+
+const PreviewWidthContext = createContext<WidthResizeHandleProps | null>(null);
+
+export function PreviewWidthResizer() {
+  const props = useContext(PreviewWidthContext);
+  return props ? <WidthResizeHandle {...props}/> : null;
+}
 
 const FOCUS_STORAGE_KEY = "voicesubsep-editor-focus-v1";
 const NARROW_FOCUS_STORAGE_KEY = "voicesubsep-editor-focus-narrow-v1";
@@ -29,6 +39,11 @@ export function EditorWorkspace({ children, noteReveal, tools }: {
   };
   const previousNoteReveal = useRef(noteReveal);
   const workspace = useRef<HTMLDivElement>(null);
+  const previewWidth = usePanelWidth("preview");
+  const requestedWidth = useRef(previewWidth.width);
+  requestedWidth.current = previewWidth.width;
+  const scheduleMeasurement = useRef(() => {});
+  const [widthGeometry, setWidthGeometry] = useState({ wide: false, min: 0, max: 0, value: 0 });
   // Reveal notes in the same commit so NotesPanel measures a visible card.
   const focusedView = focused && !(noteReveal && previousNoteReveal.current !== noteReveal);
   useEffect(() => {
@@ -65,7 +80,7 @@ export function EditorWorkspace({ children, noteReveal, tools }: {
       const caption = center.querySelector<HTMLElement>(".caption-editor");
       const captionList = caption?.querySelector(".caption-list") ?? null;
       const notes = upper.querySelector<HTMLElement>(":scope > .notes-panel");
-      const auxiliaries = [...center.children].filter(child => child !== player && child !== caption);
+      const auxiliaries = [...center.children].filter(child => child !== player && child !== caption && !child.classList.contains("panel-width-resizer"));
       const shownAuxiliaries = auxiliaries.filter(child => size(child) > 0);
       const wide = window.matchMedia("(min-width: 1200px)").matches;
       const measurement = calculateWorkspacePreview({
@@ -78,13 +93,17 @@ export function EditorWorkspace({ children, noteReveal, tools }: {
         aspectRatio: video?.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 16 / 9,
         kind: player.classList.contains("media-kind-empty") ? "empty" : player.classList.contains("media-kind-audio") ? "audio" : "video",
         collapsed: player.classList.contains("preview-collapsed"),
-        manualHeight: player.classList.contains("preview-custom-height") ? parseFloat(player.style.getPropertyValue("--preview-height")) : null,
+        manualWidth: requestedWidth.current,
       });
       const width = `${measurement.columnWidth}px`, height = `${measurement.stageHeight}px`;
       if (center.style.getPropertyValue("--preview-pane-width") !== width) center.style.setProperty("--preview-pane-width", width);
       if (center.style.getPropertyValue("--auto-preview-height") !== height) center.style.setProperty("--auto-preview-height", height);
+      const bounds = previewWidthBounds(Math.max(0, center.clientWidth - paddingX));
+      setWidthGeometry(current => current.wide === wide && current.min === bounds.min && current.max === bounds.max && current.value === measurement.columnWidth
+        ? current : { wide, ...bounds, value: measurement.columnWidth });
     };
     const schedule = () => { if (!frame && !disposed) frame = requestAnimationFrame(measure); };
+    scheduleMeasurement.current = schedule;
     const resize = new ResizeObserver(schedule);
     const watchSizes = () => {
       resize.disconnect();
@@ -104,6 +123,7 @@ export function EditorWorkspace({ children, noteReveal, tools }: {
     watchSizes(); schedule();
     return () => {
       disposed = true; if (frame) cancelAnimationFrame(frame);
+      scheduleMeasurement.current = () => {};
       resize.disconnect(); mutations.disconnect();
       root.removeEventListener("loadedmetadata", schedule, true);
       root.removeEventListener("resize", schedule, true);
@@ -111,8 +131,12 @@ export function EditorWorkspace({ children, noteReveal, tools }: {
       window.removeEventListener("resize", schedule);
     };
   }, []);
+  useEffect(() => { scheduleMeasurement.current(); }, [previewWidth.width]);
 
-  return <SubtitleFocusContext.Provider value={focusedView}><div ref={workspace} className={`editor-workspace${focusedView ? " subtitle-focus" : ""}`}>
+  return <SubtitleFocusContext.Provider value={focusedView}><PreviewWidthContext.Provider value={widthGeometry.wide ? {
+    className: "preview-width-resizer", label: "미리보기·컷 편집 너비 조절", ...widthGeometry,
+    onChange: previewWidth.change, onCommit: previewWidth.commit, onCancel: previewWidth.cancel, onReset: previewWidth.reset,
+  } : null}><div ref={workspace} className={`editor-workspace${focusedView ? " subtitle-focus" : ""}`}>
     <div className="workspace-view-bar">
       <span className="workspace-view-label">{t(focusedView ? "자막 편집에 집중하는 화면입니다." : "편집 화면")}</span>
       {tools && <div className="workspace-tools">{tools}</div>}
@@ -127,5 +151,5 @@ export function EditorWorkspace({ children, noteReveal, tools }: {
       </button>
     </div>
     {children}
-  </div></SubtitleFocusContext.Provider>;
+  </div></PreviewWidthContext.Provider></SubtitleFocusContext.Provider>;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, ZoomIn, ZoomOut } from "lucide-react";
 import { formatTime, type Project } from "../domain";
+import type { MediaSource } from "../mediaSource";
 import { request, uploadMedia, type MediaInfo } from "../api";
 import { CaptionTimelineLane } from "./CaptionTimelineLane";
 import { resizeCaption, waveformPath } from "../timelineEditing";
@@ -9,6 +10,8 @@ import { normalizeCuts } from "../cuts";
 import { useI18n } from "../i18n";
 import { editableSpeakers } from "../speakerOperations";
 import { renameTimelineSpeaker } from "../timelineSpeakerName";
+import { deleteTimelineTarget, moveTimelineTarget, timelineMovePlan, timelineTarget, type TimelineMenuAnchor, type TimelineTarget } from "../timelineContext";
+import { TimelineContextMenu } from "./TimelineContextMenu";
 import "./timeline-layout.css";
 
 const LAYOUT_STORAGE_KEY = "voicesubsep-timeline-layout-v1";
@@ -47,9 +50,12 @@ export function Timeline({
   selected,
   previewNote,
   selectedNote,
+  seek,
+  editCaption,
+  editNote,
 }: {
   project: Project;
-  file: File | null;
+  file: MediaSource | null;
   update: (change: (project: Project) => Project) => void;
   onError: (message: string) => void;
   time: number;
@@ -57,15 +63,31 @@ export function Timeline({
   selected: string | null;
   previewNote: (id: string) => void;
   selectedNote: string | null;
+  seek: (time: number) => void;
+  editCaption: (id: string) => void;
+  editNote: (id: string) => void;
 }) {
   const {t}=useI18n();
   const [zoom, setZoom] = useState(1);
+  const [contextMenu, setContextMenu] = useState<{ projectId: string; target: TimelineTarget; anchor: TimelineMenuAnchor } | null>(null);
+  const menuItem = contextMenu?.projectId === project.id ? timelineTarget(project,contextMenu.target) : undefined;
+  const movePlan = contextMenu && menuItem ? timelineMovePlan(project,contextMenu.target,time) : null;
   const [layout, setLayout] = useState(readLayout);
   const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 1000px)").matches);
   const [focusExpanded, setFocusExpanded] = useState(false);
   // A narrow window starts compact without replacing the saved desktop layout.
   const compactFocus = narrow;
   const collapsed = compactFocus ? !focusExpanded : layout.collapsed;
+  useEffect(() => { if (contextMenu && (!menuItem || collapsed)) setContextMenu(null); }, [contextMenu,menuItem,collapsed]);
+  function openContext(target: TimelineTarget, anchor: TimelineMenuAnchor) { setContextMenu({ projectId: project.id, target, anchor }); }
+  function contextAction(action: "edit" | "seek" | "move" | "delete") {
+    if (!contextMenu || !menuItem || contextMenu.projectId !== project.id) { setContextMenu(null); return; }
+    const { projectId, target } = contextMenu;
+    setContextMenu(null);
+    if (action === "edit") { if (target.kind === "note") editNote(target.id); else editCaption(target.id); }
+    else if (action === "seek") seek(menuItem.start);
+    else update(current => current.id !== projectId ? current : action === "move" ? moveTimelineTarget(current,target,time) : deleteTimelineTarget(current,target));
+  }
   useEffect(() => {
     const query = window.matchMedia("(max-width: 1000px)");
     const changed = () => setNarrow(query.matches);
@@ -282,6 +304,7 @@ export function Timeline({
             time={time}
             selected={selectedNote}
             preview={previewNote}
+            onContextMenu={(id,anchor)=>openContext({kind:"note",id},anchor)}
           />
           {waveform&&<div className="timeline-lane waveform-lane"><div className="lane-label">{t("오디오 파형")}</div><div className="lane-track" onClick={event=>{const box=event.currentTarget.getBoundingClientRect();preview(Math.max(0,Math.min(1,(event.clientX-box.left)/box.width))*duration);}}><svg viewBox="0 0 1000 32" preserveAspectRatio="none" aria-label={t("오디오 파형")}><path d={waveformPath(waveform.peaks.values,waveform.peaks.secondsPerPoint,duration)}/></svg><span className="playhead" style={{left:`${time/duration*100}%`}}/></div></div>}
           {!!project.cuts?.length&&<div className="timeline-lane cut-lane">
@@ -290,9 +313,14 @@ export function Timeline({
               {normalizeCuts(project.cuts,project.duration).map(cut=><button key={cut.id} className="cut-block" style={{left:`${cut.start/duration*100}%`,width:`${(cut.end-cut.start)/duration*100}%`}} title={`${formatTime(cut.start)} → ${formatTime(cut.end)}`} aria-label={t("제외 구간 {start}부터 {end}",{start:formatTime(cut.start),end:formatTime(cut.end)})} onClick={()=>preview(cut.start)}>{t("제외")}</button>)}
             </div>
           </div>}
-          {lanes.map(s=><CaptionTimelineLane key={s.id} speaker={s} captions={captionGroups.get(s.id)??[]} duration={duration} mediaDuration={project.duration} time={time} selected={selected} preview={preview} onResize={changeBoundary} onRename={renameSpeaker}/>)}
+          {lanes.map(s=><CaptionTimelineLane key={s.id} speaker={s} captions={captionGroups.get(s.id)??[]} duration={duration} mediaDuration={project.duration} time={time} selected={selected} preview={preview} onResize={changeBoundary} onRename={renameSpeaker} onContextMenu={(id,anchor)=>openContext({kind:"caption",id},anchor)}/>)}
         </div>
       </div>
+      {contextMenu&&menuItem&&!collapsed&&<TimelineContextMenu anchor={contextMenu.anchor}
+        title={`${formatTime(menuItem.start)} · ${menuItem.text || t("내용 없는 메모")}`}
+        canMove={!!movePlan?.changed} adjustedStart={movePlan?.adjusted ? movePlan.start : null}
+        onEdit={()=>contextAction("edit")} onSeek={()=>contextAction("seek")} onMove={()=>contextAction("move")} onDelete={()=>contextAction("delete")}
+        onClose={()=>setContextMenu(null)} />}
     </section>
   );
 }

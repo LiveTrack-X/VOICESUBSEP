@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog } from "./Dialog";
+import type { MediaSource } from "../mediaSource";
 import { ApiError, download, request, uploadMedia, type MediaInfo } from "../api";
 import { emptyAudioMix, MAX_MIX_TRACKS, mixRequest, mixPreviewRequest, parseAudioMix, relinkMix, type AudioMixPlan, type AudioMixTrack } from "../audioMixer";
 import { MixerPreviewSession, type MixPreviewState } from "../mixerPreview";
@@ -11,7 +12,7 @@ import "./audio-mixer.css";
 
 type MixJob=RenderJob & {request?:ReturnType<typeof mixRequest>};
 type MixHistory={id:string;status:RenderJob["status"];createdAt:string;format:string;tracks:number};
-export function AudioMixerDialog({project,file,initialTime=0,onSave,onClose}:{project:Project;file:File|null;initialTime?:number;onSave:(plan:AudioMixPlan)=>void;onClose:()=>void}) {
+export function AudioMixerDialog({project,file,initialTime=0,onSave,onClose}:{project:Project;file:MediaSource|null;initialTime?:number;onSave:(plan:AudioMixPlan)=>void;onClose:()=>void}) {
   const {t}=useI18n();
   const [plan,setPlan]=useState<AudioMixPlan>(()=>structuredClone(project.audioMix??emptyAudioMix()));
   const [sources,setSources]=useState<Record<string,MediaInfo>>({});
@@ -62,7 +63,7 @@ export function AudioMixerDialog({project,file,initialTime=0,onSave,onClose}:{pr
       void previewSession.start(payload,state=>{if(alive.current)setPreview(state);});
     }catch(e){setPreview({busy:false,error:(e as Error).message});}
   }
-  async function addFiles(files:File[]){
+  async function addFiles(files:MediaSource[]){
     if(!files.length||busy)return;setBusy(true);setError("");
     let next=structuredClone(plan);
     try{

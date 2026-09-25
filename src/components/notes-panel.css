@@ -2,7 +2,7 @@
 .notes-panel.notes-expanded {
   height: auto;
   min-height: 0;
-  max-height: 180px;
+  max-height: min(44dvh, 360px);
   flex: 0 0 auto;
   overflow: hidden;
   background: var(--surface);
@@ -11,7 +11,7 @@
 .notes-panel.notes-expanded > .notes-content {
   flex: 0 1 auto;
   min-height: 0;
-  max-height: 144px;
+  max-height: calc(min(44dvh, 360px) - 40px);
   overflow: hidden;
 }
 .notes-panel > .panel-heading {
@@ -82,8 +82,64 @@
 }
 .notes-panel .notes-empty > button { flex-shrink: 0; min-height: 28px; padding: 3px 6px; font-size: 11px; }
 @media (max-width: 1000px) {
-  .notes-panel.notes-expanded { max-height: 210px; }
-  .notes-panel.notes-expanded > .notes-content { max-height: 174px; }
+  .notes-panel.notes-expanded { max-height: min(48dvh, 360px); }
+  .notes-panel.notes-expanded > .notes-content { max-height: calc(min(48dvh, 360px) - 40px); }
   .notes-panel.notes-empty-panel.notes-expanded { max-height: 100px; }
   .notes-panel.notes-empty-panel > .notes-content { max-height: 64px; }
 }
+
+/* Keep each note's text and actions together in a readable card. */
+.notes-panel:not(.notes-empty-panel) .notes-content > .notes-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+  align-items: start;
+  gap: 10px;
+  padding: 4px 12px 10px;
+}
+.notes-panel .notes-list > .note-card { margin: 0; padding: 10px; }
+.notes-panel .note-card > .note-time {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: end;
+}
+.notes-panel .note-time-separator { display: none; }
+.notes-panel .note-time-group { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
+.notes-panel .note-time-field { display: flex; flex-direction: column; align-items: stretch; gap: 3px; font-size: 11px; }
+.notes-panel .note-time-field input {
+  width: 100%; min-width: 0; min-height: 30px; padding: 5px 7px;
+  border: 1px solid var(--border); border-radius: 5px;
+  background: var(--surface); color: var(--ink); font-size: 12px; font-variant-numeric: tabular-nums;
+}
+.notes-panel .note-current-time { min-height: 28px; padding: 3px 6px; font-size: 11px; justify-content: center; }
+.notes-panel .note-seek { min-height: 30px; align-self: center; }
+.notes-panel .note-card > .note-body {
+  min-height: 72px; max-height: 180px; margin: 8px 0; padding: 8px;
+  border: 1px solid var(--border); border-radius: 5px; font-size: 13px;
+  background: var(--surface); line-height: 1.5;
+}
+.notes-panel .note-footer { flex-wrap: wrap; gap: 7px; }
+.notes-panel .note-footer > select, .notes-panel .note-footer > button { min-height: 30px; font-size: 12px; padding: 5px 8px !important; }
+.notes-panel .note-footer .note-delete { display: inline-flex; gap: 5px; width: auto; }
+.notes-panel .note-card.is-done { opacity: 1; background: var(--surface-alt, var(--surface)); }
+.notes-panel .note-card.is-done .note-body { color: var(--muted); }
+.notes-panel > .panel-heading { flex-wrap: wrap; gap: 8px; }
+.notes-panel .notes-heading { display: flex; align-items: center; gap: 7px; margin-right: auto; }
+.notes-panel .panel-heading > button { min-height: 30px; font-size: 12px; }
+.notes-panel .notes-count { font-size: 12px; }
+
+.notes-panel.notes-expanded.notes-resizable {
+  height: var(--notes-panel-height, 300px);
+  max-height: var(--notes-panel-height, 300px);
+}
+.notes-panel.notes-expanded.notes-resizable > .notes-content { flex: 1 1 auto; max-height: none; min-height: 0; }
+.notes-panel.notes-empty-panel.notes-resizable .notes-content > .notes-list { overflow: auto; flex: 1 1 auto; }
+.notes-panel .notes-height-resizer {
+  height: 9px; min-height: 9px; flex: 0 0 9px; position: relative;
+  width: 100%; cursor: ns-resize; touch-action: none; user-select: none;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.notes-panel .notes-height-resizer > span { display: block; width: 48px; height: 3px; background: var(--border-strong, var(--muted)); border-radius: 3px; }
+.notes-panel .notes-height-resizer:hover, .notes-panel .notes-height-resizer:focus-visible, .notes-panel .notes-height-resizer.resizing { background: var(--accent-soft); outline: none; }
+.notes-panel .notes-height-resizer:hover > span, .notes-panel .notes-height-resizer:focus-visible > span, .notes-panel .notes-height-resizer.resizing > span { background: var(--accent-text); }

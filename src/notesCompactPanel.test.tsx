@@ -19,7 +19,7 @@ describe("compact auxiliary notes panel",()=>{
     project.notes=[{id:"target",start:18,end:21,text:"Preserve this editing note",tag:"highlight",done:false}];
     const html=renderToStaticMarkup(<I18nProvider><NotesPanel project={project} update={()=>{}} time={18} seek={()=>{}} reveal={{id:"target"}} onError={()=>{}}/></I18nProvider>);
     expect(html).toContain("notes-expanded");expect(html).not.toContain("notes-empty-panel");expect(html).toContain('class="note-card  selected"');
-    expect(html).toContain("Preserve this editing note");expect(html).toContain('rows="2"');
+    expect(html).toContain("Preserve this editing note");expect(html).toContain('rows="3"');
     for(const label of ["메모 1 시작 시간","메모 1 종료 시간 선택 입력","메모 1 분류","메모 1 완료 표시","메모 1 삭제"])expect(html).toContain(label);
   });
 });

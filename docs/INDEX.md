@@ -34,6 +34,8 @@ Start with the [0.3.3 release record](releases/v0.3.3.md). The Windows preview i
 
 ## Development and release / 개발·배포
 
+- [0.3.4 workspace changes and validation status / 0.3.4 편집 화면 변경·검증 상태](releases/v0.3.4.md)
+- [Reducing unassigned speakers: measured baseline and proposal / 미배정 감소: 현황 집계·개선 전략](SPEAKER-ASSIGNMENT-STRATEGY.md)
 - [Run from source / 소스 실행](../README.md#소스에서-개발-환경-실행)
 - [Desktop architecture, builds and updates / 설치형 구조·빌드·업데이트](DESKTOP.md)
 - [Model setup / 모델 환경](MODEL-SETUP.md), [GPU models and Faster Whisper XXL / GPU 모델·XXL](GPU-MODELS.md)

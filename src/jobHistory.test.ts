@@ -1,8 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { cacheCleanupSelection, type CacheInfo } from "./jobHistory";
+import { cacheCleanupSelection, protectConnectedMedia, type CacheInfo } from "./jobHistory";
+import type { DesktopMediaSource } from "./mediaSource";
 import { cacheMessages } from "./i18n-cache";
 
 describe("reviewed cache cleanup selection", () => {
+  const source = (id: string): DesktopMediaSource => ({ kind: "desktop-media", name: "original.wav", size: 10, media: { id, name: "original.wav", duration: 1, audioTracks: [], url: `/api/media/${id}/file` } });
+  it("protects the editor's restored source and reports matching reclaimable bytes without mutating the server snapshot", () => {
+    const cache: CacheInfo = {items:[{id:"current",name:"copy",bytes:10,duration:2,protected:false},{id:"other",name:"copy",bytes:20,duration:2,protected:false},{id:"job",name:"copy",bytes:30,duration:2,protected:true}],bytes:60,reclaimableBytes:30,freeBytes:100};
+    const visible = protectConnectedMedia(cache, source("current"));
+    expect(visible.reclaimableBytes).toBe(20);
+    expect(visible.items.map(item => item.protected)).toEqual([true, false, true]);
+    expect(cacheCleanupSelection(visible)).toEqual({ids:["other"],bytes:20});
+    expect(cache.items[0].protected).toBe(false);
+    expect(protectConnectedMedia(cache, null).reclaimableBytes).toBe(30);
+    expect(protectConnectedMedia(cache, new File(["original"], "original.wav")).reclaimableBytes).toBe(30);
+  });
+  it("rechecks a stale confirmation against the latest connected source, job protection and cache entries", () => {
+    const item = (id:string,bytes:number,protectedValue=false) => ({id,name:id,bytes,duration:1,protected:protectedValue});
+    const previous:CacheInfo={items:[item("now-connected",10),item("now-busy",20),item("gone",30),item("eligible",40)],bytes:100,reclaimableBytes:100,freeBytes:100};
+    const reviewed=cacheCleanupSelection(previous);
+    const refreshed={...previous,items:[item("now-connected",10),item("now-busy",20,true),item("eligible",40),item("new-upload",50)]};
+    expect(cacheCleanupSelection(protectConnectedMedia(refreshed,source("now-connected")),reviewed.ids)).toEqual({ids:["eligible"],bytes:40});
+    expect(cacheCleanupSelection(protectConnectedMedia(refreshed,source("eligible")),["eligible"])).toEqual({ids:[],bytes:0});
+  });
   it("excludes protected sources and preserves the confirmation snapshot across refreshes", () => {
     const cache: CacheInfo = {items:[{id:"free",name:"copy",bytes:5,duration:2,protected:false},{id:"busy",name:"job",bytes:10,duration:2,protected:true}],bytes:15,reclaimableBytes:5,freeBytes:100};
     const selection = cacheCleanupSelection(cache);

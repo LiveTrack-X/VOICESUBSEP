@@ -1,5 +1,6 @@
 import type { Caption, Speaker } from "./domain";
 import { clientDiagnostics } from "./diagnostics";
+import { checkedRestoredMedia, isDesktopMediaSource, type MediaSource } from "./mediaSource";
 
 export type MediaInfo = {
   id: string;
@@ -104,7 +105,12 @@ export async function request<T>(
 // single upload; later mounts validate the saved ID after server restarts or
 // manual cleanup. Filenames never establish identity.
 const mediaUploads = new WeakMap<File, { info?: MediaInfo; pending?: Promise<MediaInfo> }>();
-export function uploadMedia(file: File): Promise<MediaInfo> {
+export function uploadMedia(file: MediaSource): Promise<MediaInfo> {
+  if (isDesktopMediaSource(file)) {
+    // A cache eviction requires reconnecting the physical original. Never upload
+    // an empty placeholder or silently reuse a different cache identity.
+    return request<MediaInfo>(`/api/media/${file.media.id}`).then(info => checkedRestoredMedia(info, { sha256: file.media.sha256!, bytes: file.size }).media);
+  }
   const entry = mediaUploads.get(file) ?? {};
   mediaUploads.set(file, entry);
   if (entry.pending) return entry.pending;

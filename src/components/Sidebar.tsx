@@ -1,7 +1,7 @@
 import { useI18n, LOCALES, localeNames, type Locale } from "../i18n";
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { AudioLines, Film, Info, Upload, Palette, ChevronDown, ChevronUp } from "lucide-react";
+import { AudioLines, Film, Info, Upload, Palette, ChevronDown, ChevronUp, CheckCircle2, LoaderCircle, Unplug } from "lucide-react";
 import { DEFAULT_CAPTION_STYLE, type Project } from "../domain";
 import { CaptionStyleDialog } from "./CaptionStyleDialog";
 import { Dialog } from "./Dialog";
@@ -14,6 +14,8 @@ export function Sidebar({
   onAnalyze,
   busy,
   hasMedia,
+  mediaVerifying = false,
+  mediaStatus,
 }: {
   project: Project;
   update: (fn: (p: Project) => Project) => void;
@@ -21,6 +23,8 @@ export function Sidebar({
   onAnalyze: () => void;
   busy: boolean;
   hasMedia: boolean;
+  mediaVerifying?: boolean;
+  mediaStatus?: string;
 }) {
   const { t, locale, setLocale } = useI18n();
   const languageLabel = locale === "en" ? t("앱 화면 언어") : `${t("앱 화면 언어")} / Language`;
@@ -41,14 +45,16 @@ export function Sidebar({
       <div className="sidebar-section"><label htmlFor="ui-language">{languageLabel}</label><select id="ui-language" aria-label={languageLabel} value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>{LOCALES.map((code) => <option key={code} value={code}>{localeNames[code]}</option>)}</select><p className="setting-hint">{t("음성 인식 언어와 별도로 설정합니다.")}</p></div>
       <div className="sidebar-section media-section">
         <label>{t('미디어 소스')}</label>
-        <button className="media-drop" onClick={onMedia} disabled={busy}>
-          <Film size={28} />
+        <button className={`media-drop${mediaVerifying ? " media-checking" : hasMedia ? " media-connected" : project.mediaName ? " media-disconnected" : ""}`}
+          onClick={onMedia} disabled={busy || mediaVerifying} aria-busy={mediaVerifying}>
+          {mediaVerifying ? <LoaderCircle size={28} className="spin"/> : hasMedia ? <CheckCircle2 size={28}/> : project.mediaName ? <Unplug size={28}/> : <Film size={28}/>}
           <strong>
-            {hasMedia ? t("연결된 미디어") : project.mediaName ? t("원본 미디어 다시 연결") : t("미디어 불러오기")}
+            {mediaVerifying ? t("원본 연결 확인 중") : hasMedia ? t("원본 연결됨") : project.mediaName ? t("원본 미디어 다시 연결") : t("미디어 불러오기")}
           </strong>
           <span>{project.mediaName ?? t("영상·음성 파일을 선택하세요")}</span>
-          <small>{t(hasMedia ? "분석 방식은 음성 분석 창에서 선택합니다" : project.mediaName ? "저장된 자막은 유지되며, 원본 파일 연결이 필요합니다." : "분석 방식은 음성 분석 창에서 선택합니다")}</small>
+          <small>{t(mediaVerifying ? "원본 파일을 확인하고 있습니다." : hasMedia ? "클릭하여 원본 미디어 변경" : project.mediaName ? "저장된 자막은 유지되며, 원본 파일 연결이 필요합니다." : "분석 방식은 음성 분석 창에서 선택합니다")}</small>
         </button>
+        {mediaStatus && <p className="media-connection-detail" role="status">{mediaStatus}</p>}
       </div>
       <div className="sidebar-section">
         <label>{t('자막 설정')}<Info size={13} />

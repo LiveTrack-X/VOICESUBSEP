@@ -1,4 +1,5 @@
 import { request } from "./api";
+import { isDesktopMediaSource, type MediaSource } from "./mediaSource";
 
 export type HistoryItem = {
   id: string; kind: "analysis" | "render"; status: "queued" | "running" | "completed" | "failed" | "cancelled";
@@ -7,9 +8,16 @@ export type HistoryItem = {
 };
 export type CacheInfo = {items:{id:string;name:string;bytes:number;duration:number;protected:boolean}[];bytes:number;reclaimableBytes:number;freeBytes:number};
 export type CacheCleanupResult = {removedCount:number;removedBytes:number;skippedCount:number;failedCount:number};
+/** Restored desktop playback reads this cached copy instead of a browser File. */
+export function protectConnectedMedia(cache: CacheInfo, source: MediaSource | null): CacheInfo {
+  const connectedId = source && isDesktopMediaSource(source) ? source.media.id : null;
+  const items = cache.items.map(item => item.id === connectedId ? { ...item, protected: true } : item);
+  return { ...cache, items, reclaimableBytes: items.reduce((total, item) => total + (item.protected ? 0 : item.bytes), 0) };
+}
 /** Snapshot only the displayed app-owned, unreserved copies. New uploads stay out. */
-export function cacheCleanupSelection(cache: CacheInfo) {
-  const items = cache.items.filter(item => !item.protected).slice(0, 1000);
+export function cacheCleanupSelection(cache: CacheInfo, reviewedIds?: readonly string[]) {
+  const reviewed = reviewedIds && new Set(reviewedIds);
+  const items = cache.items.filter(item => !item.protected && (!reviewed || reviewed.has(item.id))).slice(0, 1000);
   return {ids: items.map(item => item.id), bytes: items.reduce((total, item) => total + item.bytes, 0)};
 }
 export const cleanupMediaCache = (ids: readonly string[]) => request<CacheCleanupResult>("/api/cache/cleanup", {method:"POST", body:JSON.stringify({mediaIds:ids})});

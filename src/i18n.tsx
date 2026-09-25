@@ -1,6 +1,7 @@
 import { useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { messages } from "./i18n-messages";
 import { extraMessages } from "./i18n-extra";
+import { mediaReconnectMessages } from "./i18n-media-reconnect";
 import { I18nContext, type I18nValue } from "./i18n-context";
 
 export const LOCALES = ["ko", "en", "ja", "zh", "es"] as const;
@@ -11,7 +12,7 @@ export const LOCALE_STORAGE_KEY = "voicesubsep-ui-locale";
 export function parseLocale(value: unknown): Locale {
   return LOCALES.includes(value as Locale) ? value as Locale : "ko";
 }
-const catalog = { ...messages, ...extraMessages };
+const catalog = { ...messages, ...extraMessages, ...mediaReconnectMessages };
 export const dictionaries: Record<Locale, Record<string, string>> = Object.fromEntries(
   LOCALES.map((locale, index) => [locale, Object.fromEntries(Object.entries(catalog).map(([key, values]) => [key, index === 0 ? key : values[index - 1]]))]),
 ) as Record<Locale, Record<string, string>>;

@@ -4,16 +4,18 @@ import { checkedEditor, type VstEditor, type VstInspection, type VstSlot } from 
 import { vstPollFailure } from "./vst-polling";
 
 const pending = (session: VstEditor) => session.status === "queued" || session.status === "running";
+type EditorOwner = { generation: number; slot: VstSlot; id?: string; discard: boolean };
 const endpoint = (id: string) => `/api/vst/editors/${encodeURIComponent(id)}`;
 
 /** A native window belongs to this mounted panel; late results cannot replace another session. */
 export function useVstEditor(onApplied: (slot: VstSlot, result: VstInspection) => void) {
+  const [slotId, setSlotId] = useState<string | null>(null);
   const [session, setSession] = useState<VstEditor | null>(null);
   const [busy, setBusy] = useState(false);
   const [paused, setPaused] = useState(false);
   const [error, setError] = useState("");
   const [commandPending, setCommandPending] = useState(false);
-  const current = useRef<{ generation: number; slot: VstSlot; id?: string; discard: boolean } | null>(null);
+  const current = useRef<EditorOwner | null>(null);
   const generation = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const mounted = useRef(true);
@@ -66,11 +68,13 @@ export function useVstEditor(onApplied: (slot: VstSlot, result: VstInspection) =
 
   async function open(slot: VstSlot) {
     if (current.current) return;
-    const active = { generation: ++generation.current, slot: structuredClone(slot), discard: false, id: undefined as string | undefined };
-    current.current = active;
+    let active: EditorOwner | null = null;
+    setSlotId(slot.id);
     setBusy(true); setPaused(false); setError(""); setSession(null); setCommandPending(false);
     try {
-      const { path, pluginName, enabled, parameters, state } = slot;
+      active = { generation: ++generation.current, slot: structuredClone(slot), discard: false, id: undefined };
+      current.current = active;
+      const { path, pluginName, enabled, parameters, state } = active.slot;
       const next = checkedEditor(await request("/api/vst/editors", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path, pluginName, enabled, parameters, ...(state === undefined ? {} : { state }) }),
@@ -82,10 +86,10 @@ export function useVstEditor(onApplied: (slot: VstSlot, result: VstInspection) =
       }
       active.id = next.id;
       receive(next, active);
-      if (pending(next)) timer.current = setTimeout(() => void poll(active), 500);
+      if (pending(next)) { const accepted = active; timer.current = setTimeout(() => void poll(accepted), 500); }
     } catch (caught) {
       if (mounted.current && current.current === active) {
-        current.current = null; setBusy(false); setError((caught as Error).message);
+        current.current = null; setBusy(false); setError(caught instanceof Error && caught.message ? caught.message : "플러그인 창을 열지 못했습니다. 매개변수로 조절할 수 있습니다.");
       }
     }
   }
@@ -128,5 +132,5 @@ export function useVstEditor(onApplied: (slot: VstSlot, result: VstInspection) =
     setError("창 닫기를 요청하고 연결을 종료했습니다. 서버의 종료 완료는 확인되지 않았습니다.");
   }
 
-  return { session, busy, paused, error, commandPending, open, finish, retry, detach };
+  return { slotId, session, busy, paused, error, commandPending, open, finish, retry, detach };
 }

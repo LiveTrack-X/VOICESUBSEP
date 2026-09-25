@@ -1,5 +1,6 @@
 import { useI18n } from "../i18n";
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { clampNoteHeight, noteHeightBounds, NOTES_HEIGHT_KEY, readNoteHeight } from "../notesLayout";
 import {
   Check,
   ChevronDown,
@@ -52,6 +53,13 @@ export function NotesPanel({
     catch { return false; }
   });
   const previousReveal = useRef<typeof reveal>(null);
+  const panel = useRef<HTMLElement>(null);
+  const [availableHeight, setAvailableHeight] = useState(600);
+  const [preferredHeight, setPreferredHeight] = useState<number | null>(() => {
+    try { return readNoteHeight(localStorage.getItem(NOTES_HEIGHT_KEY)); } catch { return null; }
+  });
+  const [dragHeight, setDragHeight] = useState<number | null>(null);
+  const drag = useRef<{ id: number; y: number; height: number; latest: number } | null>(null);
   const contentId = useId();
   // Revealing or adding a note opens its editor without changing the project itself.
   const expandedView = expanded || Boolean(reveal && previousReveal.current !== reveal);
@@ -60,6 +68,26 @@ export function NotesPanel({
   const list = useRef<HTMLDivElement>(null);
   const notes = [...project.notes].sort((a, b) => a.start - b.start);
   const pending = project.notes.filter((note) => !note.done).length;
+  const bounds = noteHeightBounds(availableHeight, notes.length === 0);
+  const panelHeight = clampNoteHeight(dragHeight ?? preferredHeight ?? (notes.length ? 300 : 100), bounds);
+  function saveHeight(value: number | null) {
+    setPreferredHeight(value); setDragHeight(null);
+    try {
+      if (value === null) localStorage.removeItem(NOTES_HEIGHT_KEY);
+      else localStorage.setItem(NOTES_HEIGHT_KEY, String(value));
+    } catch { /* Resizing still works without storage. */ }
+  }
+  function cancelResize() { drag.current = null; setDragHeight(null); }
+  useEffect(() => {
+    const parent = panel.current?.parentElement;
+    if (!parent) return;
+    const measure = () => setAvailableHeight(parent.clientHeight || window.innerHeight * .7);
+    measure();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    observer?.observe(parent);
+    window.addEventListener("resize", measure);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", measure); };
+  }, []);
   const currentTime = Number.isFinite(time)
     ? Math.max(0, Math.min(time, project.duration || MAX_TIME_SECONDS))
     : 0;
@@ -124,6 +152,21 @@ export function NotesPanel({
     setFocusId(id);
   }
 
+  function applyTime(note: Note, field: "start" | "end", value: number | null) {
+    const start = field === "start" ? (value as number) : note.start;
+    const end = field === "end" ? value : note.end;
+    if (end !== null && end < start)
+      throw new Error(t("메모 종료 시간은 시작 시간보다 빠를 수 없습니다."));
+    if (project.duration > 0 && (start > project.duration || (end !== null && end > project.duration)))
+      throw new Error(t("메모 시간은 영상 길이 {time} 이내로 입력하세요.", { time: formatTime(project.duration) }));
+    if (value !== note[field]) change(note.id, { [field]: value });
+  }
+
+  function useCurrentTime(note: Note, field: "start" | "end") {
+    try { applyTime(note, field, currentTime); }
+    catch (error) { onError(error instanceof Error ? error.message : t("시간을 확인해 주세요.")); }
+  }
+
   function editTime(
     note: Note,
     field: "start" | "end",
@@ -134,20 +177,8 @@ export function NotesPanel({
         field === "end" && input.value.trim() === ""
           ? null
           : parseTime(input.value);
-      const start = field === "start" ? (value as number) : note.start;
-      const end = field === "end" ? value : note.end;
-      if (end !== null && end < start)
-        throw new Error(t("메모 종료 시간은 시작 시간보다 빠를 수 없습니다."));
-      if (
-        project.duration > 0 &&
-        (start > project.duration || (end !== null && end > project.duration))
-      ) {
-        throw new Error(
-          t("메모 시간은 영상 길이 {time} 이내로 입력하세요.", { time: formatTime(project.duration) }),
-        );
-      }
+      applyTime(note, field, value);
       input.value = value === null ? "" : formatTime(value);
-      if (value !== note[field]) change(note.id, { [field]: value });
     } catch (error) {
       input.value = note[field] === null ? "" : formatTime(note[field]);
       onError(error instanceof Error ? t(error.message) : t("시간을 확인해 주세요."));
@@ -158,6 +189,7 @@ export function NotesPanel({
     event: KeyboardEvent<HTMLInputElement>,
     original: number | null,
   ) {
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     if (event.key === "Enter") {
       event.preventDefault();
       event.currentTarget.blur();
@@ -169,7 +201,44 @@ export function NotesPanel({
   }
 
   return (
-    <aside className={`notes-panel panel${expandedView ? " notes-expanded" : ""}${notes.length ? "" : " notes-empty-panel"}`} aria-label={t("편집 메모")}>
+    <aside ref={panel} className={`notes-panel panel${expandedView ? " notes-expanded" : ""}${notes.length ? "" : " notes-empty-panel"} notes-resizable`}
+      style={{ "--notes-panel-height": `${panelHeight}px` } as CSSProperties} aria-label={t("편집 메모")}>
+      {expandedView && <div className={`notes-height-resizer${dragHeight === null ? "" : " resizing"}`}
+        role="separator" tabIndex={0} aria-orientation="horizontal" aria-label={t("메모 영역 높이 조절")}
+        aria-valuemin={bounds.min} aria-valuemax={bounds.max} aria-valuenow={panelHeight}
+        title={t("위로 끌어 메모 확대 · 위아래 방향키 · 두 번 클릭하여 기본 높이")}
+        onPointerDown={event => {
+          if (!event.isPrimary || event.button !== 0) return;
+          event.preventDefault(); event.stopPropagation(); event.currentTarget.focus();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          drag.current = { id: event.pointerId, y: event.clientY, height: panelHeight, latest: panelHeight };
+          setDragHeight(panelHeight);
+        }}
+        onPointerMove={event => {
+          const active = drag.current;
+          if (!active || active.id !== event.pointerId) return;
+          event.preventDefault(); event.stopPropagation();
+          active.latest = clampNoteHeight(active.height + active.y - event.clientY, bounds);
+          setDragHeight(active.latest);
+        }}
+        onPointerUp={event => {
+          const active = drag.current;
+          if (!active || active.id !== event.pointerId) return;
+          event.preventDefault(); event.stopPropagation(); drag.current = null;
+          saveHeight(clampNoteHeight(active.latest, bounds));
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+        onPointerCancel={cancelResize} onLostPointerCapture={cancelResize}
+        onDoubleClick={event => { event.preventDefault(); event.stopPropagation(); cancelResize(); saveHeight(null); }}
+        onKeyDown={event => {
+          if (event.nativeEvent.isComposing || event.keyCode === 229 || event.ctrlKey || event.altKey || event.metaKey) return;
+          if (event.key === "Escape") { cancelResize(); return; }
+          const step = event.shiftKey ? 48 : 16;
+          const value = event.key === "ArrowUp" ? panelHeight + step : event.key === "ArrowDown" ? panelHeight - step
+            : event.key === "Home" ? bounds.min : event.key === "End" ? bounds.max : null;
+          if (value === null) return;
+          event.preventDefault(); event.stopPropagation(); saveHeight(clampNoteHeight(value, bounds));
+        }}><span aria-hidden="true" /></div>}
       <div className="panel-heading">
         <div className="notes-heading">
           <MessageSquareText size={18} aria-hidden="true" />
@@ -193,7 +262,7 @@ export function NotesPanel({
         </button>
         <button
           type="button"
-          className="subtle-button"
+          className="primary-button notes-add"
           onClick={addNote}
           aria-label={t("현재 시간에 메모 추가")}
         >
@@ -233,6 +302,7 @@ export function NotesPanel({
                 >
                   <Play size={13} aria-hidden="true" />
                 </button>
+                <div className="note-time-group">
                 <label className="note-time-field">
                   <span>{t('시작')}</span>
                   <input
@@ -240,6 +310,8 @@ export function NotesPanel({
                     aria-label={t("메모 {number} 시작 시간", { number: index + 1 })}
                     defaultValue={formatTime(note.start)}
                     placeholder="00:00:00.000"
+                    inputMode="decimal"
+                    title={t("초 또는 시:분:초 형식으로 입력하세요.")}
                     maxLength={24}
                     onBlur={(event) =>
                       editTime(note, "start", event.currentTarget)
@@ -247,16 +319,25 @@ export function NotesPanel({
                     onKeyDown={(event) => timeKey(event, note.start)}
                   />
                 </label>
+                <button type="button" className="note-current-time" onClick={() => useCurrentTime(note, "start")}
+                  title={t("현재 시간을 시작으로")}
+                  aria-label={t("메모 {number} 시작을 현재 시간으로", { number: index + 1 })}>
+                  <Clock3 size={13} aria-hidden="true" />{t("현재 시간")}
+                </button>
+                </div>
                 <span className="note-time-separator" aria-hidden="true">
                   –
                 </span>
+                <div className="note-time-group">
                 <label className="note-time-field">
                   <span>{t('종료 · 선택')}</span>
                   <input
                     key={`${note.id}-end-${note.end}`}
                     aria-label={t("메모 {number} 종료 시간 선택 입력", { number: index + 1 })}
                     defaultValue={note.end === null ? "" : formatTime(note.end)}
-                    placeholder={t("선택 입력")}
+                    placeholder={t("초 또는 00:00:00")}
+                    inputMode="decimal"
+                    title={t("초 또는 시:분:초 형식으로 입력하세요.")}
                     maxLength={24}
                     onBlur={(event) =>
                       editTime(note, "end", event.currentTarget)
@@ -264,6 +345,12 @@ export function NotesPanel({
                     onKeyDown={(event) => timeKey(event, note.end)}
                   />
                 </label>
+                <button type="button" className="note-current-time" onClick={() => useCurrentTime(note, "end")}
+                  title={t("현재 시간을 종료로")}
+                  aria-label={t("메모 {number} 종료를 현재 시간으로", { number: index + 1 })}>
+                  <Clock3 size={13} aria-hidden="true" />{t("현재 시간")}
+                </button>
+                </div>
               </div>
               <textarea
                 className="note-body"
@@ -274,7 +361,7 @@ export function NotesPanel({
                 aria-label={t("메모 {number} 내용", { number: index + 1 })}
                 placeholder={t("이 장면에서 할 편집을 적어보세요…")}
                 value={note.text}
-                rows={2}
+                rows={3}
                 maxLength={10_000}
                 onChange={(event) =>
                   change(note.id, { text: event.target.value })
@@ -319,7 +406,7 @@ export function NotesPanel({
                     }))
                   }
                 >
-                  <Trash2 size={14} aria-hidden="true" />
+                  <Trash2 size={14} aria-hidden="true" />{t("삭제")}
                 </button>
               </div>
             </article>

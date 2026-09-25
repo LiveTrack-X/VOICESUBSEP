@@ -2,6 +2,7 @@ import { useI18n } from "../i18n";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MessageSquareText } from "lucide-react";
 import { formatTime, type Note, type NoteTag } from "../domain";
+import { timelineMenuAnchor, type TimelineMenuAnchor } from "../timelineContext";
 
 const TAGS: Record<NoteTag, { label: string; color: string }> = {
   edit: { label: "편집", color: "#ddd5fb" },
@@ -11,13 +12,14 @@ const TAGS: Record<NoteTag, { label: string; color: string }> = {
 };
 
 export function NoteTimelineLane({
-  notes, duration, time, selected, preview,
+  notes, duration, time, selected, preview, onContextMenu,
 }: {
   notes: Note[];
   duration: number;
   time: number;
   selected: string | null;
   preview: (id: string) => void;
+  onContextMenu?: (id: string, anchor: TimelineMenuAnchor) => void;
 }) {
   const { t } = useI18n();
   const track = useRef<HTMLDivElement>(null);
@@ -67,6 +69,8 @@ export function NoteTimelineLane({
               aria-pressed={selected === note.id}
               title={t("{label} · 클릭하여 재생", { label })}
               onClick={() => preview(note.id)}
+              onContextMenu={event => { if (onContextMenu) { event.preventDefault(); event.stopPropagation(); onContextMenu(note.id, timelineMenuAnchor(event.currentTarget, event)); } }}
+              onKeyDown={event => { if (onContextMenu && (event.key === "ContextMenu" || event.shiftKey && event.key === "F10")) { event.preventDefault(); event.stopPropagation(); onContextMenu(note.id, timelineMenuAnchor(event.currentTarget)); } }}
             >
               {isRange ? `${note.done ? "✓ " : ""}${note.text || t(tag.label)}` : note.done ? "✓" : "◆"}
             </button>

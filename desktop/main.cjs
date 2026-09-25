@@ -12,6 +12,7 @@ const { hasExited, stopOwnedBackend } = require('./backend-lifecycle.cjs');
 const { createAppLogger } = require('./startup-log.cjs');
 const { installCapturePermissions } = require('./capture-permissions.cjs');
 const { createDocumentPdfService } = require('./document-pdf.cjs');
+const { createMediaRelinkService } = require('./media-relink.cjs');
 
 app.setName('VOICESUBSEP');
 if (process.platform === 'win32') app.setAppUserModelId('com.livetrack.voicesubsep');
@@ -134,6 +135,7 @@ function validSender(event) {
 
 function installIpc(updates) {
   const saveDocumentPdf = createDocumentPdfService({ BrowserWindow, session, dialog, getWindow: () => mainWindow });
+  const mediaRelink = createMediaRelinkService({ registryPath: path.join(app.getPath('userData'), 'media-links.json'), getOrigin: () => backendOrigin || uiUrl });
   const methods = {
     'desktop:version': () => app.getVersion(),
     'desktop:update-status': () => updates.snapshot(),
@@ -141,6 +143,9 @@ function installIpc(updates) {
     'desktop:update-download': () => updates.download(),
     'desktop:update-install': () => updates.install(),
     'desktop:save-document-pdf': request => saveDocumentPdf(request),
+    'desktop:remember-media': request => mediaRelink.register(request),
+    'desktop:restore-media': request => mediaRelink.restore(request),
+    'desktop:cancel-media-restore': operationId => mediaRelink.cancel(operationId),
   };
   for (const [channel, handler] of Object.entries(methods)) {
     ipcMain.handle(channel, (event, request) => {

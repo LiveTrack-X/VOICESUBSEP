@@ -1,5 +1,5 @@
 import { useI18n } from "../i18n";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   FileText,
@@ -25,9 +25,13 @@ import { useCaptionFollow } from "../useCaptionFollow";
 import { loadCaptionFollow, saveCaptionFollow } from "../captionFollow";
 import { selectableSpeakers } from "../speakerOperations";
 import { reviewReasonLabels, SPEECH_REVIEW_HINT } from "../reviewReasons";
+import { captionColumnBounds, type CaptionColumn } from "../captionColumns";
+import { useCaptionColumns } from "../useCaptionColumns";
+import { CaptionColumnResizeHandle } from "./CaptionColumnResizeHandle";
 import "./caption-editor-density.css";
 import "./caption-virtual-list.css";
 import "./caption-follow.css";
+import "./caption-columns.css";
 
 const DENSITY_STORAGE_KEY = "voicesubsep-caption-density-v1";
 type CaptionDensity = "compact" | "comfortable";
@@ -69,6 +73,8 @@ export function CaptionEditor({
 }) {
   const { t } = useI18n();
   const { theme } = useTheme();
+  const columnWidths = useCaptionColumns(() => onError(t("열 너비를 저장하지 못했습니다. 현재 창에서만 적용합니다.")));
+  const listId = useId();
   const [reviewOnly, setReviewOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [speakerFilter, setSpeakerFilter] = useState("all");
@@ -95,9 +101,9 @@ export function CaptionEditor({
     `${caption.text} ${speakerById.get(caption.speakerId ?? "")?.name ?? t("미배정")}`.toLowerCase().includes(search.toLowerCase())
   )), [sorted, reviewOnly, speakerFilter, search, speakerById, t, focusedCaptionId]);
   const visibleIds = useMemo(()=>visible.map(caption=>caption.id),[visible]);
-  const virtual = useCaptionVirtualList(visibleIds,project.id,density,focusedCaptionId,setFocusedCaptionId);
+  const virtual = useCaptionVirtualList(visibleIds,project.id,density,focusedCaptionId,setFocusedCaptionId,columnWidths.measurementKey);
   const {listRef,rows}=virtual;
-  useCaptionFollow({ enabled: followPlayback, playing, suspended: followSuspended || styleCaptionId !== null, time, captions: visible, layout: virtual.layout, listRef, reveal: rowReveal, revealIndex: virtual.revealIndex });
+  useCaptionFollow({ enabled: followPlayback, playing, suspended: followSuspended || styleCaptionId !== null || columnWidths.resizing, time, captions: visible, layout: virtual.layout, listRef, reveal: rowReveal, revealIndex: virtual.revealIndex });
   const checkedIds = useMemo(() => new Set(visible.filter((caption) => checked.has(caption.id)).map((caption) => caption.id)), [visible, checked]);
   const replaceIds = replaceScope === "selected" ? checkedIds : new Set(visible.map((caption) => caption.id));
   const replaceCount = replacementCount(visible, replaceIds, find);
@@ -204,7 +210,7 @@ export function CaptionEditor({
     (c) => !c.reviewed && c.reasons.length > 0,
   ).length;
   return (
-    <section className={`caption-editor caption-density-${density}`} aria-label={t("자막 편집")}>
+    <section ref={columnWidths.editorRef} style={columnWidths.style} className={`caption-editor caption-columns-resizable caption-density-${density}${columnWidths.resizing ? " caption-columns-dragging" : ""}`} aria-label={t("자막 편집")}>
       <div className="caption-toolbar">
         <div className="tabs">
           <button
@@ -333,12 +339,17 @@ export function CaptionEditor({
       </details>
       {bulkNotice && <p className="caption-bulk-notice" role="status">{bulkNotice}</p>}
       <div className="caption-columns">
-        <span>{t('시간')}</span>
-        <span>{t('인물')}</span>
+        {(["time", "speaker"] as const).map((column: CaptionColumn) => <span key={column} className="caption-column-heading">
+          {t(column === "time" ? "시간" : "인물")}
+          <CaptionColumnResizeHandle label={column === "time" ? "시간 열 너비" : "인물 열 너비"}
+            value={columnWidths.layout[column]} {...captionColumnBounds(columnWidths.layout,column)} controls={listId}
+            onBegin={columnWidths.begin} onChange={width => columnWidths.change(column,width)}
+            onCommit={width => columnWidths.commit(column,width)} onCancel={columnWidths.cancel} onReset={() => columnWidths.reset(column)} />
+        </span>)}
         <span>{t('자막')}</span>
         <span>{t('검수')}</span>
       </div>
-      <div className="caption-list" ref={listRef} onFocusCapture={virtual.onFocusCapture} onBlurCapture={virtual.onBlurCapture}>
+      <div className="caption-list" id={listId} ref={element => { listRef.current=element; columnWidths.listRef.current=element; }} onFocusCapture={virtual.onFocusCapture} onBlurCapture={virtual.onBlurCapture}>
         {visible.length === 0 ? (
           <div className="empty-state">
             <FileText size={42} strokeWidth={1.5} />

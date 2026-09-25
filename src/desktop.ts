@@ -8,6 +8,9 @@ export type UpdateStatus = {
   error?: string;
 };
 export interface DesktopBridge {
+  rememberMedia?(file: File, request: { projectId: string; identity: import('./mediaIdentity').MediaIdentity; mediaId: string }): Promise<{ remembered: boolean }>;
+  restoreMedia?(request: { projectId: string; identity: import('./mediaIdentity').MediaIdentity; operationId: string }): Promise<{ status: 'ready'; media: import('./api').MediaInfo } | { status: 'unremembered' | 'missing' | 'changed' | 'unavailable' | 'cancelled' }>;
+  cancelMediaRestore?(operationId: string): Promise<{ cancelled: boolean }>;
   saveDocumentPdf?(request: { html: string; suggestedName: string }): Promise<{ status: "saved" | "cancelled"; filePath?: string }>;
   appVersion(): Promise<string>;
   updateStatus(): Promise<UpdateStatus>;

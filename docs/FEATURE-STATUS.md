@@ -8,6 +8,32 @@ Scope of the **published and locally installed 0.3.3 Windows preview**, reviewed
 
 **버전 표시는 새 변경과 기존 기능을 구분합니다.** 현재 다운로드는 [0.3.3](releases/v0.3.3.md)이며 [0.3.2](releases/v0.3.2.md)는 이전 릴리즈로 유지합니다. 기존 0.3.2 릴리즈·증거 파일과 [0.3.1 기록](releases/v0.3.1.md)은 변경하지 않습니다.
 
+## 0.3.4 preparation / 0.3.4 준비 중
+
+**Source frozen and final source regression passed; packaging and release verification in progress. Not yet published or installed.** Current public/installed release remains 0.3.3. The rows below describe 0.3.4 changes and supersede older layout descriptions only after upgrading. See the [0.3.4 preparation record](releases/v0.3.4.md) and [validation record](evidence/v0.3.4-validation.json) for evidence and limits.
+
+**소스 동결·최종 소스 회귀 통과, 패키징·배포 검증 진행 중이며 아직 미게시·미설치입니다.** 현재 공개·설치 버전은 0.3.3입니다. 아래는 0.3.4 변경이며 업데이트한 뒤에만 이전 배치 설명을 대체합니다. 검증 범위·한계는 [0.3.4 준비 기록](releases/v0.3.4.md)을 확인하세요.
+
+| Change / 변경 | Source status / 소스 상태 | Actual scope / 실제 범위 |
+| --- | --- | --- |
+| Panel widths / 패널 너비 | Implemented and browser checked / 구현·브라우저 확인 | Sidebar and preview/cut panel resize independently with saved preferences, keyboard/reset and viewport clamps; narrow screens keep stacking / 설정·미리보기/컷 폭 개별 조절·저장·키보드·복원·창 크기 제한, 좁은 화면 세로 배치 유지 |
+| Caption columns / 자막 표 열 | Implemented and browser checked / 구현·브라우저 확인 | Time/speaker header boundaries resize separately; text gets remaining width, review controls remain; temporary clamps preserve wide-screen preferences / 시간·인물 경계 개별 조절, 자막 잔여 폭·검수 유지, 임시 제한 후 기존 폭 복원 |
+| Maximum preview fit / 미리보기 최대 맞춤 | Implemented and browser checked / 구현·브라우저 확인 | Measured available width/height, original ratio and no cropping; replaces the height slider/old saved manual height. Collapse/playback/fullscreen remain / 실측 가로·세로 안에서 비율·전체 영상 유지, 높이 슬라이더·옛 수동 높이 제한 대체. 접기·재생·전체 화면 유지 |
+| Notes layout and times / 메모 크기·시간 | Implemented and browser checked / 구현·브라우저 확인 | Saved vertical resize, responsive cards, seconds/timecode input and current-time boundaries, compact empty state / 높이 조절 저장·가변 카드 배치·초/시간 코드·현재 위치 시작/종료·빈 화면 축소 |
+| Original auto-reconnect / 원본 자동 재연결 | Implemented; temporary backend integration checked / 구현·임시 서버 통합 확인 | Private per-device location registry, original SHA256/size and cache-byte verification, streamed local upload when needed; changed/missing originals require reconnect. Browser File restoration/native-picker restart UI not verified / 기기별 위치·원본 해시/크기·캐시 바이트 검사, 필요 시 로컬 스트리밍 재업로드. 변경/누락 시 재연결·브라우저 File 복원 아님·파일 선택 후 앱 재시작 전체 UI 미검증 |
+| Clear media state / 원본 연결 표시 | Implemented and browser checked / 구현·브라우저 확인 | Checking/connected/disconnected text and icons; a saved name alone does not mean a connected source / 확인 중·연결·미연결 글자·아이콘, 파일명만 남은 상태를 연결됨으로 표시하지 않음 |
+| Connected cache protection / 연결 캐시 보호 | Implemented and React DOM checked / 구현·React DOM 확인 | Current desktop source excluded from single/bulk cleanup and reclaimable bytes; confirmation rechecks source/list changes and excludes later uploads. App UI protection only, not an external-API or multi-client playback lease / 현재 연결된 설치형 원본 단건·일괄 정리/가능 용량에서 제외, 확인 뒤 연결/목록 변경 재검사·새 업로드 제외. 앱 UI 보호이며 외부 API·여러 클라이언트 재생 예약 아님 |
+| Timeline item menu / 타임라인 항목 메뉴 | Implemented and browser checked / 구현·브라우저 확인 | Caption/note right-click or Shift+F10: edit, seek, move to playhead, delete; duration/end-boundary protection and undo. Merely opening does not play / 자막·메모 우클릭/Shift+F10 편집·이동·현재 위치 배치·삭제, 길이/끝 경계·실행 취소, 메뉴 열기만으로 재생하지 않음 |
+| Dense timeline clarity / 밀집 타임라인 선명도 | Implemented and browser checked / 구현·브라우저 확인 | Visible-area DPR-aware canvas at high zoom, scroll-preserving click/context selection; synthetic 8× and DPR 1.25 checked / 보이는 구간만 화면 배율에 맞춰 그리기·스크롤 보존 클릭/메뉴, 합성 8배·DPR 1.25 확인 |
+| Repeated progress controls / 진행창 조작 중복 | Fixed and Electron checked / 수정·Electron 확인 | Distinct queue/details keys prevent duplicate controls and confirmation resets during polling; new jobs still reset state / 대기열/상세 키 분리로 갱신 중 조작 누적·확인 상태 초기화 방지, 다른 작업 전환 초기화 유지 |
+| VST click ignored / VST 클릭 무반응 | Reproduced path fixed / 재현 경로 수정 | Preview context changes release the old lock and reject stale replies; clicked-slot status/errors are visible. Mocked API/browser regression is not proof of every installed native-window failure / 비교 입력 변경 때 옛 잠금·응답 정리, 클릭 슬롯 상태/오류 즉시 표시. 모의 API·화면 검증이며 모든 설치본 창 실패 원인 확정 아님 |
+| Creator links / 제작자 링크 | Implemented / 구현 | Header logo and Created by LiveTrack footer link to the creator GitHub profile / 상단 로고·하단 제작자 표기에서 GitHub 프로필 연결 |
+| New speaker-assignment strategy / 새 화자 배정 전략 | **Proposal only / 제안만** | [Reason evidence, boundary candidates and voice references](SPEAKER-ASSIGNMENT-STRATEGY.md) are not implemented; no accuracy or unassigned-rate improvement claimed / 미배정 원인 근거·경계 후보·확인 음성 전략 미구현, 정확도·미배정률 개선 주장 없음 |
+
+Verification / 검증: **843 frontend + 84 Node tests**, **1,023 backend passed / 1 skipped**, production web build, 42-module frozen-source match and offline runtime/shutdown checks. The skipped Windows diagnostics test requires symlink permission. No fresh inference, final package/public download or 0.3.4 installation success is implied by these checks.
+
+프런트 **843개 + Node 84개**, 백엔드 **1,023개 통과·1개 건너뜀**, 웹 빌드·동결 모듈 42개 소스 일치·오프라인 실행환경/종료 확인입니다. 건너뛴 Windows 진단 검사는 심볼릭 링크 권한이 필요합니다. 새 추론·최종 패키지/공개 다운로드·0.3.4 설치 완료를 의미하지 않습니다.
+
 ## Editing / 자막 편집
 
 | Request / 요청 | Status / 상태 | Actual scope / 실제 범위 |

@@ -1,4 +1,5 @@
 export const cacheMessages: Record<string, readonly [string, string, string, string]> = {
+  "현재 편집기에 연결됨": ["Connected to this editor", "この編集画面に接続中", "已连接到当前编辑器", "Conectado a este editor"],
   "정리 가능한 캐시 정리": ["Clean unused cache", "未使用キャッシュを整理", "清理未使用缓存", "Limpiar caché sin uso"],
   "캐시 정리 확인": ["Confirm cache cleanup", "キャッシュ整理の確認", "确认清理缓存", "Confirmar limpieza de caché"],
   "정리 확인": ["Confirm cleanup", "整理する", "确认清理", "Confirmar limpieza"],

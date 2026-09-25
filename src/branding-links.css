@@ -1,0 +1,28 @@
+.status-bar:has(.creator-link) {
+  height: auto;
+  min-height: 29px;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.status-bar .status-attribution {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.creator-link {
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.creator-link:hover {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.creator-link:focus-visible,
+.brand:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 3px;
+  border-radius: 3px;
+}

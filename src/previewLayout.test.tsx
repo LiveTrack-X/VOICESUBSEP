@@ -15,13 +15,15 @@ describe("preview layout preferences", () => {
     expect(previewHeight(layout, "audio")).toBe(48);
     expect(previewHeight(layout, "empty")).toBe(40);
   });
-  it("rejects malformed/versionless preferences and bounds saved heights", () => {
+  it("rejects malformed preferences and migrates saved heights to automatic fit without losing collapsed state", () => {
     for (const value of ["broken", "null", "[]", '{"collapsed":true}', '{"version":1,"collapsed":false,"height":"200"}'])
       expect(parsePreviewLayout(value)).toEqual({ height: null, collapsed: false });
-    expect(parsePreviewLayout('{"version":1,"collapsed":true,"height":9999}')).toEqual({ collapsed: true, height: 360 });
-    expect(parsePreviewLayout('{"version":1,"collapsed":false,"height":-9}')).toEqual({ collapsed: false, height: 48 });
+    expect(parsePreviewLayout('{"version":1,"collapsed":true,"height":9999}')).toEqual({ collapsed: true, height: null });
+    expect(parsePreviewLayout('{"version":1,"collapsed":false,"height":-9}')).toEqual({ collapsed: false, height: null });
     const custom = parsePreviewLayout('{"version":1,"collapsed":false,"height":232}');
-    for (const kind of ["video", "audio", "empty"] as const) expect(previewHeight(custom, kind)).toBe(232);
+    expect(previewHeight(custom, "video")).toBe(144);
+    expect(previewHeight(custom, "audio")).toBe(48);
+    expect(previewHeight(custom, "empty")).toBe(40);
   });
   it("keeps the media element and playback/fullscreen controls mounted when its picture is collapsed", () => {
     vi.stubGlobal("localStorage", { getItem: (key: string) => key === PREVIEW_LAYOUT_KEY ? '{"version":1,"collapsed":true,"height":152}' : null });
@@ -33,5 +35,8 @@ describe("preview layout preferences", () => {
     expect(html).toContain('aria-label="재생"');
     expect(html).toContain('aria-label="전체 화면"');
     expect(html).toContain("미리보기 펼치기");
+    expect(html).toContain("자동 맞춤");
+    expect(html).not.toContain("preview-custom-height");
+    expect(html).not.toContain('aria-label="미리보기 높이"');
   });
 });

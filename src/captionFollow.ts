@@ -65,7 +65,7 @@ export class CaptionFollowGate {
 
 export function followEditingTarget(target: unknown): boolean {
   const element = target as { closest?: (selector: string) => unknown } | null;
-  if (element?.closest?.('[role="dialog"], [aria-modal="true"]')) return true;
+  if (element?.closest?.('[role="dialog"], [aria-modal="true"], [role="menu"]')) return true;
   if (element?.closest?.('[data-caption-follow-seek]')) return false;
   return !!element?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="slider"]');
 }

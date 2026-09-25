@@ -1,4 +1,5 @@
 import { useI18n } from "../i18n";
+import type { MediaSource } from "../mediaSource";
 import { useEffect, useId, useRef, useState } from "react";
 import { AudioLines, CheckCircle2, Languages, LoaderCircle } from "lucide-react";
 import {
@@ -37,7 +38,7 @@ export function AnalysisDialog({
   onMediaReady,
   onJob,
 }: {
-  file: File;
+  file: MediaSource;
   project: Project;
   onClose: () => void;
   onApply: (result: AnalysisResult) => void;

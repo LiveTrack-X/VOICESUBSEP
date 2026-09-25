@@ -95,7 +95,7 @@
     padding: 0 12px;
   }
 }
-.caption-density-canvas{width:100%;height:23px;display:block;pointer-events:none}
+.caption-density-canvas{position:absolute;top:0;left:0;height:23px;display:block;pointer-events:none}
 .caption-edge{position:absolute;top:1px;z-index:4;height:21px;width:8px;min-width:8px;transform:translateX(-50%);border:1px solid var(--surface);border-radius:2px;padding:0;background:var(--accent-text);cursor:ew-resize;touch-action:none}
 .caption-edge:focus-visible{outline:2px solid var(--accent-text);outline-offset:2px}
 .caption-edge-start{transform:translateX(-100%)}.caption-edge-end{transform:none}

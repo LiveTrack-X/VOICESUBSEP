@@ -60,6 +60,7 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
   const alive = useRef(true);
   const busyRef = useRef(false);
   const previewId = useRef<string | null>(null);
+  const previewRequest = useRef<object | null>(null);
   const originalAudio = useRef<HTMLAudioElement | null>(null);
   const processedAudio = useRef<HTMLAudioElement | null>(null);
   const presetInput = useRef<HTMLInputElement | null>(null);
@@ -84,7 +85,17 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
 
   useEffect(() => { setSaved(saveVstSettings(settings)); }, [settings]);
   useEffect(() => { onStateChange({ preprocessing, busy, blocked }); }, [preprocessing, busy, blocked, onStateChange]);
-  useEffect(() => { setPreview(null); setError(""); }, [settings, media?.id, audioTrack]);
+  useEffect(() => {
+    // A changed source/track/chain invalidates this comparison, including an in-flight POST.
+    // Release only the preview's lock; inspection/import may own the same synchronous guard.
+    const id = previewId.current;
+    if (previewRequest.current || id) {
+      previewRequest.current = null; previewId.current = null; busyRef.current = false;
+      setPreviewStarting(false); setPollPaused(false); setCancelPending(false);
+      if (id) void request(`/api/vst/previews/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
+    }
+    setPreview(null); setError("");
+  }, [settings, media?.id, audioTrack]);
 
   async function refresh() {
     if (busyRef.current || editor.busy) return;
@@ -104,6 +115,7 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
     void refresh();
     return () => {
       alive.current = false;
+      previewRequest.current = null;
       if (previewId.current) void request(`/api/vst/previews/${encodeURIComponent(previewId.current)}`, { method: "DELETE" }).catch(() => {});
     };
   }, []);
@@ -120,7 +132,7 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
         const next = checkedPreview(await request(`/api/vst/previews/${encodeURIComponent(id)}`));
         if (next.id !== id) throw new Error(t("VST 응답 형식이 올바르지 않습니다."));
         failures = 0;
-        if (live && previewId.current === id) { setPreview(next); setError(""); if (!["queued", "running"].includes(next.status)) { busyRef.current = false; previewId.current = null; setCancelPending(false); retry = false; } }
+        if (live && previewId.current === id) { setPreview(next); setError(""); if (!["queued", "running"].includes(next.status)) { busyRef.current = false; previewId.current = null; previewRequest.current = null; setCancelPending(false); retry = false; } }
       } catch (caught) {
         if (live && previewId.current === id) {
           const action = vstPollFailure(caught, ++failures);
@@ -135,12 +147,12 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
   }, [preview?.id, previewRunning]);
 
   function finishMissingPreview(id: string) {
-    busyRef.current = false; previewId.current = null; setCancelPending(false); setPollPaused(false); setError("");
+    busyRef.current = false; previewId.current = null; previewRequest.current = null; setCancelPending(false); setPollPaused(false); setError("");
     setPreview({ id, status: "failed", error: t("서버가 다시 시작됐거나 미리보기가 만료되었습니다. 다시 생성하세요.") });
   }
   function detachPreview() {
     const id = previewId.current;
-    previewId.current = null; busyRef.current = false; setPollPaused(false); setPreview(null); setCancelPending(false);
+    previewId.current = null; previewRequest.current = null; busyRef.current = false; setPollPaused(false); setPreview(null); setCancelPending(false);
     if (id) void request(`/api/vst/previews/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
     setError(t("미리보기 대기를 종료했습니다. 서버의 취소 완료 여부는 확인되지 않았습니다."));
   }
@@ -199,6 +211,8 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
   }
   async function startPreview() {
     if (locked || busyRef.current || blocked || !preprocessing || !media || !validRange) return;
+    const owner = {};
+    previewRequest.current = owner;
     busyRef.current = true; setPreviewStarting(true); setPreview(null); setPollPaused(false); setError(""); setCancelPending(false);
     try {
       const next = checkedPreview(await request("/api/vst/previews", {
@@ -206,23 +220,30 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
         body: JSON.stringify({ mediaId: media.id, audioTrack, start: startSeconds, duration: Math.min(durationSeconds, media.duration - startSeconds), chain: preprocessing.chain,
           ...(preprocessing.noiseReduction ? { noiseReduction: preprocessing.noiseReduction } : {}) }),
       }));
-      if (!alive.current) { if (["queued", "running"].includes(next.status)) void request(`/api/vst/previews/${encodeURIComponent(next.id)}`, { method: "DELETE" }).catch(() => {}); return; }
+      if (!alive.current || previewRequest.current !== owner) { if (["queued", "running"].includes(next.status)) void request(`/api/vst/previews/${encodeURIComponent(next.id)}`, { method: "DELETE" }).catch(() => {}); return; }
       setPreview(next);
       if (["queued", "running"].includes(next.status)) previewId.current = next.id;
       else busyRef.current = false;
-    } catch (caught) { busyRef.current = false; if (alive.current) setError((caught as Error).message); }
-    finally { if (alive.current) setPreviewStarting(false); }
+    } catch (caught) {
+      if (alive.current && previewRequest.current === owner) { busyRef.current = false; setError((caught as Error).message); }
+    } finally {
+      if (alive.current && previewRequest.current === owner) {
+        setPreviewStarting(false);
+        if (!previewId.current) previewRequest.current = null;
+      }
+    }
   }
   async function cancelPreview() {
     if (!preview || !previewRunning || cancelPending) return;
+    const owner = previewRequest.current;
     setCancelPending(true);
     try {
       const next = checkedPreview(await request(`/api/vst/previews/${encodeURIComponent(preview.id)}`, { method: "DELETE" }));
-      if (!alive.current) return;
+      if (!alive.current || previewRequest.current !== owner || previewId.current !== preview.id) return;
       if (next.id !== preview.id) throw new Error(t("VST 응답 형식이 올바르지 않습니다."));
       setPreview(next);
-      if (!["queued", "running"].includes(next.status)) { busyRef.current = false; previewId.current = null; setCancelPending(false); }
-    } catch (caught) { if (alive.current) { if (vstPollFailure(caught, 1) === "missing") finishMissingPreview(preview.id); else { setError((caught as Error).message); setCancelPending(false); } } }
+      if (!["queued", "running"].includes(next.status)) { busyRef.current = false; previewId.current = null; previewRequest.current = null; setCancelPending(false); }
+    } catch (caught) { if (alive.current && previewRequest.current === owner && previewId.current === preview.id) { if (vstPollFailure(caught, 1) === "missing") finishMissingPreview(preview.id); else { setError((caught as Error).message); setCancelPending(false); } } }
   }
 
   return <section className="vst-chain-panel" aria-label={t("오디오 사전처리")}>
@@ -272,8 +293,10 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
           <small className="vst-path" title={slot.path}>{slot.path}{slot.pluginName ? ` · ${slot.pluginName}` : ""}</small>
           <button type="button" className="vst-native-open" disabled={!status?.available || badParameters}
             onClick={() => { if (!locked && !busyRef.current) { setPresetMessage(""); setError(""); void editor.open(slot); } }}>
-            <AppWindow size={16} />{t("플러그인 창 열기")}
+            {editor.busy && editor.slotId === slot.id ? <><LoaderCircle size={16} className="spin" />{t("플러그인 창 요청 중…")}</> : <><AppWindow size={16} />{t("플러그인 창 열기")}</>}
           </button>
+          {editor.slotId === slot.id && editor.busy && <p className="vst-editor-inline-status" role="status">{t("별도 창을 확인하세요. 보이지 않으면 아래의 닫기 또는 취소 버튼을 사용하세요.")}</p>}
+          {editor.slotId === slot.id && editor.error && <p className="error-box" role="alert">{t(editor.error)}</p>}
           <details className="vst-parameters"><summary>{t("플러그인 매개변수")}</summary>
             {!metadata[slot.id] ? <><p>{t("저장된 설정을 사용합니다. 조정하려면 플러그인을 불러오세요.")}</p><button type="button" disabled={!status?.available} onClick={() => void inspect(slot)}>{t("매개변수 불러오기")}</button></>
               : !metadata[slot.id]!.length ? <p>{t("이 플러그인은 조정 가능한 매개변수를 제공하지 않습니다.")}</p>
@@ -336,6 +359,6 @@ export function VstChainPanel({ media, audioTrack, disabled = false, onStateChan
         <small>{t("음성 인식 결과가 좋아지는지는 별도로 비교해야 합니다. 소음이 줄어도 인식률이 낮아질 수 있습니다.")}</small>
       </div>}
     </>}
-    {(error || editor.error) && <p className="error-box" role="alert">{t(error || editor.error)}</p>}
+    {(error || (editor.error && !settings.chain.some(slot => slot.id === editor.slotId))) && <p className="error-box" role="alert">{t(error || editor.error)}</p>}
   </section>;
 }

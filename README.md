@@ -6,6 +6,8 @@
 
 [0.3.3 release record / 릴리즈 기록](docs/releases/v0.3.3.md) · [User guide / 사용자 가이드](docs/USER-GUIDE.md) · [Documentation / 문서 목차](docs/INDEX.md)
 
+**0.3.4 in validation / 검증 중:** resizable editor panels and columns, clearer notes, verified original-file reconnection and timeline/VST/progress-dialog fixes. [Current status / 현재 상태](docs/releases/v0.3.4.md). The [speaker-assignment strategy / 미배정 개선 전략](docs/SPEAKER-ASSIGNMENT-STRATEGY.md) is a proposal, not an implemented recognition change. / 패널·열 크기 조절, 메모 개선, 원본 자동 연결과 타임라인·VST·진행 창 수정을 검증 중입니다. 미배정 전략은 제안이며 인식 알고리즘 변경은 아직 적용하지 않았습니다.
+
 **v0.3.3 Windows preview is published and locally installed.** Download the [small online setup EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.3/VOICESUBSEP-0.3.3-Online-Setup-x64.exe). The [release record](docs/releases/v0.3.3.md) separates source/package checks, public-file verification and profile-preserving installation.
 
 **v0.3.3 Windows 프리뷰를 공개하고 로컬 설치했습니다.** [작은 온라인 설치 EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.3/VOICESUBSEP-0.3.3-Online-Setup-x64.exe)로 시작하세요. [릴리즈 기록](docs/releases/v0.3.3.md)에서 소스·패키지 검사, 공개 파일 검증과 프로필을 보존한 설치를 구분합니다.
