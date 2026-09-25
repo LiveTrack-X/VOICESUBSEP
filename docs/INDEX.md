@@ -1,23 +1,22 @@
 # Documentation / 문서 안내
 
-Start with the [0.3.2 release record](releases/v0.3.2.md) for the published Windows preview, verified downloads and local installation. Tests, frozen inference, public files and installed-profile checks have distinct limits; detailed engineering/history documents remain primarily Korean.
+Start with the [0.3.3 release record](releases/v0.3.3.md). The Windows preview is published and locally installed, with source/CI, package, public-file and profile-preservation checks recorded. Tests, frozen inference, public downloads and installed-profile checks are separate evidence. Detailed engineering/history documents remain primarily Korean.
 
-[0.3.2 릴리즈 기록](releases/v0.3.2.md)에서 공개 프리뷰·검증된 다운로드·로컬 설치를 확인하세요. 테스트·동결 추론·공개 파일·설치 프로필 검사 범위는 구분하며 상세 기술·과거 문서는 한국어 중심입니다.
+[0.3.3 릴리즈 기록](releases/v0.3.3.md)부터 확인하세요. Windows 프리뷰를 공개하고 로컬 설치했으며 소스·CI·패키지·공개 파일·프로필 보존 검증을 기록했습니다. 테스트·동결 추론·공개 다운로드·설치 프로필 검사를 구분하며 상세 기술·과거 문서는 한국어 중심입니다.
 
-**Earlier 0.3.1 is preserved.** It adds continuous scrolling, theme/language controls, speaker-colored transcripts, improved preview layout, local Whisper AUTO language retention, background job status and queue/cache controls. See the [release record](releases/v0.3.1.md) for exact scope and artifacts.
+**New in 0.3.3:** optional RNNoise, native VST editor/state saving, personal shortcuts, centered caption follow, clearer cut controls, timeline name editing, compact analysis results, speech-activity checks and document search/playback. See the release record for measured scope and remaining device/quality limits.
 
-**이전 0.3.1 기록을 보존합니다.** 연속 스크롤·테마/언어 조작·인물 색 발언록·미리보기 배치·로컬 Whisper AUTO 언어 유지·백그라운드 작업 상태·대기열/캐시 조작을 개선했습니다. 정확한 범위·파일은 [릴리즈 기록](releases/v0.3.1.md)을 확인하세요.
+**0.3.3의 새 기능:** 선택형 RNNoise·VST 전용 창과 상태 저장·개인 단축키·현재 자막 중앙 따라가기·컷 조작·타임라인 이름 수정·분석 상세 접기·음성 활동 검사·문서 검색과 재생입니다. 측정 범위와 남은 장치·품질 한계는 릴리즈 기록을 확인하세요.
 
-**0.3.2 is published and locally installed.** The [release record](releases/v0.3.2.md) separates source/CI, frozen Whisper+Nemotron, public asset/signature checks and profile preservation. YTT upload/player rendering and real-broadcast acceptance remain unverified.
+**Historical 0.3.2 remains available.** Its [release record](releases/v0.3.2.md), artifacts and evidence are preserved. That version added isolated analysis stop/priority, original-file verification, capture preferences, guarded VST residual checks and experimental YTT. The earlier [0.3.1 record](releases/v0.3.1.md) remains available too.
 
-**0.3.2를 공개하고 로컬 설치했습니다.** [릴리즈 기록](releases/v0.3.2.md)에서 소스·CI, 동결 Whisper+Nemotron, 공개 파일·명세 서명, 프로필 보존 증거를 구분합니다. YTT 업로드·플레이어 표시·실방송 수용 검증은 별도입니다.
+**이전 0.3.2도 계속 제공합니다.** [당시 기록](releases/v0.3.2.md)·파일·증거를 보존합니다. 그 버전은 분석 격리 중단·우선순위, 원본 검증, 녹음 입력 기억, 조건부 VST 잔여 지연 검사·실험적 YTT를 추가했습니다. 이전 [0.3.1 기록](releases/v0.3.1.md)도 유지합니다.
 
 ## Users / 사용자
 
-[0.3.3 preparation / 개발·검증 중인 0.3.3](releases/v0.3.3.md) documents native VST windows, built-in RNNoise, shortcut customization and editing fixes. Publication and installation are tracked separately. / VST 전용 창·내장 RNNoise·단축키·편집 개선의 구현과 게시·설치를 구분합니다.
-
 | Purpose / 목적 | Document / 문서 |
 | --- | --- |
+| 0.3.3 changes, package/installation checks and publication status / 0.3.3 변경·패키지/설치 검증·게시 상태 | [0.3.3 release record / 릴리즈 기록](releases/v0.3.3.md) |
 | 0.3.1 publication, verified installer and checksums / 0.3.1 게시 상태·설치 검증·체크섬 | [0.3.1 release record / 릴리즈 기록](releases/v0.3.1.md) |
 | 0.3.2 publication, checksums and installation / 0.3.2 게시·체크섬·설치 | [0.3.2 release record / 릴리즈 기록](releases/v0.3.2.md) |
 | Small EXE, speed limit, retry/cache, manual fallback / 작은 EXE·속도 제한·재시도·캐시·수동 대안 | [Online installer / 온라인 설치](ONLINE-INSTALLER.md) |
@@ -40,6 +39,7 @@ Start with the [0.3.2 release record](releases/v0.3.2.md) for the published Wind
 - [Model setup / 모델 환경](MODEL-SETUP.md), [GPU models and Faster Whisper XXL / GPU 모델·XXL](GPU-MODELS.md)
 - [Qwen source-only runtime, alignment and distribution audit / Qwen 개발 환경·정렬·배포 감사](QWEN-RUNTIME.md)
 - [Dependency notices and distribution obligations / 의존성 고지·재배포 의무](BUNDLED-NOTICES.md)
+- [0.3.3 source, runtime, package and release evidence / 0.3.3 소스·실행환경·패키지·릴리즈 증거](releases/v0.3.3.md)
 - [0.3.1 runtime, installer and release evidence / 0.3.1 실행환경·설치·릴리즈 증거](releases/v0.3.1.md)
 - [0.3.2 source validation and remaining acceptance / 0.3.2 소스 검증·남은 수용 확인](releases/v0.3.2.md)
 - [Design system / 디자인 시스템](design/DESIGN-SYSTEM.md)

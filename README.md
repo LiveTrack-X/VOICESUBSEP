@@ -4,15 +4,17 @@
 
 **로컬 처리가 기본인 인물별 자막·편집 메모·인터뷰·수동 회의록 편집기입니다.** 로컬 Whisper가 내용을 전사하고 로컬 NVIDIA Nemotron이 화자 활동을 분석합니다. Groq·xAI·Gemini 음성 인식과 Deepgram 화자 구분은 고급 설정에서 직접 선택할 때만 사용합니다. 원본을 들으며 자막과 인물 배정을 검수합니다.
 
-[0.3.2 release record / 릴리즈 기록](docs/releases/v0.3.2.md) · [User guide / 사용자 가이드](docs/USER-GUIDE.md) · [Documentation / 문서 목차](docs/INDEX.md)
+[0.3.3 release record / 릴리즈 기록](docs/releases/v0.3.3.md) · [User guide / 사용자 가이드](docs/USER-GUIDE.md) · [Documentation / 문서 목차](docs/INDEX.md)
 
-**v0.3.2 Windows preview is published.** Download the [small online setup EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.2/VOICESUBSEP-0.3.2-Online-Setup-x64.exe). Public asset checks and local installation are recorded separately in the [release record](docs/releases/v0.3.2.md).
+**v0.3.3 Windows preview is published and locally installed.** Download the [small online setup EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.3/VOICESUBSEP-0.3.3-Online-Setup-x64.exe). The [release record](docs/releases/v0.3.3.md) separates source/package checks, public-file verification and profile-preserving installation.
 
-**v0.3.2 Windows 프리뷰를 공개했습니다.** [작은 온라인 설치 EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.2/VOICESUBSEP-0.3.2-Online-Setup-x64.exe)로 시작하세요. 공개 파일 검증과 로컬 설치는 [릴리즈 기록](docs/releases/v0.3.2.md)에서 구분합니다.
+**v0.3.3 Windows 프리뷰를 공개하고 로컬 설치했습니다.** [작은 온라인 설치 EXE](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.3/VOICESUBSEP-0.3.3-Online-Setup-x64.exe)로 시작하세요. [릴리즈 기록](docs/releases/v0.3.3.md)에서 소스·패키지 검사, 공개 파일 검증과 프로필을 보존한 설치를 구분합니다.
 
-**0.3.2 adds** isolated analysis force-stop/priority, refreshed history, SHA256-bound originals and render verification, renewed review after manual edits, exact transcript selection, remembered capture inputs, guarded VST residual-delay checks, YTT output and removal of the fixed source-upload cap. See the [release record](docs/releases/v0.3.2.md) for evidence and limits.
+**New in 0.3.3:** optional built-in RNNoise, native VST editor/state saving, a customizable F1 shortcut hub, centered caption follow, clearer cut controls, timeline name editing, compact analysis results and document search/playback. Local Whisper also checks speech activity to suppress strong silence cases and flag uncertain spans for review. These checks do not guarantee recognition accuracy.
 
-**0.3.2는** 분석 격리·강제 종료·우선 실행, 이력 갱신, SHA256 원본 연결·렌더 검증, 수정 후 재검수·정확한 발언 선택, 녹음 입력 기억, VST 잔여 지연 검사, YTT 출력과 원본 업로드 고정 상한 제거를 포함합니다. 증거와 한계는 [릴리즈 기록](docs/releases/v0.3.2.md)을 확인하세요.
+**0.3.3의 새 기능:** 선택형 내장 RNNoise, VST 전용 창·내부 상태 저장, F1 개인 단축키 허브, 현재 자막 중앙 따라가기, 컷 조작·타임라인 이름 편집, 간결한 분석 결과와 문서 검색·재생입니다. 로컬 Whisper는 음성 활동도 대조해 엄격한 무음 조건의 결과만 제외하고 불확실한 구간은 검수 표시로 보존합니다. 인식 정확도를 보장하는 검사는 아닙니다.
+
+**Earlier 0.3.2:** isolated analysis stop/priority, original-file identity checks, renewed review after edits, remembered capture inputs, guarded VST residual-delay correction, experimental YTT and removal of the fixed source-upload cap. Its [release and evidence](docs/releases/v0.3.2.md) remain unchanged. / **이전 0.3.2:** 분석 격리 중단·우선순위, 원본 식별, 수정 후 재검수, 녹음 입력 기억, 조건부 VST 잔여 지연 보정, 실험적 YTT·원본 업로드 고정 상한 제거를 포함하며 [당시 기록](docs/releases/v0.3.2.md)은 보존합니다.
 
 Read [dependency notices and distribution obligations / 의존성 고지·재배포 의무](docs/BUNDLED-NOTICES.md) before redistributing. Public source access does not grant a permissive app license. / 재배포 전 고지를 확인하세요. 소스 공개가 앱에 자유로운 재배포 라이선스를 부여하지는 않습니다.
 
@@ -20,9 +22,9 @@ Read [dependency notices and distribution obligations / 의존성 고지·재배
 
 ## Install / 설치
 
-Download [VOICESUBSEP-0.3.2-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.2/VOICESUBSEP-0.3.2-Online-Setup-x64.exe) (166,912 bytes). It downloads the 2.42 GB runtime without GitHub login, verifies SHA256, assembles the payload, and opens the installation wizard. Whisper/Nemotron weights are separate; Silero VAD ONNX is included. The source-code ZIP is not an installer.
+Download [VOICESUBSEP-0.3.3-Online-Setup-x64.exe](https://github.com/LiveTrack-X/VOICESUBSEP/releases/download/v0.3.3/VOICESUBSEP-0.3.3-Online-Setup-x64.exe) (166,912 bytes). The small EXE downloads the 2.42 GB runtime without GitHub login, verifies SHA256, assembles the payload, and opens the installation wizard. Whisper/Nemotron weights are separate; Silero VAD ONNX and the small RNNoise model are included. The source-code ZIP is not an installer.
 
-게시된 설치 파일은 [0.3.2 릴리즈 기록](docs/releases/v0.3.2.md)에서 확인합니다. 작은 온라인 EXE가 로그인 없이 설치 파일을 받아 검증·재조립합니다. Whisper/Nemotron 가중치는 별도이며 Silero VAD ONNX는 실행환경에 포함합니다. 소스 ZIP은 설치기가 아닙니다.
+공개 설치 파일과 검증 내역은 [0.3.3 기록](docs/releases/v0.3.3.md)을 확인하세요. 작은 온라인 EXE가 로그인 없이 설치 파일을 받아 검증·재조립합니다. Whisper/Nemotron 가중치는 별도이며 Silero VAD ONNX·소형 RNNoise 모델은 실행환경에 포함합니다. 소스 ZIP은 설치기가 아닙니다.
 
 | Requirement / 항목 | Details / 내용 |
 | --- | --- |
@@ -32,9 +34,9 @@ Download [VOICESUBSEP-0.3.2-Online-Setup-x64.exe](https://github.com/LiveTrack-X
 | Included / 포함 | Python, FFmpeg, speech-analysis libraries, CUDA runtime libraries / Python·FFmpeg·음성 분석 라이브러리·CUDA 런타임 |
 | Separate / 별도 준비 | NVIDIA driver, Whisper/Nemotron weights and VST3 plugins / NVIDIA 드라이버·Whisper/Nemotron 가중치·VST3 플러그인 |
 
-The 0.3.2 desktop app supports explicit **check → download → install** updates from public GitHub releases. A bundled Ed25519 public key authenticates the release manifest; SHA256 verifies each part and the assembled installer payload. The private signing key stays outside the repository. **This is manifest authentication, not Windows Authenticode signing:** the Windows executables remain unsigned. Older builds without this updater need one manual installation. See [desktop update details](docs/DESKTOP.md#사용자가-선택하는-업데이트).
+The desktop app supports explicit **check → download → install** updates from public GitHub releases. A bundled Ed25519 public key authenticates the release manifest; SHA256 verifies each part and the assembled installer payload. The private signing key stays outside the repository. **This is manifest authentication, not Windows Authenticode signing:** the Windows executables remain unsigned. Older builds without this updater need one manual installation. See [desktop update details](docs/DESKTOP.md#사용자가-선택하는-업데이트).
 
-0.3.2 설치형은 GitHub 공개 릴리즈에서 **확인 → 다운로드 → 설치**를 각각 선택하는 업데이트를 지원합니다. 앱에 포함한 Ed25519 공개키로 배포 명세의 서명을 확인하고 조각·재조립 파일을 SHA256로 검증합니다. 개인키는 저장소 밖에 보관합니다. **배포 명세 인증이며 Windows Authenticode 코드 서명은 아닙니다.** 실행 파일은 무서명이며, 이 업데이트 기능이 없는 이전 설치본은 한 번 수동 설치해야 합니다.
+설치형은 GitHub 공개 릴리즈에서 **확인 → 다운로드 → 설치**를 각각 선택하는 업데이트를 지원합니다. 앱에 포함한 Ed25519 공개키로 배포 명세의 서명을 확인하고 조각·재조립 파일을 SHA256로 검증합니다. 개인키는 저장소 밖에 보관합니다. **배포 명세 인증이며 Windows Authenticode 코드 서명은 아닙니다.** 실행 파일은 무서명이며, 이 업데이트 기능이 없는 이전 설치본은 한 번 수동 설치해야 합니다.
 
 The online helper defaults to **80 Mbps**, with 40 Mbps/unlimited options. In-app update files are downloaded serially at **80 Mbps**. These are download limits, not OS QoS or a guaranteed 10 Mbps reservation; they do not limit every model download. / 온라인 설치기는 기본 **80Mbps**, 40Mbps·제한 없음 선택입니다. 인앱 업데이트는 파일을 순차적으로 **80Mbps**로 받습니다. OS QoS·10Mbps 예약이나 모든 모델 다운로드에 적용되는 제한은 아닙니다.
 
@@ -46,6 +48,10 @@ The online helper defaults to **80 Mbps**, with 40 Mbps/unlimited options. In-ap
 
 | English | 한국어 |
 | --- | --- |
+| 0.3.3: F1 shortcut search/customization; Space play/pause protects text input and IME. Caption follow centers the current cue, including paused seeking, and pauses for editing/manual reading | 0.3.3: F1 단축키 검색·개인 지정, 입력·IME를 보호하는 Space 재생. 일시정지 이동도 현재 자막 중앙 표시, 편집·직접 읽기 중 따라가기 일시중지 |
+| 0.3.3: IN/OUT timecodes and bounded cut audition, timeline speaker-name editing, collapsed analysis details and stable preview-height controls | 0.3.3: IN/OUT 시간·구간 미리듣기, 타임라인 인물 이름 수정, 분석 상세 접기·안정적인 영상 높이 조절 |
+| 0.3.3: document text/speaker search and time lookup; play/pause while the document stays open. Exports still include the full transcript | 0.3.3: 문서 내용·인물 검색·시간 찾기, 창을 유지한 발언 재생·일시정지. 출력은 전체 발언록 유지 |
+| 0.3.3: optional RNNoise before VST, native VST editor/state saving, and improved Electron microphone permission feedback | 0.3.3: 선택형 RNNoise→VST 전처리, VST 전용 창·상태 저장, Electron 마이크 권한 안내 개선 |
 | Three clear entry points: Subtitles & video, Interviews & minutes, and Live captions and recording; the project is shared across these workflows | 자막·영상 편집 / 인터뷰·회의록 / 실시간 자막·녹음 진입점 구분, 같은 프로젝트의 작업 내용 유지 |
 | Local large-v3 / large-v3-turbo transcription, AUTO or explicit speech language, Nemotron diarization, isolated OBS track-to-speaker mapping | 로컬 large-v3 / large-v3-turbo 전사, AUTO·직접 음성 언어 선택, Nemotron 화자 구분, OBS 분리 트랙→인물 연결 |
 | Speaker names, colors and subtitle styles; timeline playback, notes, waveform and boundary adjustment | 인물 이름·색·자막 스타일, 타임라인 재생·메모·파형·경계 조절 |
@@ -69,6 +75,7 @@ Detailed workflows: [editing and recovery](docs/EDITING-WORKFLOWS.md), [audio mi
 
 - **0.3.1 local Whisper AUTO keeps the initially detected main language** for a file. Live AUTO retains the first confident language with usable speech; uncertain/empty windows retry detection without a forced fallback language. Select the speech language directly when one language predominates. This removes automatic per-segment language switching, not genuine foreign-language text; it does not guarantee that hallucinations disappear. Cloud-provider language policies are separate.
 - **0.3.1 로컬 Whisper의 AUTO는 파일 초반에 감지한 주 언어를 유지합니다.** 라이브는 첫 유효 발화에서 충분한 확률로 감지한 언어를 유지하고 불확실·빈 결과이면 다음 구간에서 재시도합니다. 한국어 등 특정 언어로 강제 대체하지 않습니다. 한 언어 위주라면 음성 언어를 직접 선택하세요. 구간마다 언어를 바꾸는 동작을 없애는 수정이며 실제 외국어 문장을 지우거나 환각 제거를 보장하지 않습니다. 클라우드 공급자의 언어 정책은 별도입니다.
+- **0.3.3 preprocessing is optional and file-analysis/preview only.** RNNoise starts off; enabling it starts at a 70% processed mix. Preprocessing affects ASR audio by default, with optional diarization scope; it does not change original media, final renders or live capture. Denoising and speech-activity checks can miss quiet speech or laughter, so review the source. / **0.3.3 전처리는 선택형이며 파일 분석·미리듣기에만 적용합니다.** RNNoise는 기본 꺼짐이고 켜면 처리음 70%로 시작합니다. 전처리 기본 범위는 음성 인식이며 화자 분석 포함을 선택할 수 있고, 원본·최종 렌더·라이브 소리는 바꾸지 않습니다. 작은 발화·웃음은 놓칠 수 있으므로 원본을 검수하세요.
 - **Diarization is not voice separation.** Mixed overlapping voices may remain unassigned or incomplete. `4+` means at least four expected speakers; detected speakers 5–8 are retained, not merged into four. Automatic numbers need human naming.
 - **화자 구분은 음원 분리가 아닙니다.** 섞인 동시 발화는 미배정·누락될 수 있습니다. `4명 이상`은 최소 4명이며 검출된 5~8명을 4명으로 합치지 않습니다. 자동 번호의 실제 이름은 직접 지정합니다.
 - Live captions reuse loaded local Whisper and Nemotron models throughout one session. Whisper commits roughly four-second segments; the first result needs about five seconds of audio plus inference time. First complete one local analysis of a short file with the same Whisper model and Nemotron to download/cache any missing weights. Live mode uses those complete caches only and never downloads them. Speaker labels remain drafts, especially during adaptation and overlapping speech. Live sessions are limited to two hours. Arbitrary WASAPI playback endpoints, ASIO routing and automatic clock-drift correction are not included.
@@ -112,6 +119,6 @@ npm run desktop:test
 npm run desktop:smoke
 ```
 
-Automated checks do not establish transcription accuracy, device recording quality, or installer deployment. [Release evidence](docs/releases/v0.3.2.md) separates those scopes. Source data defaults to `data/` (`VOICESUBSEP_DATA_DIR`). **0.3.2 removes the fixed source-media upload cap and ignores the retired `VOICESUBSEP_MAX_UPLOAD_BYTES` setting.** Uploads still spool to disk and copy/hash in bounded blocks; available disk space, filesystem limits and media validity still matter. Project JSON, live recording and provider limits are separate and unchanged. Desktop data lives outside the install folder. Third-party [notices and redistribution obligations](docs/BUNDLED-NOTICES.md) remain separate from app functionality.
+Automated checks do not establish transcription accuracy, device recording quality, or installer deployment. [Release evidence](docs/releases/v0.3.3.md) separates those scopes. Source data defaults to `data/` (`VOICESUBSEP_DATA_DIR`). **0.3.2 removes the fixed source-media upload cap and ignores the retired `VOICESUBSEP_MAX_UPLOAD_BYTES` setting.** Uploads still spool to disk and copy/hash in bounded blocks; available disk space, filesystem limits and media validity still matter. Project JSON, live recording and provider limits are separate and unchanged. Desktop data lives outside the install folder. Third-party [notices and redistribution obligations](docs/BUNDLED-NOTICES.md) remain separate from app functionality.
 
-자동 검사는 인식 정확도·장치 녹음 품질·설치 배포를 대신 입증하지 않습니다. [릴리즈 증거](docs/releases/v0.3.2.md)에서 범위를 구분합니다. 개발 데이터는 기본 `data/`(`VOICESUBSEP_DATA_DIR`)입니다. **0.3.2는 원본 미디어 업로드의 고정 용량 상한을 없애고 기존 `VOICESUBSEP_MAX_UPLOAD_BYTES`를 무시합니다.** 디스크 임시 저장과 작은 블록의 복사·해시 계산은 유지하며 실제 여유 공간·파일시스템·미디어 유효성 제약은 남습니다. 프로젝트 JSON·라이브 녹음·공급자별 제한은 별개로 유지합니다. 설치형 데이터는 설치 폴더 밖에 남으며 외부 의존성의 [고지·재배포 의무](docs/BUNDLED-NOTICES.md)는 앱 기능과 별도로 확인합니다.
+자동 검사는 인식 정확도·장치 녹음 품질·설치 배포를 대신 입증하지 않습니다. [릴리즈 증거](docs/releases/v0.3.3.md)에서 범위를 구분합니다. 개발 데이터는 기본 `data/`(`VOICESUBSEP_DATA_DIR`)입니다. **0.3.2는 원본 미디어 업로드의 고정 용량 상한을 없애고 기존 `VOICESUBSEP_MAX_UPLOAD_BYTES`를 무시합니다.** 디스크 임시 저장과 작은 블록의 복사·해시 계산은 유지하며 실제 여유 공간·파일시스템·미디어 유효성 제약은 남습니다. 프로젝트 JSON·라이브 녹음·공급자별 제한은 별개로 유지합니다. 설치형 데이터는 설치 폴더 밖에 남으며 외부 의존성의 [고지·재배포 의무](docs/BUNDLED-NOTICES.md)는 앱 기능과 별도로 확인합니다.

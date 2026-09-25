@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "appVersion": "0.3.3",
-  "status": "artifacts-verified-publication-pending",
+  "status": "published-and-locally-installed",
   "tests": {
     "webPassed": 787,
     "nodePassed": 73,
@@ -893,8 +893,109 @@
       "Integrity and inventory checks do not establish transcription quality, native GUI behavior or installation success."
     ]
   },
-  "publication": null,
-  "localInstallation": null,
+  "publication": {
+    "checkedAt": "2026-09-25T13:27:45.655Z",
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.3.3",
+    "publishedAt": "2026-09-25T13:27:01Z",
+    "targetCommit": "f718b1874c4397c18559be2b4b14aee830e60ddb",
+    "prerelease": true,
+    "assetCount": 10,
+    "allGitHubDigestsMatch": true,
+    "anonymousDownloadsVerified": [
+      "installer-manifest.json",
+      "installer-manifest.sig",
+      "SHA256SUMS.txt",
+      "VOICESUBSEP-0.3.3-Online-Setup-x64.exe"
+    ],
+    "signatureValid": true,
+    "updaterEvents": [
+      {
+        "version": "0.3.2",
+        "event": "available",
+        "offeredVersion": "0.3.3"
+      },
+      {
+        "version": "0.3.3",
+        "event": "not-available",
+        "offeredVersion": "0.3.3"
+      }
+    ],
+    "downloadedExecutablesExecuted": false,
+    "fullPayloadDownloaded": false,
+    "published": true
+  },
+  "localInstallation": {
+    "installerExitCode": 0,
+    "elapsedSeconds": 176.756966,
+    "installedVersion": "0.3.3.0",
+    "profileFilesChecked": 25,
+    "profileFilesChanged": 0,
+    "profileBackupRetainedLocally": true,
+    "hashes": [
+      {
+        "path": "VOICESUBSEP.exe",
+        "identical": true,
+        "sha256": "0b0ff8315ea28755fed8e67c5406c859daa2f8d5a1c3269f32d0486c6fdbd82c"
+      },
+      {
+        "path": "resources\\app.asar",
+        "identical": true,
+        "sha256": "f34a08baa483a70b329955a399fd76386a2ba9b0e77a1144c0a293334263a04c"
+      },
+      {
+        "path": "resources\\backend\\voicesubsep-server.exe",
+        "identical": true,
+        "sha256": "ca657ec854d12982439cc3e06818ae985a7aa805e44e20abb5aa300a088a3eb7"
+      },
+      {
+        "path": "resources\\web\\index.html",
+        "identical": true,
+        "sha256": "90272983fb20929fbd9f2ef02dcf54edf6e6fbf56935f3637aa8420e893110dc"
+      }
+    ],
+    "runtime": {
+      "passed": true,
+      "runtimePassed": true,
+      "inferenceRun": false,
+      "offline": true,
+      "gpuRequired": false,
+      "expectedVersion": "0.3.3",
+      "ready": {
+        "app": "voicesubsep",
+        "status": "ok"
+      },
+      "apiVersion": "0.3.3",
+      "shutdown": {
+        "requested": true,
+        "clean": true,
+        "forced": false,
+        "exitCode": 0,
+        "portClosed": true
+      },
+      "elapsedSeconds": 32.89,
+      "engines": {
+        "whisper": true,
+        "nemotron": true,
+        "qwen": false
+      },
+      "defaults": {
+        "device": "cuda",
+        "whisperModel": "large-v3",
+        "computeType": "float16"
+      }
+    },
+    "launch": {
+      "installedVersion": "0.3.3.0",
+      "launchedAt": "2026-09-25T22:22:35.5874969+09:00",
+      "apiVersion": "0.3.3",
+      "ready": {
+        "app": "voicesubsep",
+        "status": "ok"
+      },
+      "responsive": true,
+      "title": "VOICESUBSEP"
+    }
+  },
   "boundaries": [
     "No real microphone or system audio was recorded; microphone behavior was tested with Electron fake devices.",
     "RNNoise DSP sample alignment is not proof of real-speech recognition quality or overlap recovery.",
@@ -999,5 +1100,17 @@
     "testsPassed": 15,
     "hiddenUiSmokePassed": true,
     "windowsCodeSigned": false
+  },
+  "releaseCommit": "f718b1874c4397c18559be2b4b14aee830e60ddb",
+  "releaseCi": {
+    "runId": 36140023869,
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/36140023869",
+    "commit": "f718b1874c4397c18559be2b4b14aee830e60ddb",
+    "conclusion": "success",
+    "jobs": [
+      "web",
+      "backend",
+      "online-installer"
+    ]
   }
 }
