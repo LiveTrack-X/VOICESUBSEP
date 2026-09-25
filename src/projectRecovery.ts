@@ -1,4 +1,5 @@
-import { parseProject, type Project } from "./domain";
+import { MAX_PROJECT_BYTES, parseProject, type Project } from "./domain";
+import { fitSpeakerEvidence } from "./speakerEvidenceBudget";
 
 export const PROJECT_STORAGE_KEY = "voicesubsep.project.v1";
 export const PROJECT_BACKUP_KEY = "voicesubsep.project.previous.v1";
@@ -13,7 +14,7 @@ export type RecoveryRecord = {
   captions: number;
   error: string;
 };
-export type SafeSaveResult = "saved" | "saved_without_backup" | "failed" | "invalid" | "blocked";
+export type SafeSaveResult = "saved" | "saved_without_backup" | "saved_with_reduced_evidence" | "failed" | "invalid" | "blocked";
 
 /** Read from storage on demand; never cache or silently repair an unreadable backup. */
 export function recoveryRecords(storage: ProjectStorage = localStorage): RecoveryRecord[] {
@@ -46,7 +47,13 @@ export function readRecoveryProject(key: RecoveryKey, storage: ProjectStorage = 
  */
 export function saveRecoverableProject(project: Project, storage: ProjectStorage = localStorage): SafeSaveResult {
   let raw: string;
-  try { raw = JSON.stringify(project); parseProject(raw); } catch { return "invalid"; }
+  let reducedEvidence = false;
+  try {
+    const fitted = fitSpeakerEvidence(project, MAX_PROJECT_BYTES);
+    raw = JSON.stringify(fitted.project);
+    parseProject(raw);
+    reducedEvidence = fitted.reduced;
+  } catch { return "invalid"; }
   try {
     const previous = storage.getItem(PROJECT_STORAGE_KEY);
     if (previous === raw) {
@@ -82,6 +89,6 @@ export function saveRecoverableProject(project: Project, storage: ProjectStorage
       }
     }
     storage.setItem(PROJECT_STORAGE_KEY, raw);
-    return backupFailed ? "saved_without_backup" : "saved";
+    return backupFailed ? "saved_without_backup" : reducedEvidence ? "saved_with_reduced_evidence" : "saved";
   } catch { return "failed"; }
 }

@@ -129,6 +129,7 @@ export const extraMessages: Record<string, readonly [string, string, string, str
   "일시 정지": ["Pause", "一時停止", "暂停", "Pausar"],
   "자동 저장 공간이 부족합니다. 프로젝트 파일로 저장하세요.": ["Autosave storage is full. Save to a project file.", "自動保存の容量が不足しています。プロジェクトファイルに保存してください。", "自动保存空间不足。请保存为项目文件。", "El espacio de autoguardado está lleno. Guarda un archivo de proyecto."],
   "자동 저장됨": ["Autosaved", "自動保存済み", "已自动保存", "Autoguardado"],
+  "프로젝트는 저장했지만 용량을 맞추려고 선택적 화자 근거 일부를 생략했습니다.": ["Project saved; some optional speaker evidence was omitted to fit the size limit.", "容量制限に合わせるため一部の任意の話者根拠を省略してプロジェクトを保存しました。", "项目已保存；为满足大小限制，省略了部分可选说话人依据。", "Proyecto guardado; se omitieron algunos datos opcionales de hablante para ajustarse al límite."],
   "자막 {count}개가 컷 경계에 걸립니다. 원문·시간을 조정해야 편집본 SRT를 내보낼 수 있습니다.": ["{count} subtitles cross cut boundaries. Adjust their text and times before exporting edited SRT.", "字幕{count}件がカット境界をまたいでいます。原文と時刻を調整してから編集版SRTを書き出してください。", "{count}条字幕跨越剪切边界。请调整文字和时间后再导出编辑版SRT。", "{count} subtítulos cruzan cortes. Ajusta el texto y los tiempos antes de exportar el SRT editado."],
   "자막 내보내기 언어": ["Subtitle export language", "字幕書き出しの言語", "字幕导出语言", "Idioma de exportación de subtítulos"],
   "자막 번역": ["Translate subtitles", "字幕を翻訳", "翻译字幕", "Traducir subtítulos"],

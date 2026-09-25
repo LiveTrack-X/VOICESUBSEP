@@ -235,14 +235,15 @@ export default function App() {
         if (document.activeElement instanceof HTMLElement)
           document.activeElement.blur();
       });
-      const serialized = serializeProject(projectRef.current);
+      const fitted = fitSpeakerEvidence(projectRef.current, MAX_PROJECT_BYTES);
+      const serialized = serializeProject(fitted.project);
       download(
         `${safeFilename(projectRef.current.name)}.voicesub.json`,
         serialized,
         "application/json",
       );
       setNotice(
-        t("프로젝트를 저장했습니다. 원본 미디어 파일은 별도로 보관하세요."),
+        t("프로젝트를 저장했습니다. 원본 미디어 파일은 별도로 보관하세요.") + (fitted.reduced ? ` ${t(SPEAKER_EVIDENCE_BUDGET_NOTICE)}` : ""),
       );
     } catch (e) {
       setNotice(t("저장 전 확인: {error}",{error:(e as Error).message}));
@@ -439,10 +440,10 @@ export default function App() {
       <header className="app-header">
         <a
           className="brand"
-          href="https://github.com/LiveTrack-X"
+          href="https://github.com/LiveTrack-X/VOICESUBSEP"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="VOICESUBSEP · LiveTrack GitHub"
+          aria-label="VOICESUBSEP · GitHub repository"
         >
           <img className="brand-icon" src="/app-icon.png" width={30} height={30} alt="" />
           <span>VOICESUBSEP</span>

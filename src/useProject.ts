@@ -9,6 +9,7 @@ import {
   PROJECT_INVALID_ERROR,
   PROJECT_RECOVERY_ERROR,
   PROJECT_BACKUP_ERROR,
+  PROJECT_EVIDENCE_REDUCED,
   PROJECT_STORAGE_KEY,
   redoProjectSession,
   replaceProjectSession,
@@ -46,6 +47,7 @@ export function useProject() {
     else if (result === "invalid") setSaveState(PROJECT_INVALID_ERROR);
     else if (result === "blocked") setSaveState(PROJECT_RECOVERY_ERROR);
     else if (result === "saved_without_backup") setSaveState(PROJECT_BACKUP_ERROR);
+    else if (result === "saved_with_reduced_evidence") { setRecoveryWarning(false); setSaveState(PROJECT_EVIDENCE_REDUCED); }
     else setSaveState(PROJECT_SAVE_ERROR);
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createProject, parseProject } from "./domain";
+import { createProject, MAX_PROJECT_BYTES, parseProject } from "./domain";
 import { PROJECT_STORAGE_KEY, PROJECT_BACKUP_KEY, PROJECT_DAMAGED_KEY, readRecoveryProject,
   readRecoveryRaw, recoveryRecords, saveRecoverableProject } from "./projectRecovery";
 
@@ -68,6 +68,34 @@ describe("recoverable autosave", () => {
     store.blocked.add(PROJECT_BACKUP_KEY);
     expect(saveRecoverableProject({ ...previous, name: "new" }, store)).toBe("saved_without_backup");
     expect(readRecoveryProject(PROJECT_STORAGE_KEY, store).name).toBe("new");
+  });
+  it("sheds optional activity evidence when later edits push a project over the file limit", () => {
+    const store = new Store(); const project = createProject(2); project.duration = 80;
+    project.captions = Array.from({ length: 6_000 }, (_, index) => ({
+      id: `large-${index}`, start: index / 100, end: index / 100 + 0.005,
+      text: "t".repeat(450), speakerId: null, reasons: [], reviewed: false,
+      speakerEvidence: { version: 1 as const, method: "activity" as const, reasons: ["insufficient_activity" as const],
+        activity: Array.from({ length: 32 }, (_, speaker) => ({ speakerId: `speaker-${speaker}`, overlapSeconds: 0, coverage: 0 })), words: [] },
+    }));
+    project.captions[0] = { ...project.captions[0]!, speakerEvidence: {
+      ...project.captions[0]!.speakerEvidence!,
+      recommendation: { speakerId: project.speakers[0]!.id, method: "boundary_context", anchorCaptionIds: ["large-1"], targetWordCount: 1,
+        sourceSnapshots: [
+          { captionId: "large-0", start: 0, end: 0.005, text: "t".repeat(450), speakerId: null },
+          { captionId: "large-1", start: 0.01, end: 0.015, text: "t".repeat(450), speakerId: project.speakers[0]!.id },
+        ] },
+    } };
+    expect(new TextEncoder().encode(JSON.stringify(project)).byteLength).toBeGreaterThan(MAX_PROJECT_BYTES);
+    const result = saveRecoverableProject(project, store);
+    expect(result).toBe("saved_with_reduced_evidence");
+    const saved = readRecoveryProject(PROJECT_STORAGE_KEY, store);
+    expect(new TextEncoder().encode(store.getItem(PROJECT_STORAGE_KEY)!).byteLength).toBeLessThanOrEqual(MAX_PROJECT_BYTES);
+    expect(saved.captions).toHaveLength(project.captions.length);
+    expect(saved.captions[0]!.text).toBe(project.captions[0]!.text);
+    expect(saved.captions[0]!.start).toBe(project.captions[0]!.start);
+    expect(saved.captions[0]!.speakerEvidence?.recommendation).toBeUndefined();
+    expect(saved.captions[1]!.speakerEvidence?.recommendation).toBeUndefined();
+    expect(saved.captions.some(caption => caption.speakerEvidence?.activity.length)).toBe(false);
   });
   it("leaves the last current snapshot intact if the primary write fails", () => {
     const store = new Store(); const previous = createProject(); saveRecoverableProject(previous, store);

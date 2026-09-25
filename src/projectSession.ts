@@ -6,6 +6,7 @@ export const PROJECT_SAVE_ERROR = "자동 저장 공간이 부족합니다. 프�
 export const PROJECT_INVALID_ERROR = "저장할 수 없는 편집 내용입니다. 실행 취소하거나 파일을 확인하세요. 이전 저장본은 보존됩니다.";
 export const PROJECT_RECOVERY_ERROR = "이전 저장본을 보존하지 못해 자동 저장을 중단했습니다. 복구 메뉴에서 원본을 내보내세요.";
 export const PROJECT_BACKUP_ERROR = "현재 작업은 저장했지만 이전 복구본을 갱신하지 못했습니다. 프로젝트 파일도 저장하세요.";
+export const PROJECT_EVIDENCE_REDUCED = "프로젝트는 저장했지만 용량을 맞추려고 선택적 화자 근거 일부를 생략했습니다.";
 
 export type ProjectSession = {
   past: Project[];
