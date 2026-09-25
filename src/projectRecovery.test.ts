@@ -82,6 +82,10 @@ describe("recoverable autosave", () => {
     expect(saveRecoverableProject({ ...previous, name: "edited" }, store)).toBe("saved_without_backup");
     expect(readRecoveryRaw(PROJECT_BACKUP_KEY, store)).toBe("broken previous");
     expect(readRecoveryProject(PROJECT_STORAGE_KEY, store).name).toBe("edited");
+    // An unchanged autosave/pagehide must not falsely report that the backup
+    // recovered while its unreadable bytes are still intentionally preserved.
+    expect(saveRecoverableProject({ ...previous, name: "edited" }, store)).toBe("saved_without_backup");
+    expect(readRecoveryRaw(PROJECT_BACKUP_KEY, store)).toBe("broken previous");
   });
   it("does not let recovery export access arbitrary settings keys", () => {
     expect(() => readRecoveryRaw("secret" as typeof PROJECT_STORAGE_KEY, new Store())).toThrow(/복구할/);

@@ -1,7 +1,10 @@
 [CmdletBinding()]
-param([switch]$VerifyNoticesOnly, [switch]$CheckDependenciesOnly, [switch]$ReuseBuildCache)
+param([switch]$VerifyNoticesOnly, [switch]$CheckDependenciesOnly, [switch]$ReuseBuildCache, [switch]$IncludeQwenRuntime)
 
 $ErrorActionPreference = 'Stop'
+if ($IncludeQwenRuntime) {
+    throw 'Qwen desktop bundling is blocked: soynlp 0.0.493 wheel GPLv3 metadata conflicts with upstream LGPLv3 notices. See docs/QWEN-RUNTIME.md. The default Whisper/Nemotron build is unchanged; do not bypass this license audit gate.'
+}
 if ($VerifyNoticesOnly -and $CheckDependenciesOnly) { throw 'Choose one verification mode.' }
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $pythonExe = Join-Path $projectRoot '.venv/Scripts/python.exe'
@@ -71,23 +74,37 @@ $nemotronModules = @(
 foreach ($module in $nemotronModules) {
     $moduleFile = Join-Path $sitePackages ($module.Replace('.', '/') + '.py')
     if (-not (Test-Path -LiteralPath $moduleFile -PathType Leaf)) {
-        throw "Required Nemotron runtime module is missing: $module. See docs/MODEL-SETUP.md."
+        throw "Required local ASR/diarization runtime module is missing: $module. See docs/MODEL-SETUP.md."
     }
 }
 # Preserve original distribution metadata and licenses, including CUDA notices
 # supplied by the actual torch wheel rather than unrelated NVIDIA wheel versions.
 $inventoryCode = @'
 import importlib.metadata as metadata
+import hashlib
 import json
 from pathlib import Path
 import sys
 records = []
-for name in sys.argv[1:]:
+project_root = Path(sys.argv[1])
+fallback_notices = {
+    ('DyNet38', '2.2'): ('third-party/DyNet38-2.2/LICENSE.txt', '08aded6d3bf7635e55b2f6f15d13fd442afd7069826bf7dc52f57824c7f08625'),
+}
+for name in sys.argv[2:]:
     distribution = metadata.distribution(name)
     files = [file for file in (distribution.files or [])
              if '.dist-info' in str(file) and
              ('licenses' in file.parts or file.name.lower().startswith(('license', 'copying', 'notice')))]
     if not files:
+        fallback = fallback_notices.get((name, distribution.version))
+        if fallback:
+            relative, digest = fallback
+            source = project_root / relative
+            if not source.is_file() or hashlib.sha256(source.read_bytes()).hexdigest() != digest:
+                raise RuntimeError('Missing or altered pinned upstream notice for ' + name)
+            records.append({'package': name, 'version': distribution.version, 'source': str(source.resolve()),
+                            'relative': relative, 'fallback': True})
+            continue
         raise RuntimeError('Missing original license files for ' + name)
     for file in files:
         source = Path(distribution.locate_file(file)).resolve()
@@ -97,7 +114,7 @@ for name in sys.argv[1:]:
                         'source': str(source), 'relative': str(file)})
 print(json.dumps(records))
 '@
-$inventoryJson = & $pythonExe -c $inventoryCode @noticePackages
+$inventoryJson = & $pythonExe -c $inventoryCode $projectRoot @noticePackages
 if ($LASTEXITCODE -ne 0) { throw 'Runtime package license inventory failed; original notices are required.' }
 $inventoryRecords = $inventoryJson | ConvertFrom-Json
 # Windows PowerShell 5.1 emits the JSON array as one pipeline object. A language
@@ -122,7 +139,12 @@ function Find-ToolNotices([string]$Executable) {
     throw "Original LICENSE/COPYING and README were not found next to $Executable or in its install root."
 }
 
-$noticeArguments = @()
+$noticeArguments = @(foreach ($record in $inventoryRecords) {
+    if ($record.fallback) {
+        '--add-data'
+        ([string]$record.source + ';' + (Split-Path -Parent ([string]$record.relative)))
+    }
+})
 $noticeDirectories = @{}
 foreach ($tool in @(
     [PSCustomObject]@{ Name = 'ffmpeg'; Executable = $ffmpegExe },
@@ -214,6 +236,10 @@ for path in models.iterdir():
         '--collect-all', 'faster_whisper', '--collect-data', 'ctranslate2', '--collect-binaries', 'ctranslate2',
         '--exclude-module', 'ctranslate2.converters', '--exclude-module', 'ctranslate2.specs',
         '--collect-all', 'onnxruntime', '--collect-all', 'av', '--collect-all', 'tokenizers',
+        '--exclude-module', 'voicesubsep.qwen_asr', '--exclude-module', 'voicesubsep.qwen_model_cache',
+        '--exclude-module', 'transformers.models.qwen3_asr', '--exclude-module', 'transformers.models.qwen3',
+        '--exclude-module', 'soynlp', '--exclude-module', 'nagisa', '--exclude-module', 'nagisa_utils',
+        '--exclude-module', 'dynet', '--exclude-module', '_dynet', '--exclude-module', 'dynet_config',
         '--collect-submodules', 'uvicorn', '--collect-data', 'huggingface_hub',
         '--copy-metadata', 'faster-whisper', '--copy-metadata', 'voicesubsep',
         '--recursive-copy-metadata', 'torch', '--recursive-copy-metadata', 'transformers', '--recursive-copy-metadata', 'librosa',

@@ -1,11 +1,13 @@
 """Explicit-consent cloud transcription. No SDK, retries, redirects or raw error logging.
 
-Official contracts: console.groq.com/docs/speech-to-text and
-docs.x.ai/developers/model-capabilities/audio/speech-to-text (2026-09-25).
-Only extracted 16 kHz mono PCM audio is sent, in at most ten-minute requests.
+Official contracts: console.groq.com/docs/speech-to-text,
+docs.x.ai/developers/model-capabilities/audio/speech-to-text and
+ai.google.dev/gemini-api/docs/transcribe (2026-09-25).
+Only extracted 16 kHz mono PCM audio is sent, in bounded requests.
 """
 from __future__ import annotations
 
+import base64
 import http.client
 import json
 import math
@@ -21,9 +23,16 @@ import wave
 ASR_MODELS = {
     "groq": ("whisper-large-v3", "whisper-large-v3-turbo"),
     "xai": ("grok-voice-transcribe-2.0", "grok-voice-transcribe-1.0"),
+    "gemini": ("gemini-3.5-transcribe",),
 }
-ENDPOINTS = {"groq": ("api.groq.com", "/openai/v1/audio/transcriptions"), "xai": ("api.x.ai", "/v1/stt")}
+ENDPOINTS = {"groq": ("api.groq.com", "/openai/v1/audio/transcriptions"),
+             "xai": ("api.x.ai", "/v1/stt"),
+             "gemini": ("generativelanguage.googleapis.com", "/v1beta/interactions")}
 CHUNK_SECONDS = 600
+GEMINI_CHUNK_SECONDS = 300
+# Conservative documented inline-audio request cap, including JSON/base64 overhead.
+GEMINI_MAX_REQUEST = 20_000_000
+GEMINI_LANGUAGES = {"ko": "ko-KR", "en": "en-US", "ja": "ja-JP", "zh": "cmn-Hans-CN", "es": "es-419"}
 OVERLAP_SECONDS = 1
 MAX_RESPONSE = 4 * 1024 * 1024
 REQUEST_TIMEOUT = 180
@@ -64,6 +73,9 @@ def validate_cloud_options(provider: str, model: str | None, consent: bool) -> N
 
 
 def _fields(provider: str, model: str, language: str) -> list[tuple[str, str]]:
+    if provider == "gemini":
+        _gemini_config(language)
+        return []
     fields = [("model", model)]
     if provider == "groq":
         fields += [("response_format", "verbose_json"), ("timestamp_granularities[]", "word"),
@@ -79,25 +91,51 @@ def _fields(provider: str, model: str, language: str) -> list[tuple[str, str]]:
     return fields
 
 
+def _gemini_config(language: str) -> dict:
+    # VERBATIM retains disfluencies and is the mode with real word timestamps.
+    config = {"mode": {"type": "verbatim", "timestamp_granularities": ["word"]}}
+    if language != "auto":
+        if language not in GEMINI_LANGUAGES:
+            raise CloudASRError("Gemini 음성 언어는 AUTO, 한국어, 영어, 일본어, 중국어, 스페인어를 선택하세요.")
+        config["language_codes"] = [GEMINI_LANGUAGES[language]]
+    return config
+
+
 def _post_audio(provider: str, model: str, language: str, key: str, path: Path, cancelled) -> dict:
     _checkpoint(cancelled)
+    # A caller cannot use this helper to select arbitrary hosts or models.
+    validate_cloud_options(provider, model, True)
     fields = _fields(provider, model, language)
     if not isinstance(key, str) or not re.fullmatch(r"[!-~]{12,512}", key):
         raise CloudASRError("클라우드 API 키를 먼저 등록하세요.")
-    boundary = "voicesubsep-" + uuid.uuid4().hex
-    prefix = b"".join((f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n").encode()
-                      for name, value in fields)
-    # xAI requires the file to be the final multipart field. Never send source names.
-    prefix += (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"audio.wav\"\r\nContent-Type: audio/wav\r\n\r\n").encode()
-    suffix = f"\r\n--{boundary}--\r\n".encode()
     size = path.stat().st_size
     if size > 25_000_000:
         raise CloudASRError("클라우드에 전송할 오디오 조각이 너무 큽니다.")
+    if provider == "gemini":
+        # Stream base64 directly into inline audio. No remote Files API resource is
+        # created, and interaction history is explicitly disabled with store=false.
+        prefix = ("{\"model\":" + json.dumps(model) + ',"store":false,"stream":false,"input":[{"type":"audio","mime_type":"audio/wav","data":"').encode()
+        suffix = ('"}],"generation_config":' + json.dumps({"transcription_config": _gemini_config(language)}, separators=(",", ":")) + "}").encode()
+        content_type = "application/json"
+        content_length = len(prefix) + 4 * ((size + 2) // 3) + len(suffix)
+        if content_length > GEMINI_MAX_REQUEST:
+            raise CloudASRError("클라우드에 전송할 오디오 조각이 너무 큽니다.")
+    else:
+        boundary = "voicesubsep-" + uuid.uuid4().hex
+        prefix = b"".join((f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n").encode()
+                          for name, value in fields)
+        # xAI requires the file to be the final multipart field. Never send source names.
+        prefix += (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"audio.wav\"\r\nContent-Type: audio/wav\r\n\r\n").encode()
+        suffix = f"\r\n--{boundary}--\r\n".encode()
+        content_type = "multipart/form-data; boundary=" + boundary
+        content_length = len(prefix) + size + len(suffix)
     host, endpoint = ENDPOINTS[provider]
     connection = http.client.HTTPSConnection(host, timeout=30)
     finished = threading.Event()
     timed_out = threading.Event()
     started = time.monotonic()
+    transport_socket = None
+    response = None
 
     def interrupt():
         while not finished.wait(0.1):
@@ -106,8 +144,18 @@ def _post_audio(provider: str, model: str, language: str, key: str, path: Path, 
                 if expired:
                     timed_out.set()
                 try:
-                    if connection.sock is not None:
-                        connection.sock.shutdown(socket.SHUT_RDWR)
+                    # HTTPConnection detaches its socket for Connection: close;
+                    # the response may still be blocked reading that transport.
+                    active_socket = transport_socket if transport_socket is not None else connection.sock
+                    if active_socket is not None:
+                        try:
+                            active_socket.shutdown(socket.SHUT_RDWR)
+                        finally:
+                            # On Windows shutdown alone may leave a timed read
+                            # waiting in select, and close() defers while an HTTP
+                            # makefile holds a reference. Detach invalidates that
+                            # socket object before closing its native handle.
+                            socket.close(active_socket.detach())
                 except OSError:
                     pass
                 connection.close()
@@ -117,22 +165,27 @@ def _post_audio(provider: str, model: str, language: str, key: str, path: Path, 
     watcher.start()
     try:
         connection.connect()
+        transport_socket = connection.sock
         _checkpoint(cancelled)
         if timed_out.is_set():
             raise CloudASRError("클라우드 음성 인식 요청 시간이 초과되었습니다.")
         connection.auto_open = 0  # Never reconnect after the cancellation watcher closes this socket.
         connection.putrequest("POST", endpoint)
-        connection.putheader("Authorization", "Bearer " + key)
-        connection.putheader("Content-Type", "multipart/form-data; boundary=" + boundary)
-        connection.putheader("Content-Length", str(len(prefix) + size + len(suffix)))
+        connection.putheader("x-goog-api-key" if provider == "gemini" else "Authorization", key if provider == "gemini" else "Bearer " + key)
+        connection.putheader("Content-Type", content_type)
+        connection.putheader("Content-Length", str(content_length))
         connection.putheader("Accept", "application/json")
         connection.endheaders()
         _checkpoint(cancelled)
         connection.send(prefix)
         with path.open("rb") as source:
-            while block := source.read(BLOCK_SIZE):
+            # Multiples of three prevent padding between base64 blocks; every send
+            # remains at most one MiB rather than allocating the complete request.
+            block_size = 3 * (BLOCK_SIZE // 4) if provider == "gemini" else BLOCK_SIZE
+            while block := source.read(block_size):
                 _checkpoint(cancelled)
-                connection.send(block)
+                connection.send(base64.b64encode(block) if provider == "gemini" else block)
+        _checkpoint(cancelled)
         connection.send(suffix)
         _checkpoint(cancelled)
         response = connection.getresponse()
@@ -178,9 +231,13 @@ def _post_audio(provider: str, model: str, language: str, key: str, path: Path, 
         raise
     except Exception:
         _checkpoint(cancelled)
+        if timed_out.is_set():
+            raise CloudASRError("클라우드 음성 인식 요청 시간이 초과되었습니다.") from None
         raise CloudASRError("클라우드 음성 인식 연결 또는 응답 처리에 실패했습니다. 자동 재시도하지 않았습니다.") from None
     finally:
         finished.set()
+        if response is not None:
+            response.close()
         connection.close()
         watcher.join(timeout=0.5)
 
@@ -192,6 +249,8 @@ def _safe_text(value, limit: int) -> str:
 
 
 def normalize_response(value: dict, provider: str, duration: float, offset: float) -> list[dict]:
+    if provider == "gemini":
+        return _normalize_gemini(value, duration, offset)
     text = _safe_text(value.get("text"), 500_000)
     words = value.get("words", [])
     if not isinstance(words, list) or len(words) > 50_000 or (text.strip() and not words):
@@ -235,6 +294,51 @@ def normalize_response(value: dict, provider: str, duration: float, offset: floa
     return records
 
 
+def _gemini_seconds(value) -> float:
+    # Official WordInfo uses protobuf-style seconds strings, not numeric offsets.
+    if not isinstance(value, str) or len(value) > 32 or not re.fullmatch(r"(?:0|[1-9]\d*)(?:\.\d{1,9})?s", value, re.ASCII):
+        raise CloudASRError("Gemini 응답에 유효한 단어별 시간이 없습니다.")
+    return float(value[:-1])
+
+
+def _normalize_gemini(value: dict, duration: float, offset: float) -> list[dict]:
+    steps = value.get("steps")
+    if value.get("status") != "completed" or not isinstance(steps, list) or not 0 < len(steps) <= 1000:
+        raise CloudASRError("Gemini 음성 인식이 완료되지 않았거나 응답 형식이 올바르지 않습니다.")
+    records, word_count, text_count, previous_start = [], 0, 0, -1.0
+    for step in steps:
+        if not isinstance(step, dict) or step.get("type") != "model_output":
+            raise CloudASRError("Gemini 음성 인식 응답 형식이 올바르지 않습니다.")
+        content = step.get("content")
+        if not isinstance(content, list) or not 0 < len(content) <= 1000:
+            raise CloudASRError("Gemini 음성 인식 응답 형식이 올바르지 않습니다.")
+        for block in content:
+            if not isinstance(block, dict) or block.get("type") != "text":
+                raise CloudASRError("Gemini 음성 인식 응답 형식이 올바르지 않습니다.")
+            text = _safe_text(block.get("text"), 500_000)
+            annotations = block.get("annotations", [])
+            if not isinstance(annotations, list):
+                raise CloudASRError("Gemini 응답에 유효한 단어별 시간이 없습니다.")
+            word_count += len(annotations)
+            text_count += len(text)
+            if word_count > 50_000 or text_count > 500_000:
+                raise CloudASRError("Gemini 음성 인식 응답이 너무 큽니다.")
+            words = []
+            for annotation in annotations:
+                if not isinstance(annotation, dict) or annotation.get("type") != "word_info":
+                    raise CloudASRError("Gemini 응답에 유효한 단어별 시간이 없습니다.")
+                start = _gemini_seconds(annotation.get("start_offset"))
+                if start < previous_start:
+                    raise CloudASRError("Gemini 단어 시간 순서가 올바르지 않습니다.")
+                previous_start = start
+                words.append({"text": annotation.get("text"), "start": start,
+                              "end": _gemini_seconds(annotation.get("end_offset"))})
+            # Keep provider text, punctuation and true source times using the same
+            # validated ASR contract. Native speaker labels are deliberately unused.
+            records.extend(normalize_response({"text": text, "words": words}, "gemini-words", duration, offset))
+    return records
+
+
 def transcribe_cloud(path: Path, *, provider: str, model: str, language: str, consent: bool,
                      get_key, progress, cancelled, recognition_preview=None) -> list[dict]:
     validate_cloud_options(provider, model, consent)
@@ -245,7 +349,8 @@ def transcribe_cloud(path: Path, *, provider: str, model: str, language: str, co
             raise CloudASRError("클라우드 분석용 음성은 16 kHz 모노 PCM이어야 합니다.")
         total = source.getnframes()
         context_frames = round(16000 * OVERLAP_SECONDS)
-        frames = round(16000 * CHUNK_SECONDS) - 2 * context_frames
+        chunk_seconds = min(CHUNK_SECONDS, GEMINI_CHUNK_SECONDS) if provider == "gemini" else CHUNK_SECONDS
+        frames = round(16000 * chunk_seconds) - 2 * context_frames
         if frames <= 0:
             raise CloudASRError("클라우드 오디오 조각 설정이 올바르지 않습니다.")
         done = 0

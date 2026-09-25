@@ -19,6 +19,7 @@ import {
   demoProject,
   createProject,
   parseProject,
+  serializeProject,
   parseSrt,
   exportSrt,
   exportNotesCsv,
@@ -26,7 +27,6 @@ import {
   safeFilename,
   MAX_PROJECT_BYTES,
   type Project,
-  type SubtitleLanguage,
 } from "./domain";
 import { download, type AnalysisResult } from "./api";
 import { useProject } from "./useProject";
@@ -42,17 +42,16 @@ import { AnalysisDialog } from "./components/AnalysisDialog";
 import { UpdateDialog } from "./components/UpdateDialog";
 import { CutPanel } from "./components/CutPanel";
 import { RenderDialog } from "./components/RenderDialog";
-import { TranslationDialog } from "./components/TranslationDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { DocumentsDialog } from "./components/DocumentsDialog";
+import { AudioMixerDialog } from "./components/AudioMixerDialog";
 import { LiveCaptureDialog } from "./components/LiveCaptureDialog";
 import { JobHistoryDialog } from "./components/JobHistoryDialog";
 import { ProjectRecoveryDialog } from "./components/ProjectRecoveryDialog";
 import { exportAss, exportSpeakerSrtZip } from "./subtitle-export";
 import { saveBlob } from "./recordingStore";
-import { applyTranslations, captionTranslatedText, translatedProject } from "./translation";
 import { buildKeepSpans, projectForEditedExport } from "./cuts";
-import { useI18n, LOCALES, localeNames } from "./i18n";
+import { useI18n } from "./i18n";
 
 export default function App() {
   const {t} = useI18n();
@@ -65,9 +64,8 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [revealCaption, setRevealCaption] = useState<{ id: string } | null>(null);
   const [revealNote, setRevealNote] = useState<{ id: string } | null>(null);
-  const [dialog, setDialog] = useState<"export" | "analysis" | "update" | "render" | "translation" | "settings" | "documents" | "live" | "history" | "recovery" | null>(null);
+  const [dialog, setDialog] = useState<"export" | "analysis" | "update" | "render" | "settings" | "documents" | "live" | "history" | "recovery" | "mixer" | null>(null);
   const [editedPreview, setEditedPreview] = useState(false);
-  const [subtitleLanguage, setSubtitleLanguage] = useState<"original"|SubtitleLanguage>("original");
   const [projectSession, setProjectSession] = useState(0);
   const [notice, setNotice] = useState("");
   const [confirm, setConfirm] = useState<{
@@ -93,8 +91,8 @@ export default function App() {
     const mapped=editedPreview && project.cuts?.length ? projectForEditedExport(project) : null;
     const unresolved=new Set(mapped?.issues.map(i=>i.captionId));
     const captions=mapped ? mapped.project.captions.filter(c=>!unresolved.has(c.id)) : project.captions;
-    return subtitleLanguage === "original" ? captions : captions.map(c=>({...c,text:captionTranslatedText(c,subtitleLanguage)}));
-  },[project,editedPreview,subtitleLanguage]);
+    return captions;
+  },[project,editedPreview]);
   useEffect(() => {
     if (file && file.name !== project.mediaName) {
       setFile(null);
@@ -177,10 +175,10 @@ export default function App() {
         if (document.activeElement instanceof HTMLElement)
           document.activeElement.blur();
       });
-      const valid = parseProject(JSON.stringify(projectRef.current));
+      const serialized = serializeProject(projectRef.current);
       download(
-        `${safeFilename(valid.name)}.voicesub.json`,
-        JSON.stringify(valid, null, 2),
+        `${safeFilename(projectRef.current.name)}.voicesub.json`,
+        serialized,
         "application/json",
       );
       setNotice(
@@ -211,13 +209,12 @@ export default function App() {
       setRevealNote(null);
       setPlaying(false);
       setEditedPreview(false);
-      setSubtitleLanguage("original");
       setDialog(null);
       setNotice("");
     });
   }
   function guarded(message: string, action: () => void) {
-    if (project.captions.length || project.notes.length || project.cuts?.length || project.documents?.items.length)
+    if (project.captions.length || project.notes.length || project.cuts?.length || project.documents?.items.length || project.audioMix?.tracks.length)
       setConfirm({ message, action });
     else action();
   }
@@ -247,7 +244,6 @@ export default function App() {
   }
   function exportText(kind: "srt" | "md" | "csv", speakerId?: string | null) {
     try {
-      const exportProject = kind === "srt" && subtitleLanguage !== "original" ? translatedProject({...project, captions: project.captions.filter(c=>speakerId===undefined||c.speakerId===speakerId)}, subtitleLanguage) : project;
       const base = safeFilename(project.name);
       const person =
         speakerId === undefined
@@ -255,8 +251,8 @@ export default function App() {
           : `-${safeFilename(project.speakers.find((s) => s.id === speakerId)?.name ?? t("미배정"))}`;
       if (kind === "srt")
         download(
-          `${base}${person}${subtitleLanguage==="original"?"":`-${subtitleLanguage}`}.srt`,
-          exportSrt(exportProject, speakerId),
+          `${base}${person}.srt`,
+          exportSrt(project, speakerId),
           "application/x-subrip;charset=utf-8",
         );
       if (kind === "md")
@@ -278,10 +274,9 @@ export default function App() {
   }
   function exportBundle(kind: "ass" | "zip") {
     try {
-      const output = subtitleLanguage === "original" ? project : translatedProject(project, subtitleLanguage);
-      const name = `${safeFilename(project.name)}${subtitleLanguage === "original" ? "" : `-${subtitleLanguage}`}`;
-      if (kind === "ass") download(`${name}.ass`, exportAss(output), "text/plain;charset=utf-8");
-      else saveBlob(new Blob([new Uint8Array(exportSpeakerSrtZip(output))], { type: "application/zip" }), `${name}-speakers.zip`);
+      const name = safeFilename(project.name);
+      if (kind === "ass") download(`${name}.ass`, exportAss(project), "text/plain;charset=utf-8");
+      else saveBlob(new Blob([new Uint8Array(exportSpeakerSrtZip(project))], { type: "application/zip" }), `${name}-speakers.zip`);
       setNotice(t("내보내기 파일을 생성했습니다."));
     } catch (error) { setNotice((error as Error).message); }
   }
@@ -381,6 +376,7 @@ export default function App() {
           onAnalyze={() => file ? setDialog("analysis") : chooseMedia(true)}
         />
         <EditorWorkspace noteReveal={revealNote} tools={<>
+          <button onClick={() => setDialog("mixer")}>{t("오디오 트랙 믹서")}</button>
           <button onClick={()=>setDialog("history")}><History size={15}/>{t("작업 이력·저장 공간")}</button>
           <button className={recoveryWarning?"recovery-warning":""} onClick={()=>setDialog("recovery")}><ArchiveRestore size={15}/>{t("자동 저장 복구")}</button>
         </>}>
@@ -408,13 +404,6 @@ export default function App() {
                 selected={project.captions.find((c) => c.id === selected)}
                 keepSpans={editedPreview && project.cuts?.length ? keepSpans : undefined}
               />
-              <div className="subtitle-language-bar">
-                <label>{t("미리보기·SRT 언어")} <select value={subtitleLanguage} onChange={e=>setSubtitleLanguage(e.target.value as typeof subtitleLanguage)}>
-                  <option value="original">{t("원문")}</option>{LOCALES.map(l=><option key={l} value={l}>{localeNames[l]}</option>)}
-                </select></label>
-                <button disabled={!project.captions.length} onClick={()=>setDialog("translation")}>{t("자막 번역")}</button>
-                {subtitleLanguage!=="original"&&<span>{t("미번역·수정된 자막은 원문으로 미리봅니다.")}</span>}
-              </div>
               <CutPanel project={project} update={update} time={time} selected={project.captions.find(c=>c.id===selected)} preview={preview} editedPreview={editedPreview} setEditedPreview={setEditedPreview} onExport={()=>setDialog("render")}/>
               <CaptionEditor
                 project={project}
@@ -652,6 +641,7 @@ export default function App() {
       )}
       {dialog === "update" && <UpdateDialog onClose={() => setDialog(null)} />}
       {dialog === "settings" && <SettingsDialog onClose={() => setDialog(null)} />}
+      {dialog === "mixer" && <AudioMixerDialog project={project} file={file} onSave={audioMix => update(current => ({ ...current, audioMix }))} onClose={() => setDialog(null)}/>}
       {dialog === "documents" && <DocumentsDialog project={project} update={update} onClose={()=>setDialog(null)} onSource={(position,id)=>preview(position,id)}/>}
       {dialog === "history" && <JobHistoryDialog project={project} file={file} onClose={()=>setDialog(null)} onApplyAnalysis={applyAnalysis}/>}
       {dialog === "recovery" && <ProjectRecoveryDialog onClose={()=>setDialog(null)} onRestore={next=>{setDialog(null);guarded(t("복구본을 엽니다. 현재 작업은 먼저 파일로 저장해 두세요."),()=>changeProject(next));}}/>}
@@ -663,9 +653,6 @@ export default function App() {
         });
       }}/>}
       {dialog === "render" && <RenderDialog project={project} file={file} onClose={()=>setDialog(null)}/>}
-      {dialog === "translation" && <TranslationDialog project={project} onClose={()=>setDialog(null)} onApply={(rows,target)=>{
-        update(p=>applyTranslations(p,rows,target));setSubtitleLanguage(target);setDialog(null);setNotice(t("번역을 적용했습니다. 원문은 그대로 보존됩니다."));
-      }}/>}
     </div>
   );
 }

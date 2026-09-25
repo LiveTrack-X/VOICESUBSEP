@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('voicesubsepDesktop', Object.freeze({
   appVersion: () => ipcRenderer.invoke('desktop:version'),
+  saveDocumentPdf: request => ipcRenderer.invoke('desktop:save-document-pdf', request),
   updateStatus: () => ipcRenderer.invoke('desktop:update-status'),
   checkUpdate: () => ipcRenderer.invoke('desktop:update-check'),
   downloadUpdate: () => ipcRenderer.invoke('desktop:update-download'),

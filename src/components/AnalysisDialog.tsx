@@ -20,7 +20,8 @@ import { readHistory, sameAnalysisSource } from "../jobHistory";
 import { RecognitionPreview } from "./RecognitionPreview";
 import { CloudAsrSettings } from "./CloudAsrSettings";
 import { cloudAsrBlockReason, cloudAsrRequestFields, defaultAsrSelection, type AsrSelection } from "../cloudAsr";
-import type { CredentialState } from "../providerCredentials";
+import { providerName, type CredentialState } from "../providerCredentials";
+import { DiarizationSettings } from "./DiarizationSettings";
 
 export function AnalysisDialog({
   file,
@@ -48,6 +49,7 @@ export function AnalysisDialog({
   const [credential, setCredential] = useState<CredentialState>({ configured: false, busy: false });
   function changeAsr(selection: AsrSelection) {
     setCloudConsent(false);
+    setDiarizationConsent(false);
     if (selection.provider !== asr.provider) setCredential({ configured: false, busy: selection.provider !== "local" });
     setAsr(selection);
   }
@@ -59,11 +61,30 @@ export function AnalysisDialog({
   const device = effectiveAnalysisDevice(preferredDevice, health ? !!health.gpu?.available : undefined);
   function updatePreference<K extends keyof AnalysisPreferences>(key: K, value: AnalysisPreferences[K]) {
     setInvalidStoredPreferences(false);
+    setCloudConsent(false);
+    setDiarizationConsent(false);
     setPreferences((current) => ({ ...current, [key]: value }));
   }
   useEffect(() => {
     setStorageFailed(!saveAnalysisPreferences(preferences).ok);
   }, [preferences]);
+  const localAsrEngine = preferences.localAsrEngine ?? "whisper";
+  const qwenModel = preferences.qwenModel ?? "1.7b";
+  const diarizationProvider = preferences.diarizationProvider ?? "nemotron";
+  const [diarizationConsent, setDiarizationConsent] = useState(false);
+  const [diarizationCredential, setDiarizationCredential] = useState<CredentialState>({ configured: false, busy: false });
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  function updateEnginePreferences(value: Partial<AnalysisPreferences>) {
+    setInvalidStoredPreferences(false);
+    setCloudConsent(false);
+    setDiarizationConsent(false);
+    setPreferences(current => ({ ...current, ...value }));
+  }
+  function restoreDefaultEngines() {
+    changeAsr(defaultAsrSelection());
+    updateEnginePreferences({ localAsrEngine: "whisper", whisperModel: "large-v3", diarization: true, diarizationProvider: "nemotron" });
+    setIsolatedTracks(false);
+  }
   const [track, setTrack] = useState(0);
   const [isolatedTrackMode,setIsolatedTracks]=useState(false);
   const isolatedTracks = asr.provider === "local" && isolatedTrackMode;
@@ -71,14 +92,21 @@ export function AnalysisDialog({
   const [vstState, setVstState] = useState<VstPanelState>({ busy: false, blocked: false });
   const mappedTracks=Object.entries(trackSpeakers).map(([audioTrack,speakerId])=>({audioTrack:Number(audioTrack),speaker:project.speakers.find(s=>s.id===speakerId)}));
   const invalidMapping=isolatedTracks&&(!mappedTracks.length||mappedTracks.length>8||mappedTracks.some(item=>!item.speaker));
+  const cloudDiarization = diarization && !isolatedTracks && diarizationProvider === "deepgram";
+  const localDiarization = diarization && !isolatedTracks && diarizationProvider === "nemotron";
+  const defaultEngines = asr.provider === "local" && localAsrEngine === "whisper" && localDiarization;
+  const supportedLanguages = asr.provider === "gemini" ? ["ko", "en", "ja", "zh", "es"] : asr.provider === "local" && localAsrEngine === "qwen" ? ["zh", "en", "yue", "fr", "de", "it", "ja", "ko", "pt", "ru", "es"] : null;
+  const unsupportedLanguage = asr.provider !== "xai" && language !== "auto" && supportedLanguages !== null && !supportedLanguages.includes(language);
+  const diarizationBlock = cloudDiarization ? diarizationCredential.busy ? "API 키 상태 확인을 마칠 때까지 기다리세요." : !diarizationCredential.configured ? "Deepgram API 키를 고급 설정에서 등록하세요." : !diarizationConsent ? "고급 설정에서 Deepgram 음성 전송과 API 과금에 동의하세요." : null : null;
   const cloudBlockReason = cloudAsrBlockReason(asr, credential.configured, cloudConsent, credential.busy);
-  const blockedReason = analysisBlockReason(health, diarization&&!isolatedTracks, asr.provider) ?? cloudBlockReason;
-  const sharedRuntimeIssue = health ? analysisBlockReason(health, false, asr.provider) : null;
+  const blockedReason = analysisBlockReason(health, localDiarization, asr.provider, localAsrEngine) ?? (unsupportedLanguage ? "선택한 엔진이 지원하는 음성 언어를 선택하거나 AUTO로 변경하세요." : null) ?? cloudBlockReason ?? diarizationBlock;
+  const sharedRuntimeIssue = health ? analysisBlockReason(health, false, asr.provider, localAsrEngine) : null;
   const running = job?.status === "running" || job?.status === "queued";
   useEffect(() => {
     let alive = true;
     setJob(null);
     setCloudConsent(false);
+    setDiarizationConsent(false);
     setMedia(null);
     setHealth(null);
     setError("");
@@ -174,7 +202,10 @@ export function AnalysisDialog({
           whisperModel: model,
           language: asr.provider === "xai" ? "auto" : language,
           device,
-          diarization,
+          diarization: diarization && !isolatedTracks,
+          localAsrEngine, qwenModel,
+          diarizationProvider: cloudDiarization ? "deepgram" : "nemotron",
+          diarizationConsent: cloudDiarization && diarizationConsent,
           ...cloudAsrRequestFields(asr, credential.configured, cloudConsent),
           ...(isolatedTracks?{trackSpeakers:mappedTracks.map(item=>({audioTrack:item.audioTrack,speakerId:item.speaker!.id,name:item.speaker!.name,color:item.speaker!.color}))}:{}),
           speakerBoundaryMs,
@@ -188,6 +219,7 @@ export function AnalysisDialog({
     } finally {
       setStarting(false);
       setCloudConsent(false);
+      setDiarizationConsent(false);
     }
   }
   return (
@@ -207,7 +239,7 @@ export function AnalysisDialog({
             ? t("저장된 분석 설정을 읽을 수 없어 기본값을 사용합니다.")
             : t("분석 설정을 이 기기에 자동 저장했습니다.")}
       </p>
-      {!job && health && !health.engines.nemotron && diarization && !isolatedTracks && (
+      {!job && health && !health.engines.nemotron && localDiarization && (
         <p className="error-box" role="status">
           <strong>{t('화자 구분 실행환경 준비 필요')}</strong>
           <br />{health.engineIssues?.nemotron?.trim() ||
@@ -225,15 +257,17 @@ export function AnalysisDialog({
       )}
       {!job && !loading && (
         <>
-          <CloudAsrSettings selection={asr} onChange={changeAsr} consent={cloudConsent} onConsent={setCloudConsent}
-            disabled={starting || vstState.busy} credentialBusy={credential.busy} onCredentialState={state => {setCredential(state);setCloudConsent(false);}}/>
-          {(asr.provider === "local" || diarization) && <p className="info-box">{health?.gpu?.available ? device === "cuda" ? t("{gpu} · 로컬 GPU를 우선 사용합니다.", { gpu: health.gpu.name ?? "NVIDIA GPU" }) : t("CPU · 호환 모드") : preferredDevice === "cuda" ? t("GPU를 사용할 수 없어 이번 분석에는 CPU를 사용합니다. 저장된 GPU 선호 설정은 유지됩니다.") : t("GPU를 사용할 수 없어 CPU가 선택됐습니다. {reason}", { reason: health?.gpu?.reason ?? t("서버의 GPU 실행 환경을 확인하세요.") })}{asr.provider !== "local" && <><br/>{t("클라우드 음성 인식에는 이 장치를 사용하지 않습니다. 선택한 장치는 로컬 Nemotron 화자 구분에만 적용됩니다.")}</>}</p>}
+          <div className="analysis-preset" role="status">
+            <strong>{defaultEngines ? t("기본 분석 · Whisper + Nemotron") : t("사용자 지정 분석")}</strong>
+            <p>{defaultEngines ? t("Whisper가 음성을 글로 바꾸고, Nemotron이 말한 사람을 구분합니다. 이 기기에서 실행하며 API 키가 필요 없습니다.") : `${asr.provider === "local" ? localAsrEngine === "whisper" ? "Whisper" : "Qwen3-ASR" : providerName(asr.provider)} · ${isolatedTracks ? t("분리된 화자 트랙") : diarization ? diarizationProvider === "nemotron" ? "Nemotron" : "Deepgram" : t("전사만 생성 · 인물은 직접 지정")}`}</p>
+            {!defaultEngines && <button disabled={starting || vstState.busy} onClick={restoreDefaultEngines}>{t("기본 조합으로 되돌리기")}</button>}
+          </div>
           <div className="form-grid">
             <label>{t('오디오 트랙')}<select
                 aria-label={t("오디오 트랙")}
                 disabled={starting || vstState.busy}
                 value={track}
-                onChange={(e) => setTrack(Number(e.target.value))}
+                onChange={(e) => { setTrack(Number(e.target.value)); setCloudConsent(false); setDiarizationConsent(false); }}
               >
                 {media?.audioTracks.map((audioTrack) => (
                   <option key={audioTrack.index} value={audioTrack.index}>
@@ -245,33 +279,24 @@ export function AnalysisDialog({
                 aria-label={t("음성 언어")}
                 value={asr.provider === "xai" ? "auto" : language}
                 disabled={asr.provider === "xai" || starting}
-                onChange={(e) => updatePreference("language", e.target.value)}
+                onChange={(e) => updateEnginePreferences({ language: e.target.value })}
               >
                 <option value="auto">{t('자동 감지')}</option>
-                {ASR_LANGUAGES.map((code) => <option key={code} value={code}>{languageName(code, locale)} ({code})</option>)}
+                {ASR_LANGUAGES.filter(code => !supportedLanguages || supportedLanguages.includes(code) || code === language).map((code) => <option key={code} value={code}>{languageName(code, locale)} ({code})</option>)}
               </select>
-              <small>{asr.provider === "xai" ? t("현재 xAI 연결은 언어를 자동 인식합니다. 저장된 로컬 언어 설정은 유지합니다.") : t("자동 감지하거나 주로 사용하는 음성 언어를 직접 선택하세요. 앱 화면 언어와 번역 언어에는 영향을 주지 않습니다.")}</small>
+              <small>{asr.provider === "xai" ? t("현재 xAI 연결은 언어를 자동 인식합니다. 저장된 로컬 언어 설정은 유지합니다.") : t("자동 감지하거나 주로 사용하는 음성 언어를 직접 선택하세요. 앱 화면 언어에는 영향을 주지 않습니다.")}</small>
             </label>
-            {asr.provider === "local" && <label>{t('Whisper 모델')}<select
-                aria-label={t("Whisper 모델")}
-                value={model}
-                onChange={(e) => updatePreference("whisperModel", e.target.value as AnalysisPreferences["whisperModel"])}
-              >
-                <option value="large-v3">{t('Large v3 · 정밀 분석용')}</option>
-                <option value="large-v3-turbo">{t('Large v3 Turbo · 빠른 분석용')}</option>
-                <optgroup label={t("가벼운 모델")}>{["medium", "small", "base", "tiny"].map(m => <option key={m} value={m}>{m}</option>)}</optgroup>
-              </select>
-            </label>}
-            {(asr.provider === "local" || diarization) && <label>{t(asr.provider === "local" ? '연산 장치' : '화자 구분 실행 장치')}<select
-                aria-label={t(asr.provider === "local" ? "연산 장치" : "화자 구분 실행 장치")}
-                value={device}
-                onChange={(e) => updatePreference("device", e.target.value as AnalysisPreferences["device"])}
-              >
-                <option value="cuda" disabled={!health?.gpu?.available}>{t('NVIDIA GPU · 우선 사용')}</option>
-                <option value="cpu">{t('CPU · 호환 모드')}</option>
-              </select>
-            </label>}
           </div>
+          <details className="analysis-advanced" open={advancedOpen} onToggle={event => setAdvancedOpen(event.currentTarget.open)}>
+            <summary>{t("고급 설정 (Advanced)")}<small>{t("모델 · 로컬/유료 API · 오디오 처리")}</small></summary>
+            <p>{t("기본은 로컬 Whisper + Nemotron입니다. 다른 엔진이 필요한 경우에만 아래 설정을 변경하세요.")}</p>
+            <CloudAsrSettings selection={asr} onChange={changeAsr} consent={cloudConsent} onConsent={setCloudConsent}
+              preferences={preferences} onPreferences={updateEnginePreferences}
+              disabled={starting || vstState.busy} credentialBusy={credential.busy} onCredentialState={state => { setCredential(state); setCloudConsent(false); }}/>
+            {(asr.provider === "local" || localDiarization) && <label>{t("연산 장치")}<select aria-label={t("연산 장치")} disabled={starting || vstState.busy} value={device}
+              onChange={event => updatePreference("device", event.target.value as AnalysisPreferences["device"])}>
+              <option value="cuda" disabled={!health?.gpu?.available}>{t("NVIDIA GPU · 우선 사용")}</option><option value="cpu">{t("CPU · 호환 모드")}</option>
+            </select><small>{health?.gpu?.available ? health.gpu.name : t("GPU를 사용할 수 없어 이번 분석에는 CPU를 사용합니다. 저장된 GPU 선호 설정은 유지됩니다.")}</small></label>}
           {asr.provider === "local" && !!media&&media.audioTracks.length>1&&<fieldset className="analysis-options" disabled={starting||vstState.busy}>
             <legend>{t("분리된 화자 트랙")}</legend>
             <label className="checkbox-label"><input type="checkbox" checked={isolatedTracks} onChange={e=>setIsolatedTracks(e.target.checked)}/>{t("OBS 등에서 따로 녹음한 트랙을 인물별로 연결")}</label>
@@ -291,7 +316,7 @@ export function AnalysisDialog({
                 name="analysis-scope"
                 checked={diarization}
                 onChange={() => updatePreference("diarization", true)}
-              />{asr.provider === "local" ? t('인물별 자막 생성 · Whisper + Nemotron (기본)') : t('인물별 자막 생성 · 클라우드 전사 + 로컬 Nemotron')}</label>
+              />{t("인물별 자막 생성 · 음성 인식 + 화자 구분")}</label>
             <label className="checkbox-label">
               <input
                 type="radio"
@@ -300,6 +325,10 @@ export function AnalysisDialog({
                 onChange={() => updatePreference("diarization", false)}
               />{t('전사만 생성 · 인물은 직접 지정')}</label>
           </fieldset>}
+          {!isolatedTracks && diarization && <DiarizationSettings provider={diarizationProvider}
+            onChange={provider => { updateEnginePreferences({ diarizationProvider: provider }); setDiarizationCredential({ configured: false, busy: provider === "deepgram" }); }}
+            consent={diarizationConsent} onConsent={setDiarizationConsent} disabled={starting || vstState.busy}
+            onCredentialState={state => { setDiarizationCredential(state); setDiarizationConsent(false); }}/>}
           {sharedRuntimeIssue && (
             <p className="error-box" role="status">{t(sharedRuntimeIssue)}</p>
           )}
@@ -308,11 +337,9 @@ export function AnalysisDialog({
             {isolatedTracks ? t("최대 8개 트랙을 선택하세요. 화자 구분 모델 대신 지정한 인물을 사용합니다.") : diarization
               ? t("자동 화자 번호를 부여합니다. 분석 후 목소리를 확인하고 이름을 지정하세요.")
               : t("전사만 생성을 선택했습니다. 자막의 화자를 편집 화면에서 직접 지정해야 합니다.")}
-            {(asr.provider === "local" || diarization) && <><br />{t('큰 모델은 첫 실행 시 수 GB를 다운로드해 이 기기에 보관합니다. CPU의 큰 모델은 오래 걸릴 수 있습니다. 겹쳐 말한 모든 대사의 복원을 보장하지 않습니다.')}</>}</p>
+            {(asr.provider === "local" || localDiarization) && <><br />{t('큰 모델은 첫 실행 시 수 GB를 다운로드해 이 기기에 보관합니다. CPU의 큰 모델은 오래 걸릴 수 있습니다. 겹쳐 말한 모든 대사의 복원을 보장하지 않습니다.')}</>}</p>
           <VstChainPanel media={media} audioTrack={track} disabled={starting} onStateChange={setVstState} />
-        </>
-      )}
-      {!job && !loading && (
+
         <fieldset className="analysis-options boundary-options" disabled={!diarization || isolatedTracks || starting || running}>
           <legend>{t('짧은 단어 화자 보정')}</legend>
           <label>{t('허용할 시간 차이')}<select
@@ -329,6 +356,9 @@ export function AnalysisDialog({
           </label>
           <p id="speaker-boundary-help">{t('The처럼 짧은 단어가 화자 구간에 일부 걸쳐 있고, 인접 단어의 화자도 같을 때 보정합니다. 겹친 목소리나 화자 전환은 미배정으로 남깁니다. 넓게 설정할수록 잘못 배정될 가능성도 커집니다. 보정한 자막에는 ‘경계 보정’을 표시합니다. 기존 자막은 유지되며 다음 분석부터 적용됩니다.')}</p>
         </fieldset>
+          </details>
+          {(cloudBlockReason || diarizationBlock || unsupportedLanguage) && <p className="info-box">{t(unsupportedLanguage ? "선택한 엔진이 지원하는 음성 언어를 선택하거나 AUTO로 변경하세요." : cloudBlockReason ?? diarizationBlock!)} <button onClick={() => setAdvancedOpen(true)}>{t("고급 설정 열기")}</button></p>}
+        </>
       )}
       {job && (
         <div className="job-status">

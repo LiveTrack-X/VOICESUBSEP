@@ -2,3 +2,5 @@
 *.png binary
 # Preserve checksum-referenced evidence bytes across Windows and Linux clones.
 docs/evidence/*.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+# Preserve upstream license bytes, including the original final blank line.
+third-party/**/LICENSE.txt -text whitespace=-blank-at-eof

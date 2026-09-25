@@ -4,8 +4,9 @@ import { cloudAsrBlockReason, cloudAsrRequestFields, defaultAsrSelection, type A
 import { getProviderCredentialStatus, parseProviderCredentialStatus, removeProviderCredential, setProviderCredential, validProviderKey } from "./providerCredentials";
 import { CloudAsrSettings } from "./components/CloudAsrSettings";
 import { I18nProvider } from "./i18n";
+import { defaultAnalysisPreferences } from "./settings";
 
-const status = { groq: { configured: true }, xai: { configured: false } };
+const status = { groq: { configured: true }, xai: { configured: false }, gemini: { configured: false }, deepgram: { configured: false } };
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("cloud ASR request boundaries", () => {
@@ -13,7 +14,7 @@ describe("cloud ASR request boundaries", () => {
     expect(defaultAsrSelection()).toEqual({provider:"local"});
     expect(cloudAsrRequestFields(defaultAsrSelection(), false, false)).toEqual({});
   });
-  it.each(["groq", "xai"] as const)("requires an explicit model, session key and current consent for %s", provider => {
+  it.each(["groq", "xai", "gemini"] as const)("requires an explicit model, session key and current consent for %s", provider => {
     const selection = defaultAsrSelection(provider);
     expect(cloudAsrBlockReason(selection, true, true, true)).not.toBeNull();
     expect(() => cloudAsrRequestFields(selection, false, true)).toThrow();
@@ -28,7 +29,7 @@ describe("cloud ASR request boundaries", () => {
     expect(JSON.stringify(result)).not.toContain("private-key");
   });
   it("shows cloud scope, session-only key storage and consent without offering ChatGPT OAuth", () => {
-    const html = renderToStaticMarkup(<I18nProvider><CloudAsrSettings selection={defaultAsrSelection("xai")} onChange={()=>{}} consent={false} onConsent={()=>{}} disabled={false} credentialBusy={false} onCredentialState={()=>{}}/></I18nProvider>);
+    const html = renderToStaticMarkup(<I18nProvider><CloudAsrSettings selection={defaultAsrSelection("xai")} onChange={()=>{}} consent={false} onConsent={()=>{}} disabled={false} credentialBusy={false} onCredentialState={()=>{}} preferences={defaultAnalysisPreferences()} onPreferences={()=>{}}/></I18nProvider>);
     expect(html).toContain('type="password"');
     expect(html).toContain('autoComplete="off"');
     expect(html).toContain("서버 재시작 시 다시 등록");

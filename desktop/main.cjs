@@ -10,6 +10,7 @@ const { UpdateController } = require('./updater.cjs');
 const { hasExited, stopOwnedBackend } = require('./backend-lifecycle.cjs');
 const { createAppLogger } = require('./startup-log.cjs');
 const { installCapturePermissions } = require('./capture-permissions.cjs');
+const { createDocumentPdfService } = require('./document-pdf.cjs');
 
 app.setName('VOICESUBSEP');
 if (process.platform === 'win32') app.setAppUserModelId('com.livetrack.voicesubsep');
@@ -131,17 +132,19 @@ function validSender(event) {
 }
 
 function installIpc(updates) {
+  const saveDocumentPdf = createDocumentPdfService({ BrowserWindow, session, dialog, getWindow: () => mainWindow });
   const methods = {
     'desktop:version': () => app.getVersion(),
     'desktop:update-status': () => updates.snapshot(),
     'desktop:update-check': () => updates.check(),
     'desktop:update-download': () => updates.download(),
     'desktop:update-install': () => updates.install(),
+    'desktop:save-document-pdf': request => saveDocumentPdf(request),
   };
   for (const [channel, handler] of Object.entries(methods)) {
-    ipcMain.handle(channel, (event) => {
+    ipcMain.handle(channel, (event, request) => {
       if (!validSender(event)) throw new Error('허용되지 않은 앱 요청입니다.');
-      return handler();
+      return handler(request);
     });
   }
   updates.on('status', (status) => {

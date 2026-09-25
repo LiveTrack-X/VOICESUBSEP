@@ -1,4 +1,5 @@
 import { parseDocuments, type ProjectDocuments } from "./documents";
+import { parseAudioMix, type AudioMixPlan } from "./audioMixer";
 /** Portable editing data. All times are seconds on the original source media. */
 export type Mode = "standard" | "overlap";
 export type ReviewReason =
@@ -92,6 +93,7 @@ export type Project = {
   notes: Note[];
   cuts?: CutRange[];
   documents?: ProjectDocuments;
+  audioMix?: AudioMixPlan;
   updatedAt: string;
 };
 
@@ -367,6 +369,7 @@ export function parseProject(text: string): Project {
     "cuts",
     "updatedAt",
     "documents",
+    "audioMix",
   ]);
   if (root.schemaVersion !== 1 && root.schemaVersion !== 2)
     invalid("schemaVersion", "Only project versions 1 and 2 are supported.");
@@ -551,7 +554,20 @@ export function parseProject(text: string): Project {
   };
   if (cuts !== undefined) project.cuts = cuts;
   if (root.documents !== undefined) project.documents = parseDocuments(root.documents);
+  if (root.audioMix !== undefined) project.audioMix = parseAudioMix(root.audioMix);
   return project;
+}
+
+/** Every saved project must fit the same byte limit used when reopening it. */
+export function serializeProject(project: Project): string {
+  const validated = parseProject(JSON.stringify(project));
+  const formatted = JSON.stringify(validated, null, 2);
+  if (new TextEncoder().encode(formatted).byteLength <= MAX_PROJECT_BYTES) return formatted;
+  // Large projects still fit without indentation; never create our own
+  // unreopenable file merely to keep pretty formatting.
+  const compact = JSON.stringify(validated);
+  boundedInput(compact, "프로젝트");
+  return compact;
 }
 
 function milliseconds(seconds: number): number {

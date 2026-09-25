@@ -71,7 +71,7 @@ export function JobHistoryDialog({project,file,onClose,onApplyAnalysis}: {
     <div className="history-list">{items.slice(0,count).map(item=>{
       const running=item.status==="queued"||item.status==="running";
       return <section key={`${item.kind}-${item.id}`} style={{borderBottom:"1px solid var(--border, #dce1eb)",padding:"12px 0"}}>
-        <strong>{item.kind==="analysis"?t("로컬 음성 분석"):t("편집본 내보내기")} · {item.projectName||item.mediaName}</strong>
+        <strong>{item.kind==="analysis"?t("음성 분석"):t("편집본 내보내기")} · {item.projectName||item.mediaName}</strong>
         <p>{item.mediaName} · {item.createdAt?new Date(item.createdAt).toLocaleString():""} · {t(item.kind==="analysis"?statusLabel[item.status]:renderStatusLabel[item.status])} {running?`${Math.round(item.progress*100)}%`:""}</p>
         <div className="dialog-actions">
           <button disabled={busy} onClick={()=>item.kind==="render"?setRenderId(item.id):void inspectAnalysis(item)}>{t("결과 및 진행 확인")}</button>

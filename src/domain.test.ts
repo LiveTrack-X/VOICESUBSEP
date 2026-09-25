@@ -16,6 +16,7 @@ import {
   parseTime,
   resolveCaptionStyle,
   safeFilename,
+  serializeProject,
   type Caption,
   type CaptionStyle,
   type Project,
@@ -38,6 +39,28 @@ function changedProject(change: (project: Project) => void): string {
 }
 
 describe("portable projects", () => {
+  it("saves near-limit projects in a form the same importer can reopen", () => {
+    const project = createProject();
+    project.duration = 20_000;
+    project.captions = Array.from({ length: 20_000 }, (_, index) => caption(`c${index}`, index, index + 1, "x".repeat(280), null));
+    const compactBytes = new TextEncoder().encode(JSON.stringify(project)).byteLength;
+    const formattedBytes = new TextEncoder().encode(JSON.stringify(project, null, 2)).byteLength;
+    expect(compactBytes).toBeLessThan(MAX_PROJECT_BYTES);
+    expect(formattedBytes).toBeGreaterThan(MAX_PROJECT_BYTES);
+    const saved = serializeProject(project);
+    expect(new TextEncoder().encode(saved).byteLength).toBeLessThanOrEqual(MAX_PROJECT_BYTES);
+    expect(parseProject(saved)).toEqual(project);
+  });
+
+  it("preserves readable formatting and legacy/mixer decisions for smaller saves", () => {
+    const project = demoProject();
+    project.captions[0].translation = { sourceText: project.captions[0].text, texts: { en: "Old saved translation" } };
+    project.documents = { roles: {}, tags: {}, items: [{ id: "legacy", kind: "summary", text: "Saved draft", owner: "", due: "", evidence: [], status: "draft" }] };
+    project.audioMix = { tracks: [], format: "wav", limiter: true, applyCuts: false, videoMediaId: null, frameRate: "30" };
+    const saved = serializeProject(project);
+    expect(saved).toContain('\n  "schemaVersion"');
+    expect(parseProject(saved)).toEqual(project);
+  });
   it("preserves legacy shape and roundtrips original-time version-two cuts", () => {
     const legacy = demoProject();
     expect(parseProject(JSON.stringify(legacy))).toEqual(legacy);

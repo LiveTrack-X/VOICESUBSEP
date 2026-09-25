@@ -5,7 +5,7 @@ import re
 import threading
 import uuid
 
-PROVIDERS = ("groq", "xai")
+PROVIDERS = ("groq", "xai", "gemini", "deepgram")
 
 
 class ProviderCredentials:

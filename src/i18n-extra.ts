@@ -14,8 +14,12 @@ import { liveMessages } from "./i18n-live";
 import { modeMessages } from "./i18n-modes";
 import { cloudMessages } from "./i18n-cloud";
 import { transcriptMessages } from "./i18n-transcript";
+import { audioMixerMessages } from "./i18n-audio-mixer";
+import { advancedMessages } from "./i18n-advanced";
 
 export const extraMessages: Record<string, readonly [string, string, string, string]> = {
+  ...advancedMessages,
+  ...audioMixerMessages,
   ...transcriptMessages,
   ...modeMessages,
   ...cloudMessages,

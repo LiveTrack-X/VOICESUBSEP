@@ -1,0 +1,14 @@
+.audio-mix-tracks { display: grid; gap: 12px; margin: 12px 0; }
+.audio-mix-track { min-width: 0; border: 1px solid var(--border, #d8deea); border-radius: 8px; padding: 12px; }
+.audio-mix-track legend { max-width: 100%; overflow-wrap: anywhere; padding: 0 5px; font-weight: 600; }
+.audio-mix-controls { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+.audio-mix-controls label { display: grid; gap: 5px; min-width: 0; }
+.audio-mix-controls input, .audio-mix-controls select { min-width: 0; width: 100%; }
+.audio-mix-row, .audio-mix-reconnect { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.audio-mix-options { display: grid; gap: 10px; min-width: 0; border: 0; padding: 0; }
+.audio-mix-options>label, .audio-mix-row>label { display: flex; gap: 8px; align-items: center; }
+.audio-mix-history { max-height: 220px; overflow: auto; }
+.audio-mix-history>div { display: flex; align-items: center; gap: 8px; padding: 8px 0; flex-wrap: wrap; }
+.audio-mix-history span { flex: 1; min-width: 130px; overflow-wrap: anywhere; }
+.export-section audio { width: 100%; display: block; margin-top: 12px; }
+@media(max-width:600px) { .audio-mix-controls { grid-template-columns: 1fr 1fr; }.audio-mix-controls>label:first-child { grid-column: 1 / -1; } }

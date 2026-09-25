@@ -14,6 +14,9 @@ export type AnalysisPreferences = {
   language: string;
   diarization: boolean;
   speakerBoundaryMs: 0 | 200 | 500 | 800;
+  localAsrEngine?: "whisper" | "qwen";
+  qwenModel?: "0.6b" | "1.7b";
+  diarizationProvider?: "nemotron" | "deepgram";
 };
 export type AppSettings = {
   format: "voicesubsep-settings";
@@ -39,11 +42,18 @@ export function defaultAnalysisPreferences(): AnalysisPreferences {
 
 /** Validate the complete value before returning an independently owned preference. */
 export function checkedAnalysisPreferences(value: unknown): AnalysisPreferences {
-  if (!record(value) || !exactKeys(value, ["whisperModel", "device", "language", "diarization", "speakerBoundaryMs"]) ||
+  const optional = ["localAsrEngine", "qwenModel", "diarizationProvider"];
+  if (!record(value) || !exactKeys(value, ["whisperModel", "device", "language", "diarization", "speakerBoundaryMs", ...optional.filter(key => Object.hasOwn(value, key))]) ||
     !(whisperModels as readonly unknown[]).includes(value.whisperModel) || (value.device !== "cuda" && value.device !== "cpu") ||
     !validLanguage(value.language) || typeof value.diarization !== "boolean" || ![0, 200, 500, 800].includes(value.speakerBoundaryMs as number)) return invalid();
+  if ((value.localAsrEngine !== undefined && (typeof value.localAsrEngine !== "string" || !["whisper", "qwen"].includes(value.localAsrEngine))) ||
+      (value.qwenModel !== undefined && (typeof value.qwenModel !== "string" || !["0.6b", "1.7b"].includes(value.qwenModel))) ||
+      (value.diarizationProvider !== undefined && (typeof value.diarizationProvider !== "string" || !["nemotron", "deepgram"].includes(value.diarizationProvider)))) return invalid();
   return { whisperModel: value.whisperModel as AnalysisPreferences["whisperModel"], device: value.device as AnalysisPreferences["device"],
-    language: value.language, diarization: value.diarization, speakerBoundaryMs: value.speakerBoundaryMs as AnalysisPreferences["speakerBoundaryMs"] };
+    language: value.language, diarization: value.diarization, speakerBoundaryMs: value.speakerBoundaryMs as AnalysisPreferences["speakerBoundaryMs"],
+    ...(value.localAsrEngine !== undefined ? { localAsrEngine: value.localAsrEngine as "whisper" | "qwen" } : {}),
+    ...(value.qwenModel !== undefined ? { qwenModel: value.qwenModel as "0.6b" | "1.7b" } : {}),
+    ...(value.diarizationProvider !== undefined ? { diarizationProvider: value.diarizationProvider as "nemotron" | "deepgram" } : {}) };
 }
 
 function analysisJson(settings: AnalysisPreferences): string {
@@ -53,7 +63,7 @@ function analysisJson(settings: AnalysisPreferences): string {
 function parseSavedAnalysis(raw: string): AnalysisPreferences {
   if (raw.length > 4096) return invalid();
   const value: unknown = JSON.parse(raw);
-  if (!record(value) || value.version !== 1 || !exactKeys(value, ["version", "whisperModel", "device", "language", "diarization", "speakerBoundaryMs"])) return invalid();
+  if (!record(value) || value.version !== 1) return invalid();
   const { version: _version, ...settings } = value;
   return checkedAnalysisPreferences(settings);
 }

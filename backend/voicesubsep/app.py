@@ -27,15 +27,14 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .diagnostics import Diagnostics
 from .cloud_credentials import ProviderCredentials
 from .cloud_asr import ASR_MODELS
+from .audio_mix_api import AudioMixJobManager, register_audio_mixing_routes
 from .jobs import Analyzer, JobManager
 from .media import MEDIA_EXTENSIONS, clean_name, probe_media
 from .media_cache import MediaCache
-from .document_api import register_document_routes
 from .waveform import Waveforms
 from .render_jobs import Renderer, RenderJobManager
 from .rendering import validate_request as validate_render_request
 from .storage import ID_PATTERN, Storage, new_id
-from .translation import router as translation_router
 from .vst_api import PreprocessingRequest, PreviewManager, router as vst_router, validate_available_chain
 
 DEFAULT_ORIGINS = {
@@ -105,9 +104,13 @@ class JobRequest(BaseModel):
     projectId: str | None = Field(default=None, min_length=1, max_length=128)
     projectName: str = Field(default="", max_length=200)
     trackSpeakers: list[TrackSpeaker] | None = Field(default=None, min_length=1, max_length=8)
-    asrProvider: Literal["local", "groq", "xai"] = "local"
+    asrProvider: Literal["local", "groq", "xai", "gemini"] = "local"
     providerModel: str | None = Field(default=None, max_length=80)
     cloudConsent: bool = False
+    localAsrEngine: Literal["whisper", "qwen"] = "whisper"
+    qwenModel: Literal["0.6b", "1.7b"] = "1.7b"
+    diarizationProvider: Literal["nemotron", "deepgram"] = "nemotron"
+    diarizationConsent: bool = False
 
     @model_validator(mode="after")
     def unique_tracks(self):
@@ -120,8 +123,20 @@ class JobRequest(BaseModel):
                 raise ValueError("Cloud analysis currently supports one selected audio track. Use local ASR for isolated speaker tracks.")
             if self.asrProvider == "groq" and self.language != "auto" and len(self.language) != 2:
                 raise ValueError("Groq requires AUTO or a two-letter language code.")
+            if self.asrProvider == "gemini" and self.language not in {"auto", "ko", "en", "ja", "zh", "es"}:
+                raise ValueError("Gemini language hints support AUTO, Korean, English, Japanese, Chinese or Spanish.")
         elif self.providerModel is not None:
             raise ValueError("A cloud model cannot be used with local analysis.")
+        if self.asrProvider == "local" and self.localAsrEngine == "qwen" and self.language not in {"auto", "zh", "en", "yue", "fr", "de", "it", "ja", "ko", "pt", "ru", "es"}:
+            raise ValueError("Choose a language supported by Qwen word alignment, or AUTO.")
+        if self.diarization and self.diarizationProvider == "deepgram":
+            from .cloud_diarization import LANGUAGES
+            if self.language != "auto" and self.language not in LANGUAGES:
+                raise ValueError("Deepgram speaker diarization requires AUTO or a supported language.")
+            if not self.diarizationConsent:
+                raise ValueError("Confirm the separate Deepgram audio upload and API usage for speaker diarization.")
+            if self.trackSpeakers:
+                raise ValueError("Cloud diarization cannot be combined with isolated speaker track mapping.")
         if self.trackSpeakers:
             if len({item.audioTrack for item in self.trackSpeakers}) != len(self.trackSpeakers):
                 raise ValueError("Select each source track only once.")
@@ -142,7 +157,7 @@ class JobRequest(BaseModel):
 
 class ProviderCredentialRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
-    provider: Literal["groq", "xai"]
+    provider: Literal["groq", "xai", "gemini", "deepgram"]
     key: str = Field(min_length=12, max_length=512, repr=False)
 
 
@@ -191,8 +206,9 @@ def create_app(
     jobs = JobManager(storage, analyzer, diagnostics=diagnostics, provider_credentials=provider_credentials)
     renders = RenderJobManager(storage, renderer, diagnostics=diagnostics)
     vst_previews = PreviewManager(storage, diagnostics=diagnostics)
+    mixer = AudioMixJobManager(storage, diagnostics=diagnostics)
     waveforms = Waveforms(storage)
-    cache = MediaCache(storage, lambda: jobs.referenced_media_ids() | renders.referenced_media_ids() | vst_previews.referenced_media_ids() | waveforms.referenced_media_ids())
+    cache = MediaCache(storage, lambda: jobs.referenced_media_ids() | renders.referenced_media_ids() | vst_previews.referenced_media_ids() | waveforms.referenced_media_ids() | mixer.referenced_media_ids())
     inspect_media = probe or probe_media
     origins = set(allowed_origins) if allowed_origins is not None else DEFAULT_ORIGINS
 
@@ -203,10 +219,16 @@ def create_app(
             renders.start()
             try:
                 vst_previews.start()
-                yield
+                mixer.start()
+                try:
+                    yield
+                finally:
+                    await run_in_threadpool(mixer.stop)
             finally:
-                await run_in_threadpool(vst_previews.stop)
-                await run_in_threadpool(renders.stop)
+                try:
+                    await run_in_threadpool(vst_previews.stop)
+                finally:
+                    await run_in_threadpool(renders.stop)
         finally:
             provider_credentials.clear()
             await run_in_threadpool(jobs.stop)
@@ -216,6 +238,7 @@ def create_app(
     application.state.jobs = jobs
     application.state.renders = renders
     application.state.vst_previews = vst_previews
+    application.state.audio_mixes = mixer
     application.state.diagnostics = diagnostics
     application.state.media_cache = cache
     application.state.provider_credentials = provider_credentials
@@ -277,7 +300,7 @@ def create_app(
         return provider_credentials.status()
 
     @application.delete("/api/provider-credentials/{provider}")
-    def remove_provider_credential(provider: Literal["groq", "xai"]):
+    def remove_provider_credential(provider: Literal["groq", "xai", "gemini", "deepgram"]):
         provider_credentials.clear(provider)
         return provider_credentials.status()
 
@@ -342,7 +365,7 @@ def create_app(
             issues = {"whisper": detail, "nemotron": detail}
         result = {"app": "voicesubsep", "status": "ok", "ffmpeg": shutil.which("ffmpeg") is not None,
                   "ffprobe": shutil.which("ffprobe") is not None,
-                  "engines": {"whisper": bool(engines.get("whisper")), "nemotron": bool(engines.get("nemotron"))},
+                  "engines": {"whisper": bool(engines.get("whisper")), "nemotron": bool(engines.get("nemotron")), "qwen": bool(engines.get("qwen"))},
                   "engineIssues": issues,
                   "gpu": gpu,
                   "defaults": {"device": "cuda" if gpu["available"] else "cpu", "whisperModel": "large-v3",
@@ -428,6 +451,11 @@ def create_app(
             return submit_job(request)
 
     def submit_job(request: JobRequest):
+        if request.diarization and request.diarizationProvider == "deepgram":
+            try:
+                provider_credentials.get_provider_key("deepgram")
+            except ValueError:
+                raise HTTPException(400, "Register the Deepgram API key before speaker diarization.") from None
         if request.asrProvider != "local":
             try:
                 provider_credentials.get_provider_key(request.asrProvider)
@@ -439,6 +467,8 @@ def create_app(
             raise HTTPException(404, "Upload or re-link the source media before analysis.")
         if request.audioTrack not in {track["index"] for track in metadata["audioTracks"]}:
             raise HTTPException(422, "Select an audio track that exists in this recording.")
+        if request.diarization and request.diarizationProvider == "deepgram" and metadata["duration"] > 7200:
+            raise HTTPException(422, "Deepgram speaker diarization supports up to 2 hours in this app. Choose local Nemotron.")
         if request.trackSpeakers and any(item.audioTrack not in {track["index"] for track in metadata["audioTracks"]} for item in request.trackSpeakers):
             raise HTTPException(422, "Every mapped track must exist in this recording.")
         payload = request.model_dump(exclude_none=True)
@@ -522,9 +552,8 @@ def create_app(
         return FileResponse(path, media_type=mimetypes.guess_type(filename)[0] or "application/octet-stream",
                             filename=filename, headers={"Cache-Control": "private, no-store"})
 
-    application.include_router(translation_router)
     application.include_router(vst_router)
-    register_document_routes(application)
+    register_audio_mixing_routes(application, mixer, storage, probe=inspect_media)
     return application
 
 

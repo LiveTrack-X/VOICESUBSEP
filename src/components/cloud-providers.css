@@ -10,3 +10,11 @@
 .cloud-consent { display: flex; align-items: flex-start; gap: 7px; line-height: 1.6; margin-top: 10px; }
 .cloud-consent input { flex: 0 0 auto; margin-top: 4px; }
 .cloud-consent span { min-width: 0; overflow-wrap: anywhere; }
+.analysis-preset { padding: 12px 14px; background: #f3f0ff; border: 1px solid #d9d0fc; border-radius: 10px; margin: 12px 0; }
+.analysis-preset strong { display: block; color: #5034b9; }
+.analysis-preset p { margin: 6px 0; font-size: 12px; line-height: 1.6; }
+.analysis-advanced { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin: 16px 0; min-width: 0; }
+.analysis-advanced > summary { cursor: pointer; font-weight: 650; }
+.analysis-advanced > summary small { display: block; margin: 5px 0 0 16px; color: #657185; font-weight: 400; }
+.analysis-advanced > label, .cloud-asr-settings > label:not(.cloud-consent) { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.analysis-advanced select { max-width: 100%; min-width: 0; }

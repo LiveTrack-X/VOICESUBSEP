@@ -37,6 +37,21 @@ function appSettings(): AppSettings {
 }
 
 describe("analysis preferences", () => {
+  it("preserves optional advanced choices while old settings keep local default engines", () => {
+    const storage = new MemoryStorage();
+    const legacy = defaultAnalysisPreferences();
+    expect(legacy.localAsrEngine ?? "whisper").toBe("whisper");
+    expect(legacy.diarizationProvider ?? "nemotron").toBe("nemotron");
+    expect(legacy.diarization).toBe(true);
+    const advanced = { ...legacy, localAsrEngine: "qwen" as const, qwenModel: "0.6b" as const, diarizationProvider: "deepgram" as const };
+    expect(saveAnalysisPreferences(advanced, storage).ok).toBe(true);
+    expect(loadAnalysisPreferences(storage).settings).toEqual(advanced);
+    const backup = { ...appSettings(), analysis: advanced };
+    expect(importAppSettings(serializeAppSettings(backup)).analysis).toEqual(advanced);
+    expect(() => checkedAnalysisPreferences({ ...advanced, cloudConsent: true })).toThrow();
+    expect(() => checkedAnalysisPreferences({ ...advanced, apiKey: "secret" })).toThrow();
+    expect(() => checkedAnalysisPreferences({ ...advanced, localAsrEngine: ["qwen"] })).toThrow();
+  });
   it("has stable defaults, migrates the former language choice, and then uses canonical settings", () => {
     const storage = new MemoryStorage();
     expect(loadAnalysisPreferences(storage)).toEqual({ settings: defaultAnalysisPreferences(), status: "default" });

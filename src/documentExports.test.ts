@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createProject, type Project } from "./domain";
 import { evidenceFor, type MinutesItem } from "./documents";
-import { exportDocumentHtml, exportDocumentXlsx, reportTime, sanitizeWorksheetNames } from "./documentExports";
+import { documentParticipants, exportDocumentDocx, exportDocumentHtml, exportDocumentTxt, exportDocumentXlsx, reportTime, sanitizeWorksheetNames } from "./documentExports";
 import { dictionaries, LOCALES, translate } from "./i18n";
 import { readFileSync } from "node:fs";
 
@@ -165,5 +165,45 @@ describe("Excel OpenXML reports", () => {
       const files = unzip(exportDocumentXlsx(fixture(), "minutes", key => translate(locale, key), { ...options, locale }));
       expect(files.get("xl/workbook.xml")).toContain(translate(locale, "보고서"));
     }
+  });
+});
+
+describe("Word and plain-text document reports", () => {
+  it.each(["interview", "minutes"] as const)("writes genuine DOCX for %s with source times, status and literal text", mode => {
+    const p = fixture(), before = JSON.stringify(p);
+    p.captions[0]!.text = '<tag> & 😀\nsecond\tcolumn';
+    const bytes = exportDocumentDocx(p, mode, label, options), files = unzip(bytes), word = files.get("word/document.xml")!;
+    expect(files.get("[Content_Types].xml")).toContain("wordprocessingml.document.main+xml");
+    expect(files.get("_rels/.rels")).toContain('Target="word/document.xml"');
+    expect(files.get("word/_rels/document.xml.rels")).toContain('Target="styles.xml"');
+    expect(word).toContain("&lt;tag&gt; &amp; 😀"); expect(word).toContain("<w:br/>"); expect(word).toContain("<w:tab/>");
+    expect(word).toContain("00:00:02.125"); expect(word).toContain("검수 필요"); expect(word).toContain(options.generatedAt.toISOString());
+    expect([...files.values()].join("")).not.toMatch(/TargetMode="External"|w:hyperlink|w:altChunk|vbaProject|w:instrText/);
+    p.captions[0]!.text = "어떤 계획인가요?"; expect(JSON.stringify(p)).toBe(before);
+  });
+  it("preserves manual owner/due values, stale evidence and draft states in both TXT and DOCX", () => {
+    const p = fixture();
+    for (const output of [exportDocumentTxt(p, "minutes", label, options), unzip(exportDocumentDocx(p, "minutes", label, options)).get("word/document.xml")!]) {
+      expect(output).toContain("담당자: =1+1 · 기한: 금요일");
+      expect(output).toContain("이전 원문"); expect(output).toContain("근거 재확인 필요"); expect(output).toContain("초안");
+      expect(output).toContain("자막 ID: answer"); expect(output).toContain("전체 대사");
+      expect(output).toContain("내보낸 시각은 회의 일시가 아닙니다.");
+    }
+    p.documents!.items[2]!.owner = ""; p.documents!.items[2]!.due = "";
+    expect(exportDocumentTxt(p, "minutes", label, options)).toContain("담당자: 미정 · 기한: 미정");
+  });
+  it("filters unused prepared identities while retaining evidence-only people without changing saved roles", () => {
+    const p = fixture(); p.speakers.push({ id:"unused", name:"Unused", color:"#000000" });
+    p.captions = [p.captions[0]!]; const before = JSON.stringify(p);
+    expect(documentParticipants(p).map(person => person.id)).toEqual(p.speakers.slice(0, 2).map(person => person.id));
+    expect(documentParticipants(p, false).map(person => person.id)).toEqual([p.speakers[0]!.id]);
+    expect(exportDocumentTxt(p, "minutes", label, options)).not.toContain("Unused");
+    expect(JSON.stringify(p)).toBe(before);
+    expect(documentParticipants(createProject(4))).toEqual([]);
+  });
+  it("rejects invalid project content before emitting Word or text artifacts", () => {
+    const p = fixture(); p.captions[0]!.end = -1;
+    expect(() => exportDocumentTxt(p, "minutes", label, options)).toThrow();
+    expect(() => exportDocumentDocx(p, "interview", label, options)).toThrow();
   });
 });

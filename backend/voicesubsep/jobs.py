@@ -41,6 +41,7 @@ class JobManager:
         self._jobs: dict[str, dict[str, Any]] = {}
         self._cancellations: dict[str, threading.Event] = {}
         self._provider_keys: dict[str, Callable[[], str]] = {}
+        self._diarization_keys: dict[str, Callable[[], str]] = {}
         self._queue: queue.Queue[str | None] = queue.Queue()
         self._mutex = threading.RLock()
         self._stopping = threading.Event()
@@ -101,6 +102,7 @@ class JobManager:
                 raise OverflowError("The analysis queue is full (32 jobs). Wait for existing jobs to finish.")
             job_id = new_id()
             provider_key = None
+            diarization_key = None
             if request.get("asrProvider", "local") != "local":
                 if self.provider_credentials is None:
                     raise RuntimeError("클라우드 API 키를 먼저 등록하세요.")
@@ -108,6 +110,13 @@ class JobManager:
                     provider_key = self.provider_credentials.bind_provider_key(request["asrProvider"])
                 except ValueError:
                     raise RuntimeError("클라우드 API 키를 먼저 등록하세요.") from None
+            if request.get("diarization") and request.get("diarizationProvider") == "deepgram":
+                if self.provider_credentials is None:
+                    raise RuntimeError("Deepgram API 키를 먼저 등록하세요.")
+                try:
+                    diarization_key = self.provider_credentials.bind_provider_key("deepgram")
+                except ValueError:
+                    raise RuntimeError("Deepgram API 키를 먼저 등록하세요.") from None
             record = {"id": job_id, "status": "queued", "stage": "queued", "progress": 0.0,
                       "request": request, "createdAt": timestamp(), "updatedAt": timestamp()}
             self.storage.write_json(self.storage.job_path(job_id), record)
@@ -115,6 +124,8 @@ class JobManager:
             self._cancellations[job_id] = threading.Event()
             if provider_key is not None:
                 self._provider_keys[job_id] = provider_key
+            if diarization_key is not None:
+                self._diarization_keys[job_id] = diarization_key
             self._queue.put(job_id)
             return job_id
 
@@ -148,6 +159,7 @@ class JobManager:
             self.storage.job_path(job_id).unlink(missing_ok=True)
             del self._jobs[job_id]
             self._provider_keys.pop(job_id, None)
+            self._diarization_keys.pop(job_id, None)
             # Cancelled queue entries remain harmless tombstones until drained.
 
     def cancel(self, job_id: str) -> dict[str, Any]:
@@ -168,11 +180,13 @@ class JobManager:
         with self._mutex:
             if job_id not in self._jobs:
                 self._provider_keys.pop(job_id, None)
+                self._diarization_keys.pop(job_id, None)
                 return
             record = self._jobs[job_id]
             event = self._cancellations[job_id]
             if record["status"] != "queued" or event.is_set():
                 self._provider_keys.pop(job_id, None)
+                self._diarization_keys.pop(job_id, None)
                 return
             self._update(record, status="running", stage="preparing", progress=0.01)
             request = dict(record["request"])
@@ -216,6 +230,15 @@ class JobManager:
                 **({"preprocessing": request["preprocessing"]} if request.get("preprocessing") is not None else {}),
             )
             provider = request.get("asrProvider", "local")
+            if request.get("localAsrEngine", "whisper") != "whisper":
+                options.update(local_asr_engine=request["localAsrEngine"], qwen_model=request.get("qwenModel", "1.7b"))
+            if request.get("diarization") and request.get("diarizationProvider", "nemotron") == "deepgram":
+                diarization_key = self._diarization_keys.get(job_id)
+                if diarization_key is None:
+                    raise RuntimeError("Deepgram API 키를 먼저 등록하세요.")
+                diarization_key()
+                options.update(diarization_provider="deepgram", diarization_consent=request.get("diarizationConsent", False),
+                               get_diarization_key=diarization_key)
             if provider != "local":
                 if self.provider_credentials is None:
                     raise RuntimeError("클라우드 API 키를 먼저 등록하세요.")
@@ -249,6 +272,7 @@ class JobManager:
         finally:
             with self._mutex:
                 self._provider_keys.pop(job_id, None)
+                self._diarization_keys.pop(job_id, None)
 
     def _work(self) -> None:
         try:

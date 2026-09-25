@@ -392,6 +392,7 @@ def test_subprocess_is_reaped_after_cancellation(monkeypatch):
 
 
 def test_capabilities_requires_native_nemotron_support(monkeypatch):
+    monkeypatch.setattr(infer, "_qwen_classes", lambda: (_ for _ in ()).throw(RuntimeError("Qwen missing")))
     def imported(name):
         if name == "faster_whisper":
             return SimpleNamespace(WhisperModel=object)
@@ -399,10 +400,11 @@ def test_capabilities_requires_native_nemotron_support(monkeypatch):
         return SimpleNamespace(AutoProcessor=object, AutoModelForAudioFrameClassification=object)
 
     monkeypatch.setattr(infer.importlib, "import_module", imported)
-    assert infer.capabilities() == {"whisper": True, "nemotron": False}
+    assert infer.capabilities() == {"whisper": True, "nemotron": False, "qwen": False}
 
 
 def test_nemotron_readiness_checks_audio_dependency_and_reports_cause(monkeypatch):
+    monkeypatch.setattr(infer, "_qwen_classes", lambda: object())
     processor = SimpleNamespace(extract_speaker_dict=lambda: None)
     native = SimpleNamespace(Nemotron3DiarizationForAudioFrameClassification=object,
                              Nemotron3DiarizationProcessor=processor,
@@ -419,7 +421,7 @@ def test_nemotron_readiness_checks_audio_dependency_and_reports_cause(monkeypatc
 
     monkeypatch.setattr(infer.importlib, "import_module", imported)
     report = infer.capability_report()
-    assert report["engines"] == {"whisper": True, "nemotron": False}
+    assert report["engines"] == {"whisper": True, "nemotron": False, "qwen": True}
     assert "audio runtime missing" in report["engineIssues"]["nemotron"]
     assert report["engineIssues"]["whisper"] is None
 

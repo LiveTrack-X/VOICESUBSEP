@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog } from "./Dialog";
-import { useI18n, localeNames, LOCALES } from "../i18n";
+import { useI18n } from "../i18n";
 import { buildKeepSpans } from "../cuts";
-import { exportSrt, exportNotesCsv, safeFilename, parseProject, type Project, type SubtitleLanguage } from "../domain";
+import { exportSrt, exportNotesCsv, safeFilename, parseProject, type Project } from "../domain";
 import { ApiError, download, request, uploadMedia, type MediaInfo } from "../api";
 import { renderedProject, type RenderJob } from "../render";
-import { translatedProject } from "../translation";
 
 export function RenderDialog({project,file,onClose,resumeId}: {project:Project;file:File|null;onClose:()=>void;resumeId?:string}) {
   const {t}=useI18n();
@@ -19,7 +18,6 @@ export function RenderDialog({project,file,onClose,resumeId}: {project:Project;f
   const [job,setJob]=useState<RenderJob|null>(null);
   const [starting,setStarting]=useState(false);
   const [error,setError]=useState("");
-  const [language,setLanguage]=useState<"original"|SubtitleLanguage>("original");
   const mounted=useRef(true);
   const running=starting||job?.status==="queued"||job?.status==="running";
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
@@ -74,15 +72,10 @@ export function RenderDialog({project,file,onClose,resumeId}: {project:Project;f
   function sidecar(kind:"srt"|"csv"){
     if(!derived||!snapshot)return;
     try{
-      let p=derived.project;
+      const p=derived.project;
       if(kind==="srt"){
         if(derived.issues.length)throw new Error(t("컷 경계에 걸린 자막을 먼저 수정하세요."));
-        if(language!=="original"){
-          if(p.captions.some(c=>!snapshot.captions.some(original=>original.id===c.id&&original.text===c.text)))
-            throw new Error(t("컷으로 잘린 번역 자막은 원본 자막을 경계에서 나누고 다시 번역한 뒤 내보내세요."));
-          p=translatedProject(p,language);
-        }
-        download(`${safeFilename(snapshot.name)}-edited${language==="original"?"":`-${language}`}.srt`,exportSrt(p),"application/x-subrip;charset=utf-8");
+        download(`${safeFilename(snapshot.name)}-edited.srt`,exportSrt(p),"application/x-subrip;charset=utf-8");
       }else download(`${safeFilename(snapshot.name)}-edited-notes.csv`,exportNotesCsv(p),"text/csv;charset=utf-8");
       setError("");
     }catch(e){setError((e as Error).message);}
@@ -109,7 +102,6 @@ export function RenderDialog({project,file,onClose,resumeId}: {project:Project;f
     {result&&<div className="export-section">
       <a className="button primary" href={result.url} download={result.filename}>{t("편집한 미디어 저장")}</a>
       <p>{t("아래 자막·메모는 실제 출력 파일의 컷 경계에 맞춘 시간입니다.")}</p>
-      <label>{t("자막 내보내기 언어")}<select value={language} onChange={e=>setLanguage(e.target.value as typeof language)}><option value="original">{t("원문")}</option>{LOCALES.map(l=><option key={l} value={l}>{localeNames[l]}</option>)}</select></label>
       <div className="dialog-actions"><button disabled={!derived||!!derived.issues.length} onClick={()=>sidecar("srt")}>{t("편집본 SRT 저장")}</button><button disabled={!derived} onClick={()=>sidecar("csv")}>{t("편집본 메모 CSV 저장")}</button></div>
       {!!derived?.issues.length&&<p role="alert">{t("자막 {count}개가 컷 경계에 걸립니다. 원문·시간을 조정해야 편집본 SRT를 내보낼 수 있습니다.",{count:derived.issues.length})} ({derived.issues.map(i=>(snapshot?.captions.findIndex(c=>c.id===i.captionId)??-1)+1).join(", ")})</p>}
       {!!derived?.omittedNoteIds.length&&<p>{t("삭제 구간의 메모 {count}개가 편집본에서 제외됩니다.",{count:derived.omittedNoteIds.length})}</p>}

@@ -17,8 +17,8 @@ export type Health = {
   status: string;
   ffmpeg: boolean;
   ffprobe: boolean;
-  engines: { whisper: boolean; nemotron: boolean };
-  engineIssues?: { nemotron: string | null };
+  engines: { whisper: boolean; nemotron: boolean; qwen?: boolean };
+  engineIssues?: { nemotron: string | null; qwen?: string | null };
   gpu?: { available: boolean; name: string | null; deviceCount: number; computeTypes: string[]; reason: string | null };
   defaults?: { device: 'cuda' | 'cpu'; whisperModel: string; computeType: string };
   detail?: string;
@@ -26,12 +26,15 @@ export type Health = {
 export function analysisBlockReason(
   health: Health | null,
   diarization = true,
-  asrProvider: "local" | "groq" | "xai" = "local",
+  asrProvider: "local" | "groq" | "xai" | "gemini" = "local",
+  localAsrEngine: "whisper" | "qwen" = "whisper",
 ): string | null {
   if (!health) return "분석 서버의 준비 상태를 확인하지 못했습니다.";
   if (!health.ffmpeg || !health.ffprobe)
     return "미디어 처리에 필요한 FFmpeg와 FFprobe가 준비되지 않았습니다.";
-  if (asrProvider === "local" && !health.engines.whisper)
+  if (asrProvider === "local" && localAsrEngine === "qwen" && !health.engines.qwen)
+    return health.engineIssues?.qwen?.trim() || "Qwen 음성 인식·시간 정렬 실행환경이 준비되지 않았습니다.";
+  if (asrProvider === "local" && localAsrEngine === "whisper" && !health.engines.whisper)
     return "음성 인식에 필요한 Whisper 실행환경이 준비되지 않았습니다.";
   if (diarization && !health.engines.nemotron)
     return health.engineIssues?.nemotron?.trim() ||

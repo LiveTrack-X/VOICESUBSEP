@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    watch: { ignored: ["**/build/**", "**/release/**", "**/.venv/**", "**/data/**", "**/tmp/**"] },
+    watch: { ignored: ["**/build/**", "**/release/**", "**/.venv/**", "**/data/**", "**/tmp/**", "**/.tmp/**"] },
     proxy: { "/api": "http://127.0.0.1:8787" },
   },
   preview: {

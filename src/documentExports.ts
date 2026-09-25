@@ -1,6 +1,7 @@
 import { parseProject, type Caption, type Project } from "./domain";
 import { emptyDocuments, interviewTag, type MinutesItem } from "./documents";
 import { zipStore } from "./subtitle-export";
+import { createWordDocument, type WordParagraph } from "./wordDocument";
 
 export type DocumentMode = "interview" | "minutes";
 type Label = (key: string) => string;
@@ -16,6 +17,13 @@ export function reportTime(seconds: number): string {
   const ms = Math.round(seconds * 1000);
   return `${String(Math.floor(ms / 3600000)).padStart(2, "0")}:${String(Math.floor(ms / 60000) % 60).padStart(2, "0")}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}.${String(ms % 1000).padStart(3, "0")}`;
 }
+export function documentParticipants(project: Project, includeEvidence = true) {
+  const activeIds = new Set(project.captions.flatMap(caption => caption.speakerId ? [caption.speakerId] : []));
+  if (includeEvidence) for (const item of project.documents?.items ?? []) for (const evidence of item.evidence) {
+    if (evidence.speakerId) activeIds.add(evidence.speakerId);
+  }
+  return project.speakers.filter(speaker => activeIds.has(speaker.id));
+}
 function snapshot(project: Project, options: ExportOptions, mode: DocumentMode) {
   const valid = parseProject(JSON.stringify(project));
   const generatedAt = (options.generatedAt ?? new Date()).toISOString();
@@ -23,11 +31,7 @@ function snapshot(project: Project, options: ExportOptions, mode: DocumentMode) 
   const sources = new Map(captions.map(caption => [caption.id, caption]));
   const speakers = new Map(valid.speakers.map(speaker => [speaker.id, speaker]));
   const docs = valid.documents ?? emptyDocuments();
-  const activeIds = new Set(captions.flatMap(caption => caption.speakerId ? [caption.speakerId] : []));
-  if (mode === "minutes") for (const item of docs.items) for (const evidence of item.evidence) {
-    if (evidence.speakerId) activeIds.add(evidence.speakerId);
-  }
-  const participants = valid.speakers.filter(speaker => activeIds.has(speaker.id));
+  const participants = documentParticipants(valid, mode === "minutes");
   const fresh = (item: MinutesItem) => item.evidence.length > 0 && item.evidence.every(e => {
     const c = sources.get(e.id);
     return c?.text === e.text && c.start === e.start && c.end === e.end && c.speakerId === e.speakerId;
@@ -39,6 +43,54 @@ function captionState(caption: Caption, label: Label): string {
 }
 function itemState(item: MinutesItem, fresh: boolean, label: Label): string {
   return label(!fresh ? "근거 재확인 필요" : item.status === "reviewed" ? "확인 완료" : "초안");
+}
+
+/** A shared literal outline keeps Word and text reports consistent. */
+function reportParagraphs(project: Project, mode: DocumentMode, label: Label, options: ExportOptions): WordParagraph[] {
+  const s = snapshot(project, options, mode);
+  const who = (id: string | null) => s.speakers.get(id ?? "")?.name ?? label("미배정");
+  const paragraphs: WordParagraph[] = [
+    { text: s.project.name, style: "Title" },
+    { text: label(mode === "interview" ? "인터뷰 보고서" : "회의 보고서"), style: "Heading1" },
+    { text: `${label("내보낸 시각")}: ${s.generatedAt}` },
+    { text: `${label("원본 길이")}: ${reportTime(s.project.duration)}` },
+    { text: `${label("대사 수")}: ${s.captions.length}` },
+    { text: label("초안과 미확인 근거를 포함할 수 있습니다. 공유하기 전에 원문과 대조하세요.") },
+    { text: label("시간은 원본 미디어 기준입니다. 내보낸 시각은 회의 일시가 아닙니다.") },
+    { text: label("참가자"), style: "Heading1" },
+    ...s.participants.map(person => ({ text: `${person.name}${mode === "interview" ? ` · ${label(roles[s.docs.roles[person.id] ?? "participant"])}` : ""}` })),
+  ];
+  if (mode === "interview") {
+    paragraphs.push({ text: label("질문·답변 기록"), style: "Heading1" });
+    for (const caption of s.captions) paragraphs.push(
+      { text: `${label(tags[interviewTag(caption, s.docs)])} · ${who(caption.speakerId)} · ${captionState(caption, label)}`, style: "Heading2" },
+      { text: `[${reportTime(caption.start)} – ${reportTime(caption.end)}] ${label("자막 ID")}: ${caption.id}` },
+      { text: caption.text },
+    );
+    if (!s.captions.length) paragraphs.push({ text: label("분석한 대사가 없습니다. 녹음 또는 미디어를 먼저 분석하세요.") });
+  } else {
+    if (!s.docs.items.length) paragraphs.push({ text: label("회의록 항목이 없습니다. 아래에는 분석한 대사만 포함됩니다.") });
+    for (const [kind, title] of Object.entries(kinds)) {
+      const items = s.docs.items.filter(item => item.kind === kind);
+      if (!items.length) continue;
+      paragraphs.push({ text: label(title), style: "Heading1" });
+      for (const item of items) {
+        paragraphs.push({ text: `${label("항목 ID")}: ${item.id} · ${itemState(item, s.fresh(item), label)}`, style: "Heading2" }, { text: item.text });
+        if (item.kind === "action" || item.owner || item.due) paragraphs.push({ text: `${label("담당자")}: ${item.owner || label("미정")} · ${label("기한")}: ${item.due || label("미정")}` });
+        for (const e of item.evidence) paragraphs.push({ text: `${label("근거")} [${reportTime(e.start)} – ${reportTime(e.end)}] ${who(e.speakerId)} · ${label("자막 ID")}: ${e.id}\n${e.text}`, style: "Quote" });
+      }
+    }
+    paragraphs.push({ text: label("전체 대사"), style: "Heading1" });
+    for (const caption of s.captions) paragraphs.push({ text: `[${reportTime(caption.start)} – ${reportTime(caption.end)}] ${who(caption.speakerId)} · ${captionState(caption, label)}\n${caption.text}` });
+  }
+  return paragraphs;
+}
+
+export function exportDocumentTxt(project: Project, mode: DocumentMode, label: Label, options: ExportOptions = {}): string {
+  return reportParagraphs(project, mode, label, options).map(paragraph => paragraph.text).join("\n\n");
+}
+export function exportDocumentDocx(project: Project, mode: DocumentMode, label: Label, options: ExportOptions = {}): Uint8Array {
+  return createWordDocument(project.name, reportParagraphs(project, mode, label, options));
 }
 
 // Scope screen styles to the report so the same content can be printed inside
@@ -171,6 +223,10 @@ export function exportDocumentXlsx(project: Project, mode: DocumentMode, label: 
     sheets.push({ name: label("할 일"), rows: actions, widths: [22, 85, 24, 24, 28, 45], filter: true },
       { name: label("근거"), rows: evidence, widths: [22, 20, 22, 19, 19, 22, 90, 28], filter: true });
   }
+  return exportWorkbook(sheets);
+}
+
+export function exportWorkbook(sheets: { name: string; rows: Cell[][]; widths: number[]; filter: boolean }[]): Uint8Array {
   const names = sanitizeWorksheetNames(sheets.map(sheet => sheet.name));
   const files = [
     { name: "[Content_Types].xml", text: `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_, index) => `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>` },
@@ -184,7 +240,10 @@ export function exportDocumentXlsx(project: Project, mode: DocumentMode, label: 
 }
 
 export function downloadDocumentXlsx(bytes: Uint8Array, name: string): void {
-  const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: XLSX_MIME }));
+  downloadDocumentBytes(bytes, name, XLSX_MIME);
+}
+export function downloadDocumentBytes(bytes: Uint8Array, name: string, mime: string): void {
+  const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: mime }));
   const anchor = document.createElement("a"); anchor.href = url; anchor.download = name;
   document.body.append(anchor); anchor.click(); anchor.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

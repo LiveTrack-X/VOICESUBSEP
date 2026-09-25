@@ -1,6 +1,8 @@
 # 로컬 모델 실행 환경
 
-v0.1의 기본 작업은 **Nemotron 화자 활동 분석 → faster-whisper 전사 → 인물별 자막 생성**이다. Nemotron은 기본 설치에 포함되는 핵심 실행 구성 요소다. 합성 데모 데이터를 실제 분석의 대체 결과로 사용하지 않는다. Qwen/MOSS 및 음성 분리 모델은 조사 후보이며 아직 이 버전에 구현하지 않았다.
+기본 작업은 **Nemotron 화자 활동 분석 → faster-whisper 전사 → 인물별 자막 생성**이다. Nemotron은 기본 설치에 포함되는 핵심 실행 구성 요소다. 합성 데모 데이터를 실제 분석의 대체 결과로 사용하지 않는다. Qwen3 ASR + forced aligner는 선택 소스 어댑터와 모의 테스트를 구현했으나, 실제 음성 모델 추론은 미검증이고 토크나이저 배포 고지 불일치로 **동결 설치본에는 포함하지 않는다**. 자세한 범위와 감사 근거는 [Qwen 소스 실행 환경](QWEN-RUNTIME.md)을 따른다. MOSS와 음성 분리 모델은 조사 후보이다.
+
+The default remains **Whisper + Nemotron**. Qwen is a source/development option with synthetic/mock verification, **not an included desktop runtime**. Its optional dependency group, real-inference limits and distribution audit gate are recorded in [Qwen runtime status](QWEN-RUNTIME.md).
 
 ## 상태의 의미
 

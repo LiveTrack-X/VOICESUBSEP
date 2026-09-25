@@ -72,11 +72,19 @@ def capabilities() -> dict[str, bool]:
     return capability_report()["engines"]
 
 
+def _qwen_classes():
+    try:
+        from .qwen_asr import load_qwen_classes
+        return load_qwen_classes()
+    except Exception as exc:
+        raise RuntimeError("Qwen 음성 인식·시간 정렬 실행환경을 준비해야 합니다. 지원 Transformers와 soynlp·nagisa가 필요합니다.") from exc
+
+
 def capability_report() -> dict:
     """Report actionable dependency errors without loading model weights."""
-    result = {"whisper": False, "nemotron": False}
-    issues = {"whisper": None, "nemotron": None}
-    for name, loader in (("whisper", _whisper_class), ("nemotron", _nemotron_classes)):
+    result = {"whisper": False, "nemotron": False, "qwen": False}
+    issues = {"whisper": None, "nemotron": None, "qwen": None}
+    for name, loader in (("whisper", _whisper_class), ("nemotron", _nemotron_classes), ("qwen", _qwen_classes)):
         try:
             loader()
             result[name] = True
@@ -504,6 +512,7 @@ def _overlap_windows(intervals: list[dict]) -> list[tuple[float, float]]:
 
 def build_result(records: list[dict], diarization_segments: list[dict] | None, *, duration: float,
                  speaker_count: int, mode: str, speaker_boundary_ms: int = 500,
+                 diarization_provider: str = "nemotron",
                  cancelled: Cancelled = lambda: False) -> dict:
     """Pure attribution/segmentation; source times and silent gaps are preserved."""
     _validate_speaker_boundary_ms(speaker_boundary_ms)
@@ -522,7 +531,7 @@ def build_result(records: list[dict], diarization_segments: list[dict] | None, *
     if mismatch:
         expected = "4명 이상" if speaker_count == 4 else f"{speaker_count}명"
         warnings.append(f"설정 인원 {expected}과 검출 화자 {len(speakers)}명이 다릅니다. 검출 화자를 강제로 합치지 않았습니다.")
-    if len(speakers) >= 8:
+    if diarization_provider == "nemotron" and len(speakers) >= 8:
         warnings.append("Nemotron의 최대 8개 화자 채널이 모두 사용됐습니다. 추가 화자가 섞였는지 확인하세요.")
     if diarization_segments is None:
         warnings.append("전사만 실행했습니다. 인물은 자동 추정하지 않았으므로 직접 배정하세요.")
@@ -604,13 +613,22 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
             preprocessing: dict | None = None,
             recognition_preview: RecognitionPreview | None = None,
             asr_provider: str = "local", provider_model: str | None = None,
-            cloud_consent: bool = False, get_provider_key: Callable[[], str] | None = None) -> dict:
+            cloud_consent: bool = False, get_provider_key: Callable[[], str] | None = None,
+            local_asr_engine: str = "whisper", qwen_model: str = "1.7b",
+            diarization_provider: str = "nemotron", diarization_consent: bool = False,
+            get_diarization_key: Callable[[], str] | None = None) -> dict:
     _checkpoint(cancelled)
     _validate_speaker_boundary_ms(speaker_boundary_ms)
     if mode not in {"standard", "overlap"} or device not in {"cpu", "cuda"}:
         raise RuntimeError("지원하지 않는 분석 모드 또는 장치입니다.")
     if whisper_model not in WHISPER_MODELS or isinstance(speaker_count, bool) or not 1 <= speaker_count <= 4:
         raise RuntimeError("지원하지 않는 Whisper 모델 또는 설정 인원입니다.")
+    if local_asr_engine not in {"whisper", "qwen"} or qwen_model not in {"0.6b", "1.7b"} or diarization_provider not in {"nemotron", "deepgram"}:
+        raise RuntimeError("지원하지 않는 음성 인식 또는 화자 구분 엔진입니다.")
+    if diarization and diarization_provider == "deepgram":
+        if diarization_consent is not True or get_diarization_key is None:
+            raise RuntimeError("Deepgram 화자 구분 전송 동의와 API 키가 필요합니다.")
+        get_diarization_key()
     if asr_provider != "local":
         from .cloud_asr import validate_cloud_options
 
@@ -633,8 +651,13 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
         raise RuntimeError("VST 체인 항목이 유효하지 않습니다.")
     enabled_chain = [item for item in chain if item.get("enabled", True)]
     if asr_provider == "local":
-        _whisper_class()
-    if diarization:
+        if local_asr_engine == "qwen":
+            _qwen_classes()
+            from .qwen_asr import alignment_language
+            alignment_language(language, allow_auto=True)
+        else:
+            _whisper_class()
+    if diarization and diarization_provider == "nemotron":
         _nemotron_classes()  # Fail before extraction/ASR if requested engine is missing.
     progress("선택한 오디오 트랙 확인", 0.02)
     with tempfile.TemporaryDirectory(prefix="voicesubsep-") as directory:
@@ -678,13 +701,35 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
         # the WHOLE audio, including overlap and any speech Nemotron missed.
         # This prevents one initial language choice from hiding another person
         # and bounds word alignment at speaker changes without shifting time.
-        diarized = _diarize(diarization_path, device=device,
-                            progress=mapped_progress(engine_start, diarization_end, 0.67, 0.94),
-                            cancelled=cancelled) if diarization else None
+        diarized = None
+        if diarization:
+            if diarization_provider == "nemotron":
+                diarized = _diarize(diarization_path, device=device,
+                                    progress=mapped_progress(engine_start, diarization_end, 0.67, 0.94),
+                                    cancelled=cancelled)
+            else:
+                from .cloud_diarization import diarize_cloud, CloudDiarizationCancelled
+                try:
+                    diarized = diarize_cloud(diarization_path, language=language, consent=diarization_consent,
+                                            get_key=get_diarization_key, cancelled=cancelled,
+                                            progress=mapped_progress(engine_start, diarization_end, 0.0, 1.0))
+                except CloudDiarizationCancelled as exc:
+                    raise AnalysisCancelled(str(exc)) from None
         _checkpoint(cancelled)
         clips = speaker_change_clips(diarized, duration) if diarized is not None else None
         asr_progress = mapped_progress(diarization_end if diarization else engine_start, 0.94, 0.10, 0.64)
-        if asr_provider == "local":
+        if asr_provider == "local" and local_asr_engine == "qwen":
+            from .qwen_asr import transcribe_qwen
+            from .qwen_model_cache import resolve_qwen_model, resolve_qwen_aligner
+            progress("선택한 Qwen 전사·시간 정렬 모델 준비", diarization_end if diarization else engine_start)
+            qwen_path = Path(resolve_qwen_model(f"qwen3-asr-{qwen_model}"))
+            _checkpoint(cancelled)
+            aligner_path = Path(resolve_qwen_aligner())
+            _checkpoint(cancelled)
+            records = transcribe_qwen(asr_path, model_path=qwen_path, aligner_path=aligner_path, language=language,
+                                      device=device, duration=duration, clip_timestamps=clips, progress=asr_progress,
+                                      cancelled=cancelled, recognition_preview=recognition_preview)
+        elif asr_provider == "local":
             records = _transcribe(asr_path, model_name=whisper_model, language=language, device=device,
                                   duration=duration, clip_timestamps=clips, progress=asr_progress,
                                   **({"recognition_preview": recognition_preview} if recognition_preview is not None else {}),
@@ -702,9 +747,12 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
         _checkpoint(cancelled)
         progress("단어·화자 시간 연결 및 검수 표시", 0.96)
         result = build_result(records, diarized, duration=duration, speaker_count=speaker_count, mode=mode,
-                              speaker_boundary_ms=speaker_boundary_ms, cancelled=cancelled)
+                              speaker_boundary_ms=speaker_boundary_ms, diarization_provider=diarization_provider, cancelled=cancelled)
         if asr_provider != "local":
-            result["warnings"].append(f"{asr_provider} 클라우드에서 선택한 트랙의 음성을 전사했습니다. 화자 구분을 선택한 경우 Nemotron은 이 기기에서 실행했습니다.")
+            result["warnings"].append(f"{asr_provider} 클라우드에서 선택한 트랙의 음성을 전사했습니다.")
+        if diarization:
+            result["warnings"].append("Nemotron 화자 구분을 이 기기에서 실행했습니다." if diarization_provider == "nemotron" else
+                                      "Deepgram API에서 선택한 트랙의 화자를 구분했습니다. 선택한 음성 인식과 별도의 유료 요청입니다.")
         if channels > 1:
             result["warnings"].insert(0, f"선택한 오디오 트랙 #{audio_track}의 {channels}개 채널을 분석용 모노로 변환했습니다. 원본과 다른 트랙은 보존했습니다.")
         if preprocessing_report is not None:

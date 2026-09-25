@@ -1,4 +1,9 @@
 export const documentExportMessages: Record<string, readonly [string, string, string, string]> = {
+  "회의 메모": ["Meeting notes", "会議メモ", "会议笔记", "Notas de reunión"],
+  "회의 내용을 직접 정리하고 근거 발언·담당자·기한을 기록하세요. AI 요약은 수행하지 않습니다.": ["Write meeting notes and record source statements, owners and due dates. No AI summary is generated.", "会議内容を自分で整理し、根拠となる発言・担当者・期限を記録します。AI要約は行いません。", "手动整理会议内容，记录依据发言、负责人及期限。不会生成AI摘要。", "Redacta las notas y registra las intervenciones de respaldo, responsables y plazos. No se genera un resumen con IA."],
+  "PDF 파일 저장": ["Save PDF file", "PDFファイルを保存", "保存PDF文件", "Guardar archivo PDF"],
+  "PDF 파일을 저장했습니다.": ["The PDF file was saved.", "PDFファイルを保存しました。", "PDF文件已保存。", "Se ha guardado el archivo PDF."],
+  "PDF 파일을 저장하지 못했습니다. 다시 시도하거나 HTML로 저장하세요.": ["The PDF could not be saved. Try again or save as HTML.", "PDFを保存できませんでした。再試行するかHTMLで保存してください。", "无法保存PDF，请重试或保存为HTML。", "No se pudo guardar el PDF. Inténtalo de nuevo o guarda el archivo HTML."],
   "인터뷰 보고서": ["Interview report", "インタビューレポート", "访谈报告", "Informe de entrevista"],
   "회의 보고서": ["Meeting report", "会議レポート", "会议报告", "Informe de reunión"],
   "보고서": ["Report", "レポート", "报告", "Informe"],

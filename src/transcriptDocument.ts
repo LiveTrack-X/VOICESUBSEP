@@ -1,13 +1,11 @@
-import { parseProject, type Project, type SubtitleLanguage } from "./domain";
-import { hasFreshTranslation } from "./translation";
+import { parseProject, type Project } from "./domain";
 import { zipStore } from "./subtitle-export";
-import { reportTime } from "./documentExports";
+import { exportWorkbook, reportTime } from "./documentExports";
 
-export type TranscriptLanguage = "original" | SubtitleLanguage;
 export type TranscriptTurn = { ids: string[]; speakerId: string | null; speaker: string; start: number; end: number; text: string; overlap: boolean };
-export type TranscriptDocument = { title: string; participants: string[]; language: TranscriptLanguage; turns: TranscriptTurn[]; fallbackCount: number; captionCount: number };
+export type TranscriptDocument = { title: string; participants: string[]; turns: TranscriptTurn[]; captionCount: number };
 type Label = (key: string) => string;
-export type TranscriptOptions = { timestamps?: boolean; language?: TranscriptLanguage; locale?: string; coalesce?: boolean };
+export type TranscriptOptions = { timestamps?: boolean; locale?: string; coalesce?: boolean };
 export const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const xml = (value: string) => value.replace(/[^\u0009\u000a\u000d\u0020-\ud7ff\ue000-\ufffd\u{10000}-\u{10ffff}]/gu, "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
@@ -15,22 +13,18 @@ const xml = (value: string) => value.replace(/[^\u0009\u000a\u000d\u0020-\ud7ff\
 /** Literal transcript: no network, summarization, role inference, or source mutations. */
 export function buildTranscriptDocument(project: Project, label: Label, options: TranscriptOptions = {}): TranscriptDocument {
   const valid = parseProject(JSON.stringify(project));
-  const language = options.language ?? "original";
-  if (!["original", "ko", "en", "ja", "zh", "es"].includes(language)) throw new Error(label("지원하지 않는 번역 언어입니다."));
   const speakers = new Map(valid.speakers.map(speaker => [speaker.id, speaker.name]));
   // Equal start times retain their source order, including simultaneous speech.
   const captions = valid.captions.map((caption, index) => ({ caption, index })).sort((a, b) => a.caption.start - b.caption.start || a.index - b.index);
   const turns: TranscriptTurn[] = [];
-  let latestEnd = -1, fallbackCount = 0, captionCount = 0;
+  let latestEnd = -1, captionCount = 0;
   for (let index = 0; index < captions.length; index++) {
     const { caption } = captions[index]!;
     const overlap = caption.start < latestEnd || caption.end > (captions[index + 1]?.caption.start ?? Infinity);
     latestEnd = Math.max(latestEnd, caption.end);
     if (!caption.text.trim()) continue;
     captionCount++;
-    const fresh = language !== "original" && hasFreshTranslation(caption, language);
-    const text = fresh ? caption.translation!.texts[language as SubtitleLanguage]! : caption.text;
-    if (language !== "original" && !fresh) fallbackCount++;
+    const text = caption.text;
     const previous = turns.at(-1);
     if (options.coalesce !== false && previous && previous.ids.at(-1) === captions[index - 1]?.caption.id && caption.speakerId !== null && previous.speakerId === caption.speakerId &&
         !previous.overlap && !overlap && caption.start >= previous.end && caption.start - previous.end <= 1.2) {
@@ -43,21 +37,36 @@ export function buildTranscriptDocument(project: Project, label: Label, options:
   const active = new Set(turns.map(turn => turn.speakerId));
   const participants = valid.speakers.filter(speaker => active.has(speaker.id)).map(speaker => speaker.name);
   if (active.has(null)) participants.push(label("미배정"));
-  return { title: valid.name, participants, language, turns, fallbackCount, captionCount };
+  return { title: valid.name, participants, turns, captionCount };
 }
 
 function metadata(document: TranscriptDocument, label: Label): string[] {
   return [document.title, label("발언록"), `${label("참가자")}: ${document.participants.join(", ") || "—"}`,
-    `${label("문서 언어")}: ${document.language === "original" ? label("원문") : document.language}`,
-    label("자막 원문을 시간순으로 정리한 발언록입니다. 자동 요약이나 문장 재작성은 하지 않습니다."),
-    ...(document.language !== "original" ? [label("선택한 언어의 저장된 번역을 사용하며 이 화면에서 번역을 생성하지 않습니다.")] : []),
-    ...(document.fallbackCount ? [label("번역이 없거나 원문이 수정된 대사는 원문으로 포함됩니다.")] : [])];
+    label("자막 원문을 시간순으로 정리한 발언록입니다. 자동 요약이나 문장 재작성은 하지 않습니다.")];
 }
 const prefix = (turn: TranscriptTurn, timestamps = false) => `${timestamps ? `[${reportTime(turn.start)} – ${reportTime(turn.end)}] ` : ""}${turn.speaker}: `;
 
 export function exportTranscriptTxt(project: Project, label: Label, options: TranscriptOptions = {}): string {
   const document = buildTranscriptDocument(project, label, options);
   return [...metadata(document, label), "", ...document.turns.map(turn => `${prefix(turn, options.timestamps)}${turn.text}\n`)].join("\n");
+}
+
+/** Dedicated original-language transcript workbook, retaining cue IDs and review states. */
+export function exportTranscriptXlsx(project: Project, label: Label): Uint8Array {
+  const document = buildTranscriptDocument(project, label, { coalesce: false });
+  const captions = new Map(project.captions.map(caption => [caption.id, caption]));
+  return exportWorkbook([
+    { name: label("발언록"), filter: true, widths: [26, 22, 18, 18, 14, 14, 90, 24], rows: [
+      [label("자막 ID"), label("인물"), label("시작"), label("끝"), label("시작(초)"), label("끝(초)"), label("대사"), label("검수")],
+      ...document.turns.map(turn => [turn.ids[0]!, turn.speaker, reportTime(turn.start), reportTime(turn.end), turn.start, turn.end, turn.text, label(captions.get(turn.ids[0]!)?.reviewed ? "확인 완료" : "검수 필요")]),
+    ] },
+    { name: label("안내"), filter: false, widths: [25, 90], rows: [
+      [label("항목"), label("내용")], [label("프로젝트"), document.title],
+      [label("참가자"), document.participants.join(", ")],
+      [label("대사 수"), document.captionCount],
+      [label("안내"), label("자막 원문을 시간순으로 정리한 발언록입니다. 자동 요약이나 문장 재작성은 하지 않습니다.")],
+    ] },
+  ]);
 }
 
 /** Standalone offline report. The shared print view accepts its main.vs-report. */

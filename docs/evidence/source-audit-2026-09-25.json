@@ -1,0 +1,105 @@
+{
+  "date": "2026-09-25",
+  "scope": "unreleased source audit after local v0.2.1 checkpoint",
+  "baseCommit": "a723501f0f058509d1eaca8eef94a9723b7c2553",
+  "tests": {
+    "frontend": {
+      "command": "npx vitest run src",
+      "passed": 458,
+      "files": 30
+    },
+    "desktopAndDev": {
+      "command": "node --test scripts/dev.test.mjs desktop/*.test.cjs",
+      "passed": 59
+    },
+    "backend": {
+      "command": "python -m pytest backend/tests -q -rs",
+      "passed": 747,
+      "skipped": 1,
+      "skipReason": "Windows account cannot create symbolic links (test_diagnostics.py:102)"
+    },
+    "build": {
+      "command": "npm run build",
+      "status": "passed",
+      "warning": "minified main JS chunk 708.07 kB exceeds 500 kB advisory"
+    }
+  },
+  "actualOperations": {
+    "ui": {
+      "origin": "isolated localhost fixture",
+      "widths": [
+        1280,
+        518
+      ],
+      "narrowHeight": 778,
+      "narrowHorizontalOverflow": false,
+      "captionEditSurvivedReload": true,
+      "newProjectClearedNamesAndUndo": true,
+      "defaultAndAdvancedOptionsVerified": true,
+      "consoleErrorsOrWarnings": 0
+    },
+    "audioMix": {
+      "syntheticSources": 2,
+      "sourceDurationSeconds": 6,
+      "secondGainDb": -6,
+      "secondOffsetSeconds": 1.25,
+      "outputDurationSeconds": 7.25,
+      "sampleRate": 48000,
+      "channels": 2,
+      "format": "pcm_s16le WAV"
+    },
+    "pdf": {
+      "bytes": 27071,
+      "pages": 1,
+      "koreanTextExtracted": true,
+      "renderedPageVisuallyChecked": true,
+      "nativeSaveDialog": "mocked",
+      "electronPrintToPDF": "real"
+    },
+    "officeExports": {
+      "artifacts": 6,
+      "zipCrcXmlAndRelationships": "passed",
+      "nativeWordExcel": "not tested",
+      "inAppBrowserDownloadDelivery": "unverified; download event timed out"
+    }
+  },
+  "distribution": {
+    "publicRelease": "v0.2.0 prerelease",
+    "v021": "unpublished draft without assets and an earlier locally installed checkpoint",
+    "currentChangesInstalled": false,
+    "currentChangesReleased": false,
+    "qwen": "development only; excluded from frozen installer pending tokenizer license review"
+  },
+  "notTested": [
+    "real paid provider calls",
+    "model weight inference quality",
+    "physical capture devices",
+    "commercial VST behavior",
+    "fresh frozen installer with these changes",
+    "update feed and signing"
+  ],
+  "sourceSha256": {
+    "src/domain.ts": "dd95c4de49f785601ec7ce0eba6aecefac3b5a420949790b23f0d1f5816dc2ef",
+    "src/projectRecovery.ts": "4b944dc50a69e5dd3814c0e2658a8ae771e6879b06e3f312a6cb06854d5888bb",
+    "src/App.tsx": "27af9c5ca819740408e45552deef44bee86cb7d575ace05ccd06eaf572a89d59",
+    "src/components/AnalysisDialog.tsx": "81a0b3b7ced545d9f868decb0381e95236f3180007f2bb224157374039829a90",
+    "src/components/DocumentsDialog.tsx": "d37656b1c140b234b427fe98b7afc0eedecc54f81308ea86111b2d1ef5c1c398",
+    "src/audioMixer.ts": "268dee7f666fdcfef58f6e2bd6ea68ef3fd34896f1576e62e9993b45caf8fdd6",
+    "src/settings.ts": "548eab5ea8acc9fc926aeb9bbd55dc6b1b2e6bc03de0ab8ebf491c42e3ab3568",
+    "desktop/document-pdf.cjs": "450684b2970b95a6a4dc3725aa5518b4da802ded1be1d724c618cd12a4eeaf55",
+    "backend/voicesubsep/app.py": "c85b25f097a6c8c3a8223953acfe9e3bec8f07613e10fb5b12f08d49fb064dc6",
+    "backend/voicesubsep/inference.py": "f2f57147354c8678757b67d06b95ae0982d14eb9ec6a0b1ae850ce23b58a4cd3",
+    "backend/voicesubsep/cloud_asr.py": "d3da511e32a3d4663924d052968fc8287112ed69bddbc9f044712357075f3747",
+    "backend/voicesubsep/cloud_diarization.py": "e81f31e4e7c14167f46be7726b902961e7267781cb7d5bc7985db3c9973b2f50",
+    "backend/voicesubsep/audio_mixing.py": "d5744dc7521323d483235edbded24a754fa32356459649c8459b0c0381b31c61",
+    "backend/voicesubsep/qwen_asr.py": "b0c91c60c97d8710a7cc939679bf8b53bd5b80e7772539f9a3a26497c91de15a",
+    "backend/voicesubsep/qwen_model_cache.py": "c30286548a9b69b4d0adceffaef099d86f06c6913a03c3c490f774be031d75fc",
+    "scripts/build-backend.ps1": "a0ae33ad78106d10e6183d3fb9ee85b412f0cae59a312c70a0bc8cb2f58314e9"
+  },
+  "localLogSha256": {
+    "frontend": "bcb5202488f47898cd5db8b216d3ad001631d33288fce6bdbd1494f4d95a4fca",
+    "backend": "174a8435979a8e5c9be5fdf491c35eab14054ebc13fd0cf6ab70a1e9e30b7b56"
+  },
+  "syntheticPdfSha256": "9166d963cd1777ffca8381a402c750d551317c0938c58be7cfe3d1eef5f55bab",
+  "sourceHashConvention": "SHA256 of UTF-8 bytes with CRLF normalized to LF, matching repository text attributes"
+}

@@ -23,6 +23,16 @@ diarization = [
   "transformers @ https://github.com/huggingface/transformers/archive/4b28d51d0d5f17ec20c23a187d0475a8e68810c8.zip",
   "librosa==0.11.0",
 ]
+
+# Development/source opt-in only. Frozen desktop builds exclude this runtime
+# while upstream soynlp distribution/license metadata conflicts are unresolved.
+qwen = [
+  "torch>=2.11,<2.12",
+  "transformers @ https://github.com/huggingface/transformers/archive/4b28d51d0d5f17ec20c23a187d0475a8e68810c8.zip",
+  "soynlp==0.0.493",
+  "nagisa==0.3.0",
+  "DyNet38==2.2",
+]
 desktop-build = ["pyinstaller==6.22.3"]
 gpu-windows = [
   "nvidia-cublas-cu12==12.9.2.10; sys_platform == 'win32'",

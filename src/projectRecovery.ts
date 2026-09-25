@@ -49,7 +49,15 @@ export function saveRecoverableProject(project: Project, storage: ProjectStorage
   try { raw = JSON.stringify(project); parseProject(raw); } catch { return "invalid"; }
   try {
     const previous = storage.getItem(PROJECT_STORAGE_KEY);
-    if (previous === raw) return "saved";
+    if (previous === raw) {
+      // A page-hide flush of unchanged work must not clear the warning about
+      // an unreadable previous snapshot that we deliberately preserved.
+      const backupRaw = storage.getItem(PROJECT_BACKUP_KEY);
+      if (backupRaw !== null) {
+        try { parseProject(backupRaw); } catch { return "saved_without_backup"; }
+      }
+      return "saved";
+    }
     let backupFailed = false;
     if (previous !== null) {
       let previousProject: Project | null = null;

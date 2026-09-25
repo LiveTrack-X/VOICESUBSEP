@@ -1,14 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Dialog } from "./Dialog";
-import { download, request } from "../api";
+import { download } from "../api";
 import { formatTime, safeFilename, type Project } from "../domain";
-import { acceptMinutesResponse, documentBatches, documentSourceOptions, emptyDocuments, evidenceFor, evidenceIsCurrent, exportDocument, interviewTag, parseDocuments, type InterviewRole, type InterviewTag, type MinutesItem, type MinutesKind, type ProjectDocuments } from "../documents";
+import { documentSourceOptions, emptyDocuments, evidenceFor, evidenceIsCurrent, exportDocument, interviewTag, parseDocuments, type InterviewRole, type InterviewTag, type MinutesItem, type MinutesKind, type ProjectDocuments } from "../documents";
 import { useI18n } from "../i18n";
-import { downloadDocumentXlsx, exportDocumentHtml, exportDocumentXlsx, openDocumentPrintView } from "../documentExports";
-import type { TranslationStatus } from "../translation";
-import { TextProviderControls } from "./TextProviderControls";
-import { beginTextRun, cloudTextReady, type TextProvider } from "../textProviders";
-import type { CredentialState } from "../providerCredentials";
+import { documentParticipants, downloadDocumentBytes, downloadDocumentXlsx, exportDocumentDocx, exportDocumentHtml, exportDocumentTxt, exportDocumentXlsx } from "../documentExports";
+import { saveDocumentPdf, supportsDirectPdf } from "../documentPdf";
+import { WORD_MIME } from "../wordDocument";
 import { TranscriptDocumentPanel } from "./TranscriptDocumentPanel";
 import "./documents.css";
 
@@ -20,23 +18,16 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
   const { t, locale } = useI18n();
   const [mode, setMode] = useState<"transcript" | "interview" | "minutes">("transcript");
   const [page, setPage] = useState(0);
-  const [status, setStatus] = useState<TranslationStatus | null>(null);
-  const [model, setModel] = useState("");
-  const [device, setDevice] = useState<"auto" | "cpu">("auto");
-  const [provider, setProvider] = useState<TextProvider>("local"), [cloudModel, setCloudModel] = useState(""), [cloudConsent, setCloudConsent] = useState(false);
-  const [credential, setCredential] = useState<CredentialState>({configured:false,busy:true});
   const [error, setError] = useState("");
-  const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState("");
-  const [pending, setPending] = useState<MinutesItem[]>([]);
+  const [exporting, setExporting] = useState(false);
+  const [exportNotice, setExportNotice] = useState("");
   const [sourceId, setSourceId] = useState(project.captions[0]?.id ?? "");
   const [sourceSearch, setSourceSearch] = useState("");
-  const stop = useRef(false), alive = useRef(true);
   const docs = project.documents ?? emptyDocuments();
   const captions = useMemo(() => [...project.captions].sort((a,b) => a.start-b.start), [project.captions]);
   const sourceOptions = useMemo(() => documentSourceOptions(captions, sourceSearch, sourceId), [captions, sourceSearch, sourceId]);
   const pages = Math.max(1, Math.ceil(captions.length / 50));
-  const generationReady = provider === "local" ? !!status?.ready && !!model : cloudTextReady(provider, cloudModel, cloudConsent, credential.configured, credential.busy);
+  const participants = useMemo(() => documentParticipants(project), [project]);
   function edit(change: (d: ProjectDocuments) => ProjectDocuments) {
     try {
       update(p => ({ ...p, documents: parseDocuments(change(p.documents ?? emptyDocuments())) }));
@@ -44,37 +35,9 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
     } catch (cause) { setError((cause as Error).message); return false; }
   }
   function close(position?:number,captionId?:string) {
-    if((running||pending.length)&&!window.confirm(t("추가하지 않은 초안이 있습니다. 닫으면 생성 작업 연결과 이 초안을 버립니다.")))return;
+    if (exporting) return;
     if(position!==undefined&&captionId)onSource(position,captionId);
     onClose();
-  }
-  useEffect(() => {
-    alive.current = true;
-    void request<TranslationStatus>("/api/translation/status").then(result => {
-      if (alive.current) { setStatus(result); setModel(result.models[0] ?? ""); }
-    }).catch(e => { if (alive.current) setError(String(e.message)); });
-    return () => { alive.current = false; stop.current = true; };
-  }, []);
-  async function generate() {
-    if (running || pending.length || !generationReady) return;
-    setError(""); setPending([]); setRunning(true); stop.current = false;
-    try {
-      const batches = documentBatches(captions); const items: MinutesItem[] = [];
-      const providerOptions = await beginTextRun(provider, cloudConsent);
-      for (const [index, batch] of batches.entries()) {
-        if (stop.current || !alive.current) break;
-        setProgress(`${index + 1} / ${batches.length}`);
-        const response = await request<unknown>("/api/documents/generate", {
-          method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(195000),
-          body: JSON.stringify({ model: provider === "local" ? model : cloudModel, ...providerOptions, language: locale, device, captions: batch.map(c => ({ id: c.id, text: c.text, speaker: project.speakers.find(s=>s.id===c.speakerId)?.name ?? "" })) }),
-        });
-        if (!alive.current) return;
-        const next = acceptMinutesResponse(response, batch, provider);
-        if (items.length + next.length + docs.items.length > 1000) throw new Error(t("문서 항목은 최대 1000개입니다."));
-        items.push(...next); setPending([...items]);
-      }
-    } catch(e) { if(alive.current) setError((e as Error).message); }
-    finally { if(alive.current) { setRunning(false); setProgress(""); setCloudConsent(false); } }
   }
   function addManual() {
     if (docs.items.length >= 1000) { setError(t("문서 항목은 최대 1000개입니다.")); return; }
@@ -84,26 +47,32 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
   function changeItem(itemId: string, change: Partial<MinutesItem>) {
     edit(d=>({...d, items:d.items.map(item=>item.id===itemId?{...item,...change}:item)}));
   }
-  function exportReport(format: "html" | "pdf" | "xlsx" | "md") {
-    if (mode === "transcript") return;
-    if (running || pending.length) { setError(t("출력 문서에는 프로젝트에 추가한 항목만 포함됩니다. 생성 중이거나 아직 추가하지 않은 초안을 먼저 처리하세요.")); return; }
+  async function exportReport(format: "html" | "pdf" | "xlsx" | "md" | "docx" | "txt") {
+    if (mode === "transcript" || exporting) return;
+    setExporting(true); setExportNotice(""); setError("");
     try {
       const base = `${safeFilename(project.name)}-${mode}`;
       if (format === "md") download(`${base}.md`, exportDocument(project, mode, t), "text/markdown;charset=utf-8");
+      else if (format === "txt") download(`${base}.txt`, exportDocumentTxt(project, mode, t, { locale }));
+      else if (format === "docx") downloadDocumentBytes(exportDocumentDocx(project, mode, t, { locale }), `${base}.docx`, WORD_MIME);
       else if (format === "xlsx") downloadDocumentXlsx(exportDocumentXlsx(project, mode, t, { locale }), `${base}.xlsx`);
       else {
         const html = exportDocumentHtml(project, mode, t, { locale });
-        if (format === "pdf") openDocumentPrintView(html, t);
+        if (format === "pdf") {
+          const outcome = await saveDocumentPdf(html, base, t);
+          if (outcome === "saved") setExportNotice(t("PDF 파일을 저장했습니다."));
+        }
         else download(`${base}.html`, html, "text/html;charset=utf-8");
       }
       setError("");
     } catch (cause) { setError((cause as Error).message); }
+    finally { setExporting(false); }
   }
-  return <Dialog title={t("인터뷰·회의록")} onClose={()=>close()}>
-    <div className="document-tabs"><button aria-pressed={mode==="transcript"} onClick={()=>setMode("transcript")}>{t("발언록")}</button><button aria-pressed={mode==="interview"} onClick={()=>setMode("interview")}>{t("인터뷰 문답")}</button><button aria-pressed={mode==="minutes"} onClick={()=>setMode("minutes")}>{t("회의 요약·할 일")}</button></div>
+  return <Dialog title={t("인터뷰·회의록")} onClose={()=>close()} closeDisabled={exporting}>
+    <div className="document-tabs"><button disabled={exporting} aria-pressed={mode==="transcript"} onClick={()=>setMode("transcript")}>{t("발언록")}</button><button disabled={exporting} aria-pressed={mode==="interview"} onClick={()=>setMode("interview")}>{t("인터뷰 문답")}</button><button disabled={exporting} aria-pressed={mode==="minutes"} onClick={()=>setMode("minutes")}>{t("회의 메모")}</button></div>
     {mode !== "transcript" && <p>{t("원본 시간과 근거 자막을 유지합니다. 생성 문서는 확인 전까지 초안입니다.")}</p>}
-    {mode === "transcript" ? <TranscriptDocumentPanel project={project} onSeek={time=>{const caption=captions.find(c=>c.start===time);if(caption)close(time,caption.id);}}/> : mode==="interview" ? <>
-      <div className="interview-roles">{project.speakers.map(s=><label key={s.id}>{s.name}<select aria-label={`${s.name} ${t("인터뷰 역할")}`} value={docs.roles[s.id]??"participant"} onChange={e=>edit(d=>({...d,roles:{...d.roles,[s.id]:e.target.value as InterviewRole}}))}><option value="participant">{t("참가자")}</option><option value="questioner">{t("질문자")}</option><option value="respondent">{t("답변자")}</option></select></label>)}</div>
+    {mode === "transcript" ? <TranscriptDocumentPanel project={project} onExportingChange={setExporting} onSeek={time=>{const caption=captions.find(c=>c.start===time);if(caption)close(time,caption.id);}}/> : mode==="interview" ? <>
+      <div className="interview-roles">{participants.map(s=><label key={s.id}>{s.name}<select aria-label={`${s.name} ${t("인터뷰 역할")}`} value={docs.roles[s.id]??"participant"} onChange={e=>edit(d=>({...d,roles:{...d.roles,[s.id]:e.target.value as InterviewRole}}))}><option value="participant">{t("참가자")}</option><option value="questioner">{t("질문자")}</option><option value="respondent">{t("답변자")}</option></select></label>)}</div>
       <p>{t("인물 역할로 질문과 답변을 구분하며, 각 자막의 분류를 직접 바꿀 수 있습니다.")}</p>
       <div className="document-transcript">{captions.slice(page*50,(page+1)*50).map(c=><article key={c.id} className={`interview-${interviewTag(c,docs)}`}>
         <button onClick={()=>close(c.start,c.id)}>{formatTime(c.start)}</button>
@@ -113,21 +82,7 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
       </article>)}</div>
       <div className="document-pagination"><button disabled={page===0} onClick={()=>setPage(p=>p-1)}>{t("이전")}</button><span>{page+1} / {pages}</span><button disabled={page+1>=pages} onClick={()=>setPage(p=>p+1)}>{t("다음")}</button></div>
     </> : <>
-      <details className="document-generation"><summary>{t("AI로 회의록 초안 생성")}</summary>
-        <TextProviderControls provider={provider} model={cloudModel} consent={cloudConsent} disabled={running||!!pending.length}
-          onProviderChange={value=>{setProvider(value);setCloudModel("");setCloudConsent(false);setCredential({configured:false,busy:true});setError("");}}
-          onModelChange={value=>{setCloudModel(value);setCloudConsent(false);}} onConsentChange={setCloudConsent} onCredentialState={setCredential}/>
-        {provider === "local" && <><label>{t("모델")}<select aria-label={t("회의록 모델")} disabled={running} value={model} onChange={e=>setModel(e.target.value)}>{status?.models.map(name=><option key={name}>{name}</option>)}</select></label>
-        <label>{t("실행 장치")}<select value={device} disabled={running} onChange={e=>setDevice(e.target.value as typeof device)}><option value="auto">{t("자동")}</option><option value="cpu">CPU</option></select></label>
-        {!status?.ready&&<p>{t("로컬 모델이 준비되지 않았습니다. 수동 회의록은 작성할 수 있습니다.")}</p>}</>}
-        <button disabled={running||!!pending.length||!generationReady||!captions.length} onClick={()=>void generate()}>{t("구간별 초안 생성")}</button>
-        {running&&<><span role="status">{progress}</span><button onClick={()=>{stop.current=true;setProgress(t("현재 구간 완료 후 중지합니다."));}}>{t("중지")}</button></>}
-        {!!pending.length&&<>
-          <button disabled={running} onClick={()=>{if(docs.items.length+pending.length>1000){setError(t("문서 항목은 최대 1000개입니다."));return;}if(edit(d=>({...d,items:[...d.items,...pending]})))setPending([]);}}>{t("생성한 초안 추가")} ({pending.length})</button>
-          <button disabled={running} onClick={()=>{if(window.confirm(t("추가하지 않은 생성 초안을 버릴까요? 프로젝트에 추가한 항목은 유지됩니다.")))setPending([]);}}>{t("생성 초안 버리기")}</button>
-        </>}
-        <p>{t("새 초안은 기존 내용을 덮어쓰지 않습니다. 담당자·기한은 원문에 없으면 미정입니다.")}</p>
-      </details>
+      <p>{t("회의 내용을 직접 정리하고 근거 발언·담당자·기한을 기록하세요. AI 요약은 수행하지 않습니다.")}</p>
       <div className="document-manual">
         <input aria-label={t("근거 자막 검색")} placeholder={t("내용이나 시간으로 근거 검색")} value={sourceSearch} onChange={event=>setSourceSearch(event.target.value)} />
         <select aria-label={t("새 회의록 항목 근거")} value={sourceId} onChange={e=>setSourceId(e.target.value)}><option value="">{t("근거 미지정")}</option>{sourceOptions.captions.map(c=><option key={c.id} value={c.id}>{formatTime(c.start)} {c.text.slice(0,70)}</option>)}</select><button onClick={addManual}>{t("회의록 항목 추가")}</button>
@@ -149,16 +104,18 @@ export function DocumentsDialog({ project, update, onClose, onSource }: {
     {mode !== "transcript" && <>
     {error&&<p role="alert">{error}</p>}
     <p>{t("HTML은 브라우저에서 열 수 있는 보고서이며, Excel은 대사·할 일·근거를 시트로 정리합니다.")}</p>
-    {(running||!!pending.length)&&<p role="status">{t("출력 문서에는 프로젝트에 추가한 항목만 포함됩니다. 생성 중이거나 아직 추가하지 않은 초안을 먼저 처리하세요.")}</p>}
+    {exportNotice&&<p role="status">{exportNotice}</p>}
     {!captions.length&&<p>{t("분석한 대사가 없습니다. 녹음 또는 미디어를 먼저 분석하세요.")}</p>}
     <div className="dialog-actions">
-      <button disabled={running||!!pending.length} onClick={()=>exportReport("pdf")}>{t("PDF 저장(인쇄)")}</button>
-      <button disabled={running||!!pending.length} onClick={()=>exportReport("html")}>{t("보고서 HTML 저장")}</button>
-      <button disabled={running||!!pending.length} onClick={()=>exportReport("xlsx")}>{t("Excel 통합문서 저장")}</button>
-      <button disabled={running||!!pending.length} onClick={()=>exportReport("md")}>{t("문서 Markdown 저장")}</button>
-      <button onClick={()=>close()}>{t("닫기")}</button>
+      <button disabled={exporting} onClick={()=>void exportReport("docx")}>{t("Word 문서 (.docx)")}</button>
+      <button disabled={exporting} onClick={()=>void exportReport("txt")}>{t("텍스트 (.txt)")}</button>
+      <button disabled={exporting} onClick={()=>void exportReport("pdf")}>{t(supportsDirectPdf()?"PDF 파일 저장":"PDF 저장(인쇄)")}</button>
+      <button disabled={exporting} onClick={()=>void exportReport("html")}>{t("보고서 HTML 저장")}</button>
+      <button disabled={exporting} onClick={()=>void exportReport("xlsx")}>{t("Excel 통합문서 저장")}</button>
+      <button disabled={exporting} onClick={()=>void exportReport("md")}>{t("문서 Markdown 저장")}</button>
+      <button disabled={exporting} onClick={()=>close()}>{t("닫기")}</button>
     </div>
     </>}
-    {mode === "transcript" && <div className="dialog-actions"><button onClick={()=>close()}>{t("닫기")}</button></div>}
+    {mode === "transcript" && <div className="dialog-actions"><button disabled={exporting} onClick={()=>close()}>{t("닫기")}</button></div>}
   </Dialog>;
 }

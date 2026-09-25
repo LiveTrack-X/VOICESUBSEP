@@ -1,11 +1,11 @@
-import type { CloudProvider } from "./providerCredentials";
-
-export type AsrProvider = "local" | CloudProvider;
+export type CloudAsrProvider = "groq" | "xai" | "gemini";
+export type AsrProvider = "local" | CloudAsrProvider;
 export const CLOUD_ASR_MODELS = {
   groq: ["whisper-large-v3-turbo", "whisper-large-v3"],
   xai: ["grok-voice-transcribe-2.0", "grok-voice-transcribe-1.0"],
+  gemini: ["gemini-3.5-transcribe"],
 } as const;
-export type AsrSelection = { provider: "local" } | { provider: CloudProvider; model: string };
+export type AsrSelection = { provider: "local" } | { provider: CloudAsrProvider; model: string };
 export function defaultAsrSelection(provider: AsrProvider = "local"): AsrSelection {
   return provider === "local" ? { provider } : { provider, model: CLOUD_ASR_MODELS[provider][0] };
 }
@@ -18,7 +18,7 @@ export function cloudAsrBlockReason(selection: AsrSelection, configured: boolean
   return null;
 }
 export function cloudAsrRequestFields(selection: AsrSelection, configured: boolean, consent: boolean):
-  { asrProvider?: CloudProvider; providerModel?: string; cloudConsent?: true } {
+  { asrProvider?: CloudAsrProvider; providerModel?: string; cloudConsent?: true } {
   if (selection.provider === "local") return {};
   const reason = cloudAsrBlockReason(selection, configured, consent, false);
   if (reason) throw new Error(reason);

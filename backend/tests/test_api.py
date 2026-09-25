@@ -143,7 +143,7 @@ def test_health_reports_runtime_readiness_and_defaults_without_loading_models(tm
         assert calls == []  # Desktop liveness never waits for model imports.
         response = client.get("/api/health", headers={"Origin": "http://localhost:5173"})
         assert response.status_code == 200
-        assert response.json()["engines"] == {"whisper": True, "nemotron": False}
+        assert response.json()["engines"] == {"whisper": True, "nemotron": False, "qwen": False}
         assert response.json()["engineIssues"]["nemotron"] == "PyTorch missing"
         assert response.json()["status"] == "ok"
         assert response.json()["app"] == "voicesubsep"

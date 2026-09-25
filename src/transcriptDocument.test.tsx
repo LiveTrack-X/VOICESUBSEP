@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createProject, type Caption } from "./domain";
-import { buildTranscriptDocument, DOCX_MIME, exportTranscriptDocx, exportTranscriptHtml, exportTranscriptTxt } from "./transcriptDocument";
+import { buildTranscriptDocument, DOCX_MIME, exportTranscriptDocx, exportTranscriptHtml, exportTranscriptTxt, exportTranscriptXlsx } from "./transcriptDocument";
 import { TranscriptDocumentPanel } from "./components/TranscriptDocumentPanel";
 import { I18nProvider, translate, LOCALES } from "./i18n";
 
@@ -59,15 +59,14 @@ describe("literal transcript documents", () => {
     expect(document.participants).toEqual(["화자 A", "미배정"]);
     expect(document.captionCount).toBe(4);
   });
-  it("defaults to the original and marks missing/stale translations when explicitly selected", () => {
+  it("uses only original text while preserving existing legacy translations in project data", () => {
     const { project } = fixture();
     project.captions[0]!.translation = { sourceText: project.captions[0]!.text, texts: { en: "Hello!" } };
     project.captions[1]!.translation = { sourceText: "outdated", texts: { en: "Do not use this" } };
     expect(buildTranscriptDocument(project, t).turns[0]!.text).toContain("안녕하세요.");
-    const translated = buildTranscriptDocument(project, t, { language: "en" });
-    expect(translated.turns[0]!.text).toBe("Hello!\n반갑습니다!");
-    expect(translated.fallbackCount).toBe(3);
-    expect(exportTranscriptTxt(project, t, { language: "en" })).toContain("번역이 없거나 원문이 수정된 대사는 원문으로 포함됩니다.");
+    const before = JSON.stringify(project), txt = exportTranscriptTxt(project, t);
+    expect(txt).toContain("안녕하세요."); expect(txt).not.toContain("Hello!"); expect(txt).not.toContain("Do not use this");
+    expect(JSON.stringify(project)).toBe(before);
   });
   it("exports readable speaker-colon paragraphs, optional times, and no invented meeting date", () => {
     const { project } = fixture();
@@ -117,6 +116,19 @@ describe("literal transcript documents", () => {
     expect(html).toContain("Word 문서 (.docx)"); expect(html).toContain("텍스트 (.txt)");
     expect(html).toContain("PDF 저장(인쇄)"); expect(html).toContain("안녕하세요.");
     expect(html).not.toContain('checked=""'); expect(html).not.toContain("00:00:");
-    expect(html).toContain('<option value="original" selected="">원문</option>');
+    expect(html).toContain("Excel 통합문서 저장");
+    expect(html).not.toContain("<select"); expect(html).not.toContain("번역");
+  });
+  it("exports a dedicated transcript XLSX with all original cues, numeric timestamps and safe text cells", () => {
+    const { project } = fixture(); project.captions[0]!.text = '=SUM(1,2) <literal> _x000A_';
+    const before = JSON.stringify(project), files = unzip(exportTranscriptXlsx(project, t));
+    expect(files.get("xl/workbook.xml")).toContain('sheet name="발언록"');
+    const sheet = files.get("xl/worksheets/sheet1.xml")!;
+    expect(sheet).toContain('<autoFilter ref="A1:H5"/>');
+    expect(sheet).toContain('t="inlineStr"><is><t xml:space="preserve">=SUM(1,2) &lt;literal&gt; _x005F_x000A_');
+    expect(sheet).toContain('<c r="E3" s="0"><v>2.5</v></c>');
+    expect(sheet).toContain("검수 필요");
+    expect([...files.values()].join("")).not.toMatch(/<f>|TargetMode="External"/);
+    expect(JSON.stringify(project)).toBe(before);
   });
 });
