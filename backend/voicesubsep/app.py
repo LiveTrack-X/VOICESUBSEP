@@ -29,6 +29,8 @@ from .cloud_credentials import ProviderCredentials
 from .cloud_asr import ASR_MODELS
 from .audio_mix_api import AudioMixJobManager, register_audio_mixing_routes
 from .jobs import Analyzer, JobManager
+from .live import LiveManager
+from .live_api import register_live_routes
 from .media import MEDIA_EXTENSIONS, clean_name, probe_media
 from .media_cache import MediaCache
 from .waveform import Waveforms
@@ -195,15 +197,17 @@ def create_app(
     max_upload_bytes: int | None = None,
     allowed_origins: set[str] | None = None,
     renderer: Renderer | None = None,
+    live_engine_factory: Callable | None = None,
 ) -> FastAPI:
     root = data_dir or Path(os.environ.get("VOICESUBSEP_DATA_DIR", str(Path(__file__).resolve().parents[2] / "data")))
     limit = max_upload_bytes if max_upload_bytes is not None else int(os.environ.get("VOICESUBSEP_MAX_UPLOAD_BYTES", str(8 * 1024**3)))
     if limit <= 0:
         raise ValueError("VOICESUBSEP_MAX_UPLOAD_BYTES must be positive.")
     storage = Storage(root)
-    diagnostics = Diagnostics(storage, "0.2.1")
+    diagnostics = Diagnostics(storage, "0.3.0")
     provider_credentials = ProviderCredentials()
     jobs = JobManager(storage, analyzer, diagnostics=diagnostics, provider_credentials=provider_credentials)
+    live = LiveManager(storage, live_engine_factory)
     renders = RenderJobManager(storage, renderer, diagnostics=diagnostics)
     vst_previews = PreviewManager(storage, diagnostics=diagnostics)
     mixer = AudioMixJobManager(storage, diagnostics=diagnostics)
@@ -221,7 +225,11 @@ def create_app(
                 vst_previews.start()
                 mixer.start()
                 try:
-                    yield
+                    live.start()
+                    try:
+                        yield
+                    finally:
+                        await run_in_threadpool(live.stop)
                 finally:
                     await run_in_threadpool(mixer.stop)
             finally:
@@ -233,9 +241,10 @@ def create_app(
             provider_credentials.clear()
             await run_in_threadpool(jobs.stop)
 
-    application = FastAPI(title="VOICESUBSEP", version="0.2.1", lifespan=lifespan)
+    application = FastAPI(title="VOICESUBSEP", version="0.3.0", lifespan=lifespan)
     application.state.storage = storage
     application.state.jobs = jobs
+    application.state.live = live
     application.state.renders = renders
     application.state.vst_previews = vst_previews
     application.state.audio_mixes = mixer
@@ -448,6 +457,8 @@ def create_app(
     @application.post("/api/jobs", status_code=202)
     def create_job(request: JobRequest):
         with storage.media_lock:
+            if live.busy():
+                raise HTTPException(409, "라이브 세션이 종료된 뒤 파일 분석을 시작하세요.")
             return submit_job(request)
 
     def submit_job(request: JobRequest):
@@ -554,6 +565,7 @@ def create_app(
 
     application.include_router(vst_router)
     register_audio_mixing_routes(application, mixer, storage, probe=inspect_media)
+    register_live_routes(application, live, storage, jobs)
     return application
 
 

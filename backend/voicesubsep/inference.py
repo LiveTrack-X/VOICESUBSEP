@@ -536,7 +536,7 @@ def build_result(records: list[dict], diarization_segments: list[dict] | None, *
     if diarization_segments is None:
         warnings.append("전사만 실행했습니다. 인물은 자동 추정하지 않았으므로 직접 배정하세요.")
     if mode == "overlap":
-        warnings.append("v0.1 겹침 모드는 화자 활동의 겹침을 검수 표시합니다. 음성 분리나 누락된 두 번째 대사의 복원은 수행하지 않습니다.")
+        warnings.append("겹침 모드는 화자 활동의 겹침을 검수 표시합니다. 음성 분리나 누락된 두 번째 대사의 복원은 수행하지 않습니다.")
         if diarization_segments is None:
             warnings.append("화자 구분을 끈 상태이므로 겹침 구간도 자동 검출하지 않았습니다.")
     captions: list[dict] = []

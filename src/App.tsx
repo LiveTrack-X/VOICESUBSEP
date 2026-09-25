@@ -641,11 +641,24 @@ export default function App() {
       )}
       {dialog === "update" && <UpdateDialog onClose={() => setDialog(null)} />}
       {dialog === "settings" && <SettingsDialog onClose={() => setDialog(null)} />}
-      {dialog === "mixer" && <AudioMixerDialog project={project} file={file} onSave={audioMix => update(current => ({ ...current, audioMix }))} onClose={() => setDialog(null)}/>}
+      {dialog === "mixer" && <AudioMixerDialog project={project} file={file} initialTime={time} onSave={audioMix => update(current => ({ ...current, audioMix }))} onClose={() => setDialog(null)}/>}
       {dialog === "documents" && <DocumentsDialog project={project} update={update} onClose={()=>setDialog(null)} onSource={(position,id)=>preview(position,id)}/>}
       {dialog === "history" && <JobHistoryDialog project={project} file={file} onClose={()=>setDialog(null)} onApplyAnalysis={applyAnalysis}/>}
       {dialog === "recovery" && <ProjectRecoveryDialog onClose={()=>setDialog(null)} onRestore={next=>{setDialog(null);guarded(t("복구본을 엽니다. 현재 작업은 먼저 파일로 저장해 두세요."),()=>changeProject(next));}}/>}
-      {dialog === "live" && <LiveCaptureDialog onClose={()=>setDialog(null)} onUse={recording=>{
+      {dialog === "live" && <LiveCaptureDialog speakerCount={project.speakerCount} onClose={()=>setDialog(null)} onLiveResult={(recording,result)=>{
+        // Validate before leaving the recorder so a malformed result cannot
+        // replace the current project or discard the recoverable recording.
+        const next = parseProject(JSON.stringify({
+          ...createProject(project.speakerCount),
+          name: recording.name.replace(/\.[^.]+$/,""), mediaName: recording.name,
+          duration: result.duration, captions: result.captions, speakers: result.speakers,
+        }));
+        setDialog(null);
+        guarded(t("녹음으로 새 프로젝트를 시작합니다. 현재 작업은 먼저 파일로 저장해 두세요."),()=>{
+          changeProject(next); setFile(recording);
+          setNotice(t("분석 결과를 적용했습니다. 목소리를 확인해 인물 이름을 지정하세요."));
+        });
+      }} onUse={recording=>{
         setDialog(null);
         guarded(t("녹음으로 새 프로젝트를 시작합니다. 현재 작업은 먼저 파일로 저장해 두세요."),()=>{
           changeProject({...createProject(),name:recording.name.replace(/\.[^.]+$/,""),mediaName:recording.name});

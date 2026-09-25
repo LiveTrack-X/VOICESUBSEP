@@ -14,12 +14,14 @@ function configuration(env = {}) {
   return module.exports;
 }
 
-test('split installer without a feed keeps both local payload support and updates unconfigured', () => {
+test('default split installer keeps local payload support and uses signed GitHub updates', () => {
   const config = configuration();
   const { version } = require('../package.json');
   assert.equal(config.nsisWeb.appPackageUrl, `http://127.0.0.1:9/voicesubsep-${version}-x64.nsis.7z`);
   assert.equal(config.publish, null);
-  assert.equal(config.extraMetadata.desktopUpdateUrl, null);
+  assert.equal(config.extraMetadata.desktopUpdateUrl, 'https://api.github.com/repos/LiveTrack-X/VOICESUBSEP/releases');
+  assert.equal(config.extraMetadata.desktopUpdateProvider, 'github-split');
+  assert.ok(config.files.includes('desktop/update-public-key.pem'));
   assert.equal(config.win.verifyUpdateCodeSignature, true);
   assert.equal(config.nsis.deleteAppDataOnUninstall, false);
   assert.equal(config.nsisWeb.include, undefined);
@@ -32,6 +34,7 @@ test('configured split installer uses the same HTTPS feed for its standard paylo
   assert.equal(config.nsisWeb.appPackageUrl, `https://updates.example.org/product/voicesubsep-${version}-x64.nsis.7z`);
   assert.equal(config.publish[0].url, 'https://updates.example.org/product/');
   assert.equal(config.extraMetadata.desktopUpdateUrl, config.publish[0].url);
+  assert.equal(config.extraMetadata.desktopUpdateProvider, 'generic');
   assert.equal(config.win.verifyUpdateCodeSignature, true);
 });
 

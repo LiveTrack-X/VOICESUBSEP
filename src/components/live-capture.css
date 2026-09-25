@@ -5,3 +5,13 @@
 .capture-sessions article{border:1px solid var(--border,#e3e7ee);border-radius:8px;padding:12px;display:grid;gap:8px;min-width:0}
 .capture-sessions article>span{color:var(--muted,#737f91);font-size:12px}
 .capture-sessions p{overflow-wrap:anywhere}
+.capture-purpose{display:grid;gap:6px;margin-bottom:12px}
+.live-recognition-settings,.live-recognition-state{border:1px solid var(--border,#e3e7ee);padding:12px;border-radius:8px;margin:12px 0;min-width:0}
+.live-recognition-state>input{box-sizing:border-box;width:100%;min-width:0;font-size:12px}
+.live-caption-preview{max-height:180px;overflow:auto;background:var(--surface-alt,#f5f7fb);border-radius:6px;padding:8px 12px;overflow-wrap:anywhere}
+.live-caption-preview p{margin:6px 0;white-space:pre-wrap}
+.live-caption-preview strong{color:var(--accent,#7355ef);margin-right:8px}
+.live-input-level{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:12px 0;font-size:13px}
+.live-input-level label{display:flex;align-items:center;gap:10px;flex:1;min-width:180px}
+.live-input-level meter{flex:1;height:18px;min-width:100px}
+.capture-files a{align-self:center;overflow-wrap:anywhere}

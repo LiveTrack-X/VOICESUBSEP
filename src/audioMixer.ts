@@ -52,6 +52,16 @@ export function mixRequest(plan:AudioMixPlan, duration:number, ranges:{start:num
     format:parsed.format,limiter:parsed.limiter,videoMediaId:parsed.format==="mp4"?parsed.videoMediaId:null,frameRate:parsed.frameRate,
     ...(parsed.applyCuts?{timelineDuration:duration,keepRanges:ranges}:{})};
 }
+/** Solo/listen affect this audition only, never the stored mute/export choices. */
+export function mixPreviewRequest(plan:AudioMixPlan, start:number, options:{soloIds?:string[];trackId?:string}={}) {
+  const parsed=parseAudioMix(plan);
+  if(!Number.isFinite(start)||start<0||start>=604800)throw new Error("Choose a valid preview start time.");
+  const tracks=parsed.tracks.filter(track=>options.trackId?track.id===options.trackId:
+    options.soloIds?.length?options.soloIds.includes(track.id):!track.muted);
+  if(!tracks.length)throw new Error("Enable at least one audio track.");
+  return {tracks:tracks.map(({mediaId,sha256,audioTrack,gainDb,offsetSeconds})=>({mediaId,sha256,audioTrack,gainDb,offsetSeconds,muted:false})),
+    limiter:parsed.limiter,start,duration:10};
+}
 export function relinkMix(plan:AudioMixPlan, oldId:string, media:{id:string;sha256?:string;name:string}):AudioMixPlan {
   const source=plan.tracks.find(t=>t.mediaId===oldId);
   if(!source||!media.sha256||source.sha256!==media.sha256)throw new Error("The selected file does not match the saved source SHA-256.");

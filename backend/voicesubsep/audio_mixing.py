@@ -2,15 +2,117 @@
 from __future__ import annotations
 
 import math
+import array
 from pathlib import Path
 import shutil
+import sys
 import tempfile
+import wave
 
 from .rendering import _run, checkpoint, effective_ranges, render_media, SAMPLE_RATE
 
 MAX_TRACKS = 16
 MAX_DURATION = 604800
 FORMATS = {"wav", "mp3", "m4a", "mp4"}
+MAX_PREVIEW_SECONDS = 10.
+
+
+def validate_preview(request: dict, sources: dict[str, tuple[dict, Path]]) -> tuple[float, float]:
+    duration = validate_mix({**request, "format": "wav"}, sources)
+    start, length = request.get("start"), request.get("duration")
+    for value in (start, length):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+            raise ValueError("Invalid preview window.")
+    if not 0 <= start < duration or not 0 < length <= MAX_PREVIEW_SECONDS:
+        raise ValueError("Choose a preview start inside the mix and up to 10 seconds.")
+    length = min(length, duration - start)
+    if round(length * SAMPLE_RATE) < 1:
+        raise ValueError("The preview window is shorter than one audio sample.")
+    return start, length
+
+
+def preview_audio(sources: dict[str, tuple[dict, Path]], destination: Path, *, request: dict,
+                  progress, cancelled) -> dict:
+    """Render only a short original-clock window, measuring the unclipped float sum.
+
+    Input seeking keeps late previews bounded. Copy timestamps and subtract the
+    window's source time so delayed OBS streams retain their original silence.
+    Peak is a sample peak for this window, not a true-peak/full-export guarantee.
+    """
+    start, duration = validate_preview(request, sources)
+    destination = destination.resolve()
+    if destination.exists() or destination.suffix != ".wav" or any(destination == p.resolve() for _, p in sources.values()):
+        raise ValueError("The preview must be a new WAV file.")
+    binary = shutil.which("ffmpeg")
+    if not binary:
+        raise RuntimeError("FFmpeg is required for mixing.")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    checkpoint(cancelled)
+    with tempfile.TemporaryDirectory(prefix=".preview-", dir=destination.parent) as temporary:
+        directory = Path(temporary)
+        command = [binary, "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-threads", "2",
+                   "-filter_threads", "1", "-filter_complex_threads", "1"]
+        graph, labels = [], []
+        total_samples = round(duration * SAMPLE_RATE)
+        input_index = 0
+        for index, track in enumerate(t for t in request["tracks"] if not t["muted"]):
+            info, source = sources[track["mediaId"]]
+            local_start = start - track["offsetSeconds"]
+            local_end = local_start + duration
+            if local_end <= 0 or local_start >= info["duration"]:
+                chain = f"anullsrc=r={SAMPLE_RATE}:cl=stereo"
+            else:
+                # One second of preroll handles seek granularity; only this
+                # bounded window is decoded, never the entire preceding file.
+                command += ["-copyts", "-start_at_zero", "-ss", f"{max(0., local_start - 1):.9f}",
+                            "-protocol_whitelist", "file,pipe", "-i", str(source)]
+                chain = (f"[{input_index}:{track['audioTrack']}]atrim=start={max(0., local_start):.9f}:end={local_end:.9f},"
+                         f"asetpts=PTS-({local_start:.9f})/TB,aresample={SAMPLE_RATE}:async=1:first_pts=0,"
+                         "aformat=sample_fmts=fltp:channel_layouts=stereo")
+                input_index += 1
+            graph.append(chain + f",volume={track['gainDb']:.9f}dB,apad,atrim=end_sample={total_samples},asetpts=N/SR/TB[a{index}]")
+            labels.append(f"[a{index}]")
+        graph.append("".join(labels) + f"amix=inputs={len(labels)}:duration=longest:normalize=0,asplit=2[raw][listen]")
+        limiter = "alimiter=limit=0.98:level=false:latency=true," if request.get("limiter", True) else ""
+        graph.append(f"[listen]{limiter}apad,atrim=end_sample={total_samples},asetpts=N/SR/TB[out]")
+        graph_file = directory / "preview.txt"
+        graph_file.write_text(";\n".join(graph), encoding="utf-8")
+        raw, output = directory / "sum.f32", directory / "preview.wav"
+        command += ["-filter_complex_script", str(graph_file), "-map", "[raw]", "-c:a", "pcm_f32le", "-f", "f32le",
+                    "-ar", str(SAMPLE_RATE), "-ac", "2", "-t", f"{duration:.9f}", str(raw),
+                    "-map", "[out]", "-c:a", "pcm_s16le", "-ar", str(SAMPLE_RATE), "-ac", "2",
+                    "-t", f"{duration:.9f}", "-map_metadata", "-1", str(output)]
+        progress("Preparing mix preview", .05)
+        _run(command, cancelled, directory=directory, timeout=60)
+        peak, clipped = 0., 0
+        with raw.open("rb") as stream:
+            while chunk := stream.read(256 * 1024):
+                checkpoint(cancelled)
+                values = array.array("f")
+                values.frombytes(chunk)
+                if sys.byteorder != "little":
+                    values.byteswap()
+                for value in values:
+                    if not math.isfinite(value):
+                        raise ValueError("The mixed audio contains invalid samples.")
+                    magnitude = abs(value)
+                    peak = max(peak, magnitude)
+                    clipped += magnitude >= 1.
+        output_peak = 0
+        with wave.open(str(output), "rb") as stream:
+            while chunk := stream.readframes(32768):
+                checkpoint(cancelled)
+                values = array.array("h")
+                values.frombytes(chunk)
+                if sys.byteorder != "little":
+                    values.byteswap()
+                output_peak = max(output_peak, max((abs(v) for v in values), default=0))
+        checkpoint(cancelled)
+        output.replace(destination)
+        return {"start": start, "duration": total_samples / SAMPLE_RATE, "limiter": request.get("limiter", True),
+                "peakDbfs": 20 * math.log10(peak) if peak else None,
+                "outputPeakDbfs": 20 * math.log10(output_peak / 32768) if output_peak else None,
+                "clippedSamples": clipped, "clipping": bool(clipped)}
 
 
 def validate_mix(request: dict, sources: dict[str, tuple[dict, Path]]) -> float:

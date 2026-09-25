@@ -1,5 +1,6 @@
 import { recordingStore, type Recording, type RecordingSource, type RecordingStore } from "./recordingStore";
 import { microphoneAccessError } from "./microphoneDevices";
+import { LivePcmTap, type LivePcmCallbacks } from "./livePcm";
 
 export type CaptureMode = "microphone" | "system" | "both";
 export function recordingMime(): string {
@@ -11,6 +12,7 @@ export function recordingMime(): string {
 export class LiveCapture {
   private streams: MediaStream[] = [];
   private context?: AudioContext;
+  private pcm?: LivePcmTap;
   private recorders: { recorder: MediaRecorder; started: boolean; stopped: boolean; ended: Promise<void> }[] = [];
   private writes: Promise<void> = Promise.resolve();
   private stopPromise?: Promise<void>;
@@ -19,7 +21,7 @@ export class LiveCapture {
   private startSettled?: Promise<void>;
   private started = false;
   recording?: Recording;
-  constructor(private onFailure: (error: string) => void, private store: RecordingStore = recordingStore) {}
+  constructor(private onFailure: (error: string) => void, private store: RecordingStore = recordingStore, private live: LivePcmCallbacks = {}) {}
 
   // Called directly by the Start click: system selection retains user activation.
   async start(mode: CaptureMode, deviceId: string): Promise<Recording> {
@@ -60,6 +62,10 @@ export class LiveCapture {
         gain.gain.value = 1 / inputs.length; source.connect(gain).connect(destination);
       }
       tracks.mix = destination.stream; this.streams.push(destination.stream);
+      if (this.live.onPcm || this.live.onLevel) {
+        this.pcm = await LivePcmTap.create(this.context, destination.stream, this.live, message => this.fail(message));
+        assertStarting();
+      }
       this.recording = { id: crypto.randomUUID(), startedAt: new Date().toISOString(), mime, sources: Object.keys(tracks) as RecordingSource[], offsets: {}, status: "recording", bytes: 0 };
       await this.store.create(this.recording);
       assertStarting();
@@ -83,6 +89,7 @@ export class LiveCapture {
         recorder.start(1000);
         item.started = true;
       }
+      this.pcm?.start();
       for (const stream of this.streams) for (const track of stream.getTracks()) {
         if (track.readyState === "ended") throw new Error("입력 또는 공유가 종료되어 녹음을 멈췄습니다.");
         track.addEventListener("ended", () => {
@@ -122,6 +129,7 @@ export class LiveCapture {
       try {
         // A request already awaiting the OS chooser may still yield a stream. Wait and close it too.
         await this.startSettled;
+        const pcmStopped = this.pcm?.stop();
         await Promise.all(this.recorders.map(({ recorder, started, stopped, ended }) => new Promise<void>(resolve => {
           if (!started || stopped) { resolve(); return; }
           const timeout = setTimeout(() => { this.failure ||= "녹음 종료 응답이 없어 저장된 조각만 보존합니다."; resolve(); }, 5000);
@@ -135,6 +143,7 @@ export class LiveCapture {
         // Encoders have delivered their final chunks (or hit the bounded stop
         // timeout). Storage must not keep microphones or screen sharing open.
         releaseTracks();
+        await pcmStopped;
         await this.writes;
         if (this.recording) await this.store.finish(this.recording.id, this.failure ? "interrupted" : "stopped", this.failure || undefined, this.recording.offsets);
       } finally {

@@ -1,5 +1,6 @@
 const { validateUpdateUrl } = require('./helpers.cjs');
 const { version } = require('../package.json');
+const { RELEASE_FEED } = require('./release-updater.cjs');
 
 const feed = validateUpdateUrl(process.env.VOICESUBSEP_UPDATE_URL);
 const windowsIcon = 'desktop/assets/icon.ico';
@@ -10,8 +11,8 @@ module.exports = {
   productName: 'VOICESUBSEP',
   asar: true,
   directories: { output: 'release', buildResources: 'desktop/assets' },
-  files: ['desktop/**/*.cjs', '!desktop/**/*.test.cjs', '!desktop/smoke-runner.cjs', '!desktop/electron-builder.cjs', 'desktop/assets/icon.ico', 'desktop/assets/icon.png', 'package.json'],
-  extraMetadata: { main: 'desktop/main.cjs', desktopUpdateUrl: feed },
+  files: ['desktop/**/*.cjs', '!desktop/**/*.test.cjs', '!desktop/smoke-runner.cjs', '!desktop/electron-builder.cjs', 'desktop/assets/icon.ico', 'desktop/assets/icon.png', 'desktop/update-public-key.pem', 'package.json'],
+  extraMetadata: { main: 'desktop/main.cjs', desktopUpdateUrl: feed || RELEASE_FEED, desktopUpdateProvider: feed ? 'generic' : 'github-split' },
   extraResources: [
     { from: 'dist', to: 'web', filter: ['**/*'] },
     { from: 'build/backend/voicesubsep-server', to: 'backend', filter: ['**/*'] },

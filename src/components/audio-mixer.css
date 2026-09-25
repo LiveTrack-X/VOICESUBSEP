@@ -11,4 +11,10 @@
 .audio-mix-history>div { display: flex; align-items: center; gap: 8px; padding: 8px 0; flex-wrap: wrap; }
 .audio-mix-history span { flex: 1; min-width: 130px; overflow-wrap: anywhere; }
 .export-section audio { width: 100%; display: block; margin-top: 12px; }
+.audio-mix-preview { border: 1px solid var(--border, #d8deea); border-radius: 8px; padding: 12px; margin: 12px 0; min-width: 0; }
+.audio-mix-preview audio { display: block; width: 100%; margin: 8px 0; }
+.audio-mix-preview .audio-mix-row>label { display: grid; gap: 4px; }
+.audio-mix-preview input { width: 140px; max-width: 100%; }
+.audio-mix-row button[aria-pressed="true"] { background: #ece7ff; border-color: #7152d6; color: #422299; }
+.audio-mix-peak-warning { color: #9a4300; font-weight: 600; }
 @media(max-width:600px) { .audio-mix-controls { grid-template-columns: 1fr 1fr; }.audio-mix-controls>label:first-child { grid-column: 1 / -1; } }

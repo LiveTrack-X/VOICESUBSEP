@@ -19,7 +19,7 @@ describe("workspace entry points", () => {
     const active = buttons.find(button => button.includes('aria-pressed="true"'))!;
     expect(active).toContain({editing:"자막·영상 편집",documents:"인터뷰·회의록",recording:"녹음"}[mode]);
     expect(buttons.filter(button => button.includes('aria-haspopup="dialog"'))).toHaveLength(2);
-    expect(html).toContain("마이크·시스템 소리 녹음 후 분석");
-    expect(html).not.toContain("실시간 자막");
+    expect(html).toContain("라이브 자막 또는 녹음 후 분석");
+    expect(html).toContain("실시간 자막·녹음");
   });
 });

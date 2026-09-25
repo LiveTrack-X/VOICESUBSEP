@@ -7,6 +7,7 @@ const { randomBytes } = require('node:crypto');
 const { APP_URL, sameOrigin, externalUrl, backendPaths, backendArguments } = require('./helpers.cjs');
 const { createProxyHandler } = require('./proxy.cjs');
 const { UpdateController } = require('./updater.cjs');
+const { ReleaseUpdater } = require('./release-updater.cjs');
 const { hasExited, stopOwnedBackend } = require('./backend-lifecycle.cjs');
 const { createAppLogger } = require('./startup-log.cjs');
 const { installCapturePermissions } = require('./capture-permissions.cjs');
@@ -168,7 +169,15 @@ async function start() {
   installCapturePermissions({ session: session.defaultSession, getWindow: () => mainWindow, getUiUrl: () => uiUrl, dialog, desktopCapturer });
   const { autoUpdater } = require('electron-updater');
   const metadata = require(path.join(app.getAppPath(), 'package.json'));
-  const updates = new UpdateController({ updater: autoUpdater, version: app.getVersion(),
+  const releaseUpdater = metadata.desktopUpdateProvider === 'github-split' ? new ReleaseUpdater({
+    version: app.getVersion(), cacheDir: path.join(app.getPath('userData'), 'updates'),
+    publicKey: fs.readFileSync(path.join(__dirname, 'update-public-key.pem')),
+    launch: installer => new Promise((resolve, reject) => {
+      const child = spawn(installer, ['--updated', '/S', '--force-run', `/D=${path.dirname(app.getPath('exe'))}`], { detached: true, stdio: 'ignore', windowsHide: true });
+      child.once('error', reject); child.once('spawn', () => { child.unref(); resolve(); });
+    }), quit: () => app.quit(),
+  }) : autoUpdater;
+  const updates = new UpdateController({ updater: releaseUpdater, version: app.getVersion(),
     feed: metadata.desktopUpdateUrl, packaged: app.isPackaged,
     beforeInstall: async () => {
       preparingUpdate = true;

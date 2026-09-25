@@ -35,11 +35,15 @@ class UpdateController extends EventEmitter {
   snapshot() { return { ...this.status }; }
   set(patch) { this.status = { ...this.status, ...patch }; this.emit('status', this.snapshot()); return this.snapshot(); }
   fail(error) {
+    if (error?.code === 'UPDATE_CACHE_INVALID') this.ready = false;
     return this.set({ state: 'error', error: String(error?.message ?? error).slice(0, 1500), message: '업데이트 작업에 실패했습니다. 네트워크와 배포 서버를 확인하세요.' });
   }
 
   recover(error) {
     if (this.installFailure) return this.installFailure;
+    // A launch failure can retry the verified files. A missing/corrupt cache
+    // must instead release the download guard, even if backend recovery fails.
+    if (error?.code === 'UPDATE_CACHE_INVALID') this.ready = false;
     this.set({ state: 'installing', message: '설치에 실패해 분석 서버를 복구하고 있습니다.' });
     this.installFailure = (async () => {
       try { await this.recoverInstall(); return this.fail(error); }
@@ -76,7 +80,7 @@ class UpdateController extends EventEmitter {
     this.set({ state: 'installing', error: undefined, message: '분석 서버를 종료한 뒤 업데이트를 설치합니다.' });
     try {
       await this.beforeInstall();
-      this.updater.quitAndInstall(false, true);
+      await this.updater.quitAndInstall(false, true);
       if (this.installFailure) await this.installFailure;
     } catch (error) { await this.recover(error); }
     return this.snapshot();

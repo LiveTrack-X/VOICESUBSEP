@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog } from "./Dialog";
 import { ApiError, download, request, uploadMedia, type MediaInfo } from "../api";
-import { emptyAudioMix, MAX_MIX_TRACKS, mixRequest, parseAudioMix, relinkMix, type AudioMixPlan, type AudioMixTrack } from "../audioMixer";
+import { emptyAudioMix, MAX_MIX_TRACKS, mixRequest, mixPreviewRequest, parseAudioMix, relinkMix, type AudioMixPlan, type AudioMixTrack } from "../audioMixer";
+import { MixerPreviewSession, type MixPreviewState } from "../mixerPreview";
 import { buildKeepSpans } from "../cuts";
 import { exportSrt, exportNotesCsv, safeFilename, type Project } from "../domain";
 import { renderedProject, type RenderJob } from "../render";
@@ -10,7 +11,7 @@ import "./audio-mixer.css";
 
 type MixJob=RenderJob & {request?:ReturnType<typeof mixRequest>};
 type MixHistory={id:string;status:RenderJob["status"];createdAt:string;format:string;tracks:number};
-export function AudioMixerDialog({project,file,onSave,onClose}:{project:Project;file:File|null;onSave:(plan:AudioMixPlan)=>void;onClose:()=>void}) {
+export function AudioMixerDialog({project,file,initialTime=0,onSave,onClose}:{project:Project;file:File|null;initialTime?:number;onSave:(plan:AudioMixPlan)=>void;onClose:()=>void}) {
   const {t}=useI18n();
   const [plan,setPlan]=useState<AudioMixPlan>(()=>structuredClone(project.audioMix??emptyAudioMix()));
   const [sources,setSources]=useState<Record<string,MediaInfo>>({});
@@ -20,10 +21,16 @@ export function AudioMixerDialog({project,file,onSave,onClose}:{project:Project;
   const [job,setJob]=useState<MixJob|null>(null);
   const [snapshot,setSnapshot]=useState<Project|null>(null);
   const [history,setHistory]=useState<MixHistory[]>([]);
+  const [previewSession]=useState(()=>new MixerPreviewSession());
+  const [preview,setPreview]=useState<MixPreviewState>({busy:false});
+  const [previewStart,setPreviewStart]=useState(()=>Number.isFinite(initialTime)?Math.max(0,initialTime):0);
+  const [previewLabel,setPreviewLabel]=useState("");
+  const [soloIds,setSoloIds]=useState<string[]>([]);
   const alive=useRef(true);
   const input=useRef<HTMLInputElement>(null),relinkInput=useRef<HTMLInputElement>(null),relinkId=useRef<string|null>(null);
   const running=job?.status==="queued"||job?.status==="running";
   useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
+  useEffect(()=>()=>previewSession.cancel(),[previewSession]);
   async function refreshHistory(){try{const result=await request<{jobs:MixHistory[]}>("/api/audio-mixes");if(alive.current)setHistory(result.jobs);}catch(e){if(alive.current)setError((e as Error).message);}}
   useEffect(()=>{
     void refreshHistory();
@@ -43,8 +50,18 @@ export function AudioMixerDialog({project,file,onSave,onClose}:{project:Project;
     };timer=window.setTimeout(poll,250);
     return()=>{active=false;window.clearTimeout(timer);};
   },[job?.id,running]);
-  function change(next:AudioMixPlan){setPlan(next);setSaved(false);}
+  function clearPreview(){previewSession.cancel();setPreview({busy:false});setPreviewLabel("");}
+  function change(next:AudioMixPlan){clearPreview();setPlan(next);setSaved(false);setSoloIds(ids=>ids.filter(id=>next.tracks.some(track=>track.id===id)));}
   function trackChange(id:string,changes:Partial<AudioMixTrack>){change({...plan,tracks:plan.tracks.map(track=>track.id===id?{...track,...changes}:track)});}
+  function listen(trackId?:string){
+    if(busy||running)return;
+    clearPreview();
+    try{
+      const payload=mixPreviewRequest(plan,previewStart,{soloIds,trackId});
+      setPreviewLabel(trackId?plan.tracks.find(track=>track.id===trackId)?.name??"":soloIds.length?t("솔로 미리듣기"):t("믹스 미리듣기"));
+      void previewSession.start(payload,state=>{if(alive.current)setPreview(state);});
+    }catch(e){setPreview({busy:false,error:(e as Error).message});}
+  }
   async function addFiles(files:File[]){
     if(!files.length||busy)return;setBusy(true);setError("");
     let next=structuredClone(plan);
@@ -67,6 +84,7 @@ export function AudioMixerDialog({project,file,onSave,onClose}:{project:Project;
   }
   async function start(){
     if(busy||running)return;setBusy(true);setError("");
+    clearPreview();
     try{
       // Recheck cache identity before starting; never omit a missing/muted source.
       for(const track of plan.tracks){
@@ -107,10 +125,22 @@ export function AudioMixerDialog({project,file,onSave,onClose}:{project:Project;
             <label>{t("음량 (dB)")}<input type="number" min={-60} max={12} step={1} value={track.gainDb} onChange={e=>trackChange(track.id,{gainDb:e.target.valueAsNumber})}/></label>
             <label>{t("시간 이동 (초)")}<input type="number" min={-604800} max={604800} step={.01} value={track.offsetSeconds} onChange={e=>trackChange(track.id,{offsetSeconds:e.target.valueAsNumber})}/></label>
           </div>
-          <div className="audio-mix-row"><label><input type="checkbox" checked={track.muted} onChange={e=>trackChange(track.id,{muted:e.target.checked})}/>{t("음소거")}</label><button disabled={plan.tracks.length>=MAX_MIX_TRACKS} onClick={()=>change({...plan,tracks:[...plan.tracks,{...track,id:crypto.randomUUID()}]})}>{t("같은 파일의 트랙 추가")}</button><button onClick={()=>{const tracks=plan.tracks.filter(item=>item.id!==track.id);change({...plan,tracks,videoMediaId:tracks.some(item=>item.mediaId===plan.videoMediaId)?plan.videoMediaId:null});}}>{t("삭제")}</button></div>
+          <div className="audio-mix-row"><button disabled={!present} onClick={()=>listen(track.id)}>{t("이 트랙 듣기")}</button><button aria-pressed={soloIds.includes(track.id)} onClick={()=>{clearPreview();setSoloIds(ids=>ids.includes(track.id)?ids.filter(id=>id!==track.id):[...ids,track.id]);}}>{t("솔로")}</button><label><input type="checkbox" checked={track.muted} onChange={e=>trackChange(track.id,{muted:e.target.checked})}/>{t("음소거")}</label><button disabled={plan.tracks.length>=MAX_MIX_TRACKS} onClick={()=>change({...plan,tracks:[...plan.tracks,{...track,id:crypto.randomUUID()}]})}>{t("같은 파일의 트랙 추가")}</button><button onClick={()=>{const tracks=plan.tracks.filter(item=>item.id!==track.id);change({...plan,tracks,videoMediaId:tracks.some(item=>item.mediaId===plan.videoMediaId)?plan.videoMediaId:null});}}>{t("삭제")}</button></div>
         </fieldset>;
       })}
     </div>
+    {!!plan.tracks.length&&<section className="audio-mix-preview" aria-label={t("믹스 미리듣기")}>
+      <div className="audio-mix-row"><label>{t("미리듣기 시작 (초)")}<input type="number" min={0} max={604799} step={.1} value={Number.isFinite(previewStart)?previewStart:""} disabled={busy||running} onChange={e=>{clearPreview();setPreviewStart(e.target.valueAsNumber);}}/></label><button disabled={busy||running} onClick={()=>listen()}>{soloIds.length?t("솔로 미리듣기"):t("믹스 미리듣기")}</button>{preview.busy&&<button onClick={clearPreview}>{t("취소")}</button>}</div>
+      <p className="muted">{t("원본 시간 기준 최대 10초를 확인합니다. 솔로와 트랙 듣기는 저장할 믹스를 바꾸지 않습니다.")}</p>
+      {preview.busy&&<p role="status">{t("미리듣기 준비 중")} · {previewLabel}</p>}
+      {preview.error&&<p role="alert" className="inline-error">{t("미리듣기에 실패했습니다. 시작 시간과 원본 연결을 확인하세요.")}</p>}
+      {preview.result&&<div role="status"><strong>{previewLabel}</strong> · {preview.result.start.toFixed(1)}–{(preview.result.start+preview.result.duration).toFixed(1)} s
+        <audio key={preview.result.url} src={preview.result.url} controls autoPlay preload="auto"/>
+        <p className={preview.result.clipping?"audio-mix-peak-warning":"muted"}>{t("리미터 전 피크")}: {preview.result.peakDbfs===null?"−∞":preview.result.peakDbfs.toFixed(1)} dBFS · {t("재생 피크")}: {preview.result.outputPeakDbfs===null?"−∞":preview.result.outputPeakDbfs.toFixed(1)} dBFS</p>
+        {preview.result.clipping&&<p className="audio-mix-peak-warning">{preview.result.limiter?t("합산 신호가 0 dBFS를 넘습니다. 리미터가 적용되었지만 트랙 음량을 낮추는 것이 좋습니다."):t("이 구간에 클리핑이 있습니다. 트랙 음량을 낮추거나 리미터를 켜세요.")}</p>}
+        <p className="muted">{t("피크는 이 구간의 샘플만 측정합니다. 다른 구간과 압축 파일의 피크는 다를 수 있습니다.")}</p>
+      </div>}
+    </section>}
     <p className="muted">{t("양수는 늦게 시작하고 음수는 앞부분을 잘라냅니다. 시간 이동은 자막을 자동으로 옮기지 않습니다.")}</p>
     <fieldset className="audio-mix-options" disabled={busy||running}>
       <label><input type="checkbox" checked={plan.limiter} onChange={e=>change({...plan,limiter:e.target.checked})}/>{t("피크 리미터로 클리핑 방지")}</label>

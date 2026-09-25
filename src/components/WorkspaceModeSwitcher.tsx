@@ -17,7 +17,7 @@ export function WorkspaceModeSwitcher({ mode, onSelect }: {
   const options = [
     { id: "editing", label: t("자막·영상 편집"), hint: t("자막·컷·타임라인 편집"), Icon: Captions },
     { id: "documents", label: t("인터뷰·회의록"), hint: t("발언록·문서로 저장"), Icon: BookOpenText },
-    { id: "recording", label: t("녹음"), hint: t("마이크·시스템 소리 녹음 후 분석"), Icon: Mic },
+    { id: "recording", label: t("실시간 자막·녹음"), hint: t("라이브 자막 또는 녹음 후 분석"), Icon: Mic },
   ] as const;
   return <nav className="workspace-mode-switcher" aria-label={t("작업 모드 선택")}>
     <span className="workspace-mode-label">{t("작업 모드")}</span>
