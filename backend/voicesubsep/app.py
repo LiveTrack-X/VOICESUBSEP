@@ -37,6 +37,8 @@ from .waveform import Waveforms
 from .render_jobs import Renderer, RenderJobManager
 from .rendering import validate_request as validate_render_request
 from .storage import ID_PATTERN, Storage, new_id
+from .speech_tools import SpeechToolsManager
+from .speech_tools_api import register_speech_tool_routes
 from .vst_api import PreprocessingRequest, PreviewManager, router as vst_router, validate_available_preprocessing
 from .vst_editor import EditorManager
 
@@ -140,9 +142,18 @@ class JobRequest(BaseModel):
     qwenModel: Literal["0.6b", "1.7b"] = "1.7b"
     diarizationProvider: Literal["nemotron", "deepgram"] = "nemotron"
     diarizationConsent: bool = False
+    vocabulary: list[str] = Field(default_factory=list, max_length=50)
+
+    @field_validator("vocabulary", mode="before")
+    @classmethod
+    def bounded_vocabulary(cls, value):
+        from .vocabulary import validate_vocabulary
+        return validate_vocabulary(value)
 
     @model_validator(mode="after")
     def unique_tracks(self):
+        from .vocabulary import vocabulary_for_provider
+        vocabulary_for_provider(self.vocabulary, self.asrProvider, self.providerModel)
         if self.asrProvider != "local":
             if not self.cloudConsent:
                 raise ValueError("Confirm audio upload to the selected cloud provider for this analysis.")
@@ -224,12 +235,13 @@ def create_app(
     allowed_origins: set[str] | None = None,
     renderer: Renderer | None = None,
     live_engine_factory: Callable | None = None,
+    speech_tool_runner: Callable | None = None,
 ) -> FastAPI:
     root = data_dir or Path(os.environ.get("VOICESUBSEP_DATA_DIR", str(Path(__file__).resolve().parents[2] / "data")))
     # VOICESUBSEP_MAX_UPLOAD_BYTES is retired and intentionally ignored. Actual
     # filesystem capacity and media validity still constrain source uploads.
     storage = Storage(root)
-    diagnostics = Diagnostics(storage, "0.3.5")
+    diagnostics = Diagnostics(storage, "0.3.6")
     provider_credentials = ProviderCredentials()
     jobs = JobManager(storage, analyzer, diagnostics=diagnostics, provider_credentials=provider_credentials)
     live = LiveManager(storage, live_engine_factory)
@@ -238,7 +250,8 @@ def create_app(
     vst_editors = EditorManager(diagnostics=diagnostics)
     mixer = AudioMixJobManager(storage, diagnostics=diagnostics)
     waveforms = Waveforms(storage)
-    cache = MediaCache(storage, lambda: jobs.referenced_media_ids() | renders.referenced_media_ids() | vst_previews.referenced_media_ids() | waveforms.referenced_media_ids() | mixer.referenced_media_ids())
+    speech_tools = SpeechToolsManager(storage, speech_tool_runner)
+    cache = MediaCache(storage, lambda: jobs.referenced_media_ids() | renders.referenced_media_ids() | vst_previews.referenced_media_ids() | waveforms.referenced_media_ids() | mixer.referenced_media_ids() | speech_tools.referenced_media_ids())
     inspect_media = probe or probe_media
     origins = set(allowed_origins) if allowed_origins is not None else DEFAULT_ORIGINS
 
@@ -246,6 +259,7 @@ def create_app(
     async def lifespan(application: FastAPI):
         jobs.start()
         try:
+            speech_tools.start()
             renders.start()
             try:
                 vst_previews.start()
@@ -268,10 +282,13 @@ def create_app(
                 finally:
                     await run_in_threadpool(renders.stop)
         finally:
-            provider_credentials.clear()
-            await run_in_threadpool(jobs.stop)
+            try:
+                await run_in_threadpool(speech_tools.stop)
+            finally:
+                provider_credentials.clear()
+                await run_in_threadpool(jobs.stop)
 
-    application = FastAPI(title="VOICESUBSEP", version="0.3.5", lifespan=lifespan)
+    application = FastAPI(title="VOICESUBSEP", version="0.3.6", lifespan=lifespan)
     application.state.storage = storage
     application.state.jobs = jobs
     application.state.live = live
@@ -282,6 +299,7 @@ def create_app(
     application.state.diagnostics = diagnostics
     application.state.media_cache = cache
     application.state.provider_credentials = provider_credentials
+    application.state.speech_tools = speech_tools
     @application.exception_handler(RequestValidationError)
     async def validation_error(_request: Request, exc: RequestValidationError):
         if _request.url.path.startswith("/api/provider-credentials"):
@@ -492,6 +510,12 @@ def create_app(
     @application.post("/api/jobs", status_code=202)
     def create_job(request: JobRequest):
         with storage.media_lock:
+            try:
+                speech_tools.require_idle()
+            except PermissionError as exc:
+                raise HTTPException(409, str(exc)) from None
+            except RuntimeError as exc:
+                raise HTTPException(503, str(exc)) from None
             if live.busy():
                 raise HTTPException(409, "라이브 세션이 종료된 뒤 파일 분석을 시작하세요.")
             return submit_job(request)
@@ -621,7 +645,8 @@ def create_app(
 
     application.include_router(vst_router)
     register_audio_mixing_routes(application, mixer, storage, probe=inspect_media)
-    register_live_routes(application, live, storage, jobs)
+    register_live_routes(application, live, storage, jobs, speech_tools)
+    register_speech_tool_routes(application, speech_tools, storage, jobs, live)
     return application
 
 

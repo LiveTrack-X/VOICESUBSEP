@@ -13,11 +13,17 @@ export const SHORTCUT_ACTIONS = [
   { id: "forward", label: "5초 앞으로", group: "재생", defaultKey: "ArrowRight" },
   { id: "previousCaption", label: "이전 자막 보기", group: "자막 이동", defaultKey: "Alt+ArrowUp" },
   { id: "nextCaption", label: "다음 자막 보기", group: "자막 이동", defaultKey: "Alt+ArrowDown" },
+  { id: "splitCursor", label: "커서 위치에서 나누기", group: "자막 편집", defaultKey: "Mod+Enter" },
+  { id: "splitTime", label: "재생 시점에서 나누기", group: "자막 편집", defaultKey: "Mod+Shift+Enter" },
+  { id: "mergePrevious", label: "이전 자막과 합치기", group: "자막 편집", defaultKey: "Alt+KeyJ" },
+  { id: "mergeNext", label: "다음 자막과 합치기", group: "자막 편집", defaultKey: "Alt+KeyK" },
+  { id: "mergeSelected", label: "선택 자막 합치기", group: "자막 편집", defaultKey: "Mod+KeyM" },
   { id: "analyze", label: "음성 분석 열기", group: "작업", defaultKey: null },
   { id: "export", label: "내보내기", group: "작업", defaultKey: null },
   { id: "shortcuts", label: "단축키 허브", group: "작업", defaultKey: "F1" },
 ] as const;
 export type ShortcutAction = typeof SHORTCUT_ACTIONS[number]["id"];
+export const CAPTION_EDIT_SHORTCUTS: readonly ShortcutAction[] = ["splitCursor", "splitTime", "mergePrevious", "mergeNext", "mergeSelected"];
 export type ShortcutBindings = Record<ShortcutAction, string | null>;
 export type ShortcutStorage = Pick<Storage, "getItem" | "setItem">;
 export type ShortcutLoad = { bindings: ShortcutBindings; status: "default" | "saved" | "invalid" | "unavailable" };
@@ -76,7 +82,22 @@ export function parseShortcuts(raw: string): ShortcutBindings {
   if (raw.length > MAX_SHORTCUT_BYTES || new TextEncoder().encode(raw).length > MAX_SHORTCUT_BYTES) throw new Error("Invalid shortcut settings");
   const value: unknown = JSON.parse(raw);
   if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length !== 2 || !("version" in value) || value.version !== 1 || !("bindings" in value)) throw new Error("Invalid shortcut settings");
-  return checkedShortcuts(value.bindings);
+  return restoreShortcutBindings(value.bindings);
+}
+
+export function restoreShortcutBindings(bindings: unknown): ShortcutBindings {
+  // Upgrade the exact previous shape without resetting any user's saved bindings.
+  const legacy = SHORTCUT_ACTIONS.filter(action => !CAPTION_EDIT_SHORTCUTS.includes(action.id));
+  if (bindings && typeof bindings === "object" && !Array.isArray(bindings) && Object.keys(bindings).length === legacy.length && legacy.every(action => Object.hasOwn(bindings, action.id))) {
+    const upgraded = { ...bindings } as Record<string, unknown>;
+    const used = new Set(Object.values(bindings));
+    for (const action of SHORTCUT_ACTIONS.filter(action => CAPTION_EDIT_SHORTCUTS.includes(action.id))) {
+      upgraded[action.id] = action.defaultKey && !used.has(action.defaultKey) ? action.defaultKey : null;
+      used.add(upgraded[action.id]);
+    }
+    return checkedShortcuts(upgraded);
+  }
+  return checkedShortcuts(bindings);
 }
 
 export function loadShortcuts(storage?: ShortcutStorage): ShortcutLoad {
@@ -107,7 +128,7 @@ export function formatShortcut(binding: string | null, mac = isMacKeyboard()): s
 }
 
 type ShortcutTarget = { closest: (selector: string) => unknown };
-/** Save is the only editing shortcut allowed while a text draft is focused. */
+/** Caption commands require a modifier and only work in the caption text field. */
 type ShortcutEvent = Pick<KeyboardEvent, "code" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey" | "isComposing" | "repeat" | "defaultPrevented" | "target"> & { keyCode?: number; getModifierState?: (key: string) => boolean };
 export function shortcutActionForEvent(event: ShortcutEvent, bindings: ShortcutBindings, blocked = false, mac = isMacKeyboard(), allowRepeat = false): ShortcutAction | null {
   if (blocked || event.defaultPrevented || (event.repeat && !allowRepeat) || event.isComposing) return null;
@@ -118,7 +139,8 @@ export function shortcutActionForEvent(event: ShortcutEvent, bindings: ShortcutB
   const target = event.target as (ShortcutTarget | null);
   const within = (selector: string) => typeof target?.closest === "function" && !!target.closest(selector);
   if (within('[role="dialog"], [aria-modal="true"]')) return null;
-  if (within('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="slider"]') && !(action === "save" && key.includes("Mod+"))) return null;
+  const captionCommand = CAPTION_EDIT_SHORTCUTS.includes(action) && (key.includes("Mod+") || key.includes("Alt+")) && within('textarea[data-caption-text="true"]');
+  if (within('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="slider"]') && !(action === "save" && key.includes("Mod+")) && !captionCommand) return null;
   if (["Space", "Enter"].includes(event.code) && !key.includes("Mod+") && !key.includes("Alt+") && within('button, a[href], [role="button"], summary, video, audio')) return null;
   return action;
 }

@@ -1,7 +1,7 @@
 import type { Locale } from "./i18n";
 import { ASR_LANGUAGES, ASR_LANGUAGE_STORAGE_KEY } from "./languages";
 import { defaultVstSettings, importVstSettings, VST_SETTINGS_FORMAT, VST_STORAGE_KEY, type VstSettings } from "./vst";
-import { checkedShortcuts, parseShortcuts, notifyShortcutsChanged, SHORTCUT_STORAGE_KEY, type ShortcutBindings } from "./shortcuts";
+import { restoreShortcutBindings, parseShortcuts, notifyShortcutsChanged, SHORTCUT_STORAGE_KEY, type ShortcutBindings } from "./shortcuts";
 
 export const ANALYSIS_STORAGE_KEY = "voicesubsep-analysis-settings-v1";
 export const MAX_SETTINGS_BYTES = 2 * 1024 * 1024;
@@ -109,7 +109,7 @@ export function importAppSettings(raw: string): AppSettings {
   if (!record(value.vst)) return invalid();
   const vst = importVstSettings(JSON.stringify({ format: VST_SETTINGS_FORMAT, version: 1, settings: value.vst }));
   return { format: "voicesubsep-settings", version: 1, locale: value.locale as Locale, analysis, vst,
-    ...(Object.hasOwn(value, "shortcuts") ? { shortcuts: checkedShortcuts(value.shortcuts) } : {}) };
+    ...(Object.hasOwn(value, "shortcuts") ? { shortcuts: restoreShortcutBindings(value.shortcuts) } : {}) };
 }
 
 export function serializeAppSettings(settings: AppSettings): string {

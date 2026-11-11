@@ -6,6 +6,7 @@ import {
   saveAppSettings, serializeAppSettings, type AppSettings, type SettingsStorage,
 } from "./settings";
 import { parseVstSettings, VST_STORAGE_KEY } from "./vst";
+import { CAPTION_EDIT_SHORTCUTS, defaultShortcuts, type ShortcutAction } from "./shortcuts";
 
 class MemoryStorage implements SettingsStorage {
   values = new Map<string, string>();
@@ -37,6 +38,15 @@ function appSettings(): AppSettings {
 }
 
 describe("analysis preferences", () => {
+  it("imports old shortcut backups without resetting custom keys", () => {
+    const shortcuts = Object.fromEntries(Object.entries(defaultShortcuts()).filter(([key]) => !CAPTION_EDIT_SHORTCUTS.includes(key as ShortcutAction)));
+    shortcuts.play = "Mod+Enter";
+    const restored = importAppSettings(JSON.stringify({ ...appSettings(), shortcuts }));
+    expect(restored.shortcuts?.play).toBe("Mod+Enter");
+    expect(restored.shortcuts?.splitCursor).toBeNull();
+    expect(restored.shortcuts?.mergeNext).toBe("Alt+KeyK");
+    expect(importAppSettings(serializeAppSettings(restored))).toEqual(restored);
+  });
   it("preserves optional advanced choices while old settings keep local default engines", () => {
     const storage = new MemoryStorage();
     const legacy = defaultAnalysisPreferences();

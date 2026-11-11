@@ -330,6 +330,7 @@ class JobManager:
                 language=request["language"], device=request["device"],
                 speaker_boundary_ms=request.get("speakerBoundaryMs", 500),
                 diarization=request["diarization"],
+                **({"vocabulary": request["vocabulary"]} if request.get("vocabulary") else {}),
                 **({"preprocessing": request["preprocessing"]} if request.get("preprocessing") is not None else {}),
             )
             provider = request.get("asrProvider", "local")

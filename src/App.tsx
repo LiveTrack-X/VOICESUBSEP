@@ -33,6 +33,7 @@ import { useProject } from "./useProject";
 import { Sidebar } from "./components/Sidebar";
 import { MediaPlayer, type MediaPlayerHandle } from "./components/MediaPlayer";
 import { CaptionEditor } from "./components/CaptionEditor";
+import type { CaptionEditRequest } from "./captionRestructure";
 import { NotesPanel } from "./components/NotesPanel";
 import { Timeline } from "./components/Timeline";
 import { EditorWorkspace, PreviewWidthResizer } from "./components/EditorWorkspace";
@@ -64,6 +65,8 @@ import { bindProjectMedia, mediaLinkDecision, MediaSelectionGuard, sameMediaIden
 import { sourceUrl, type MediaSource } from "./mediaSource";
 import { MediaReconnect, reconnectMessage } from "./mediaReconnect";
 import { SpeakerReviewDialog } from "./components/SpeakerReviewDialog";
+import { SpeechToolsDialog } from "./components/SpeechToolsDialog";
+import { applyVoiceCandidate, appendOverlapCandidates, type SpeechToolSnapshot, type VoiceMatchResult, type OverlapResult, type OverlapSelection } from "./speechTools";
 import { applySpeakerRecommendations, SPEAKER_REVIEW_STALE, type SpeakerReviewSnapshot } from "./speakerReview";
 import { fitSpeakerEvidence, SPEAKER_EVIDENCE_BUDGET_NOTICE } from "./speakerEvidenceBudget";
 import "./branding-links.css";
@@ -79,8 +82,9 @@ export default function App() {
   const [playing, setPlaying] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [revealCaption, setRevealCaption] = useState<{ id: string } | null>(null);
+  const [captionEditRequest, setCaptionEditRequest] = useState<CaptionEditRequest | null>(null);
   const [revealNote, setRevealNote] = useState<{ id: string } | null>(null);
-  const [dialog, setDialog] = useState<"export" | "analysis" | "background" | "update" | "render" | "settings" | "documents" | "live" | "history" | "recovery" | "mixer" | "shortcuts" | "speaker-review" | null>(null);
+  const [dialog, setDialog] = useState<"export" | "analysis" | "background" | "update" | "render" | "settings" | "documents" | "live" | "history" | "recovery" | "mixer" | "shortcuts" | "speaker-review" | "speech-tools" | null>(null);
   const [editedPreview, setEditedPreview] = useState(false);
   const [projectSession, setProjectSession] = useState(0);
   const [notice, setNotice] = useState("");
@@ -169,6 +173,8 @@ export default function App() {
       case "new": guarded(t("새 프로젝트를 시작합니다. 현재 작업은 먼저 파일로 저장해 두세요."), () => changeProject(createProject())); return true;
       case "undo": if (canUndo) undo(); return canUndo;
       case "redo": if (canRedo) redo(); return canRedo;
+      case "splitCursor": case "splitTime": case "mergePrevious": case "mergeNext": case "mergeSelected":
+        setCaptionEditRequest({ action }); return true;
       case "play": if (source) playerRef.current?.toggle(); return !!source;
       case "back": seek(time - 5); return true;
       case "forward": seek(time + 5); return true;
@@ -394,6 +400,17 @@ export default function App() {
     setDialog(null);
     setNotice(t("선택한 후보 {count}개를 적용했습니다. 원문·시간은 유지하며 실행 취소할 수 있습니다.", { count: ids.size }));
   }
+  function applyAcousticVoice(snapshot: SpeechToolSnapshot, result: VoiceMatchResult, captionId: string) {
+    update(previous => applyVoiceCandidate(previous, snapshot, projectSession, result, captionId));
+    setSelected(captionId);
+    setDialog(null);
+    setNotice(t("목소리 후보를 적용했습니다. 원문·시간을 유지하며 실행 취소할 수 있습니다."));
+  }
+  function applyOverlapExperiment(snapshot: SpeechToolSnapshot, result: OverlapResult, choices: OverlapSelection[]) {
+    update(previous => appendOverlapCandidates(previous, snapshot, projectSession, result, choices));
+    setDialog(null);
+    setNotice(t("선택한 분리 후보를 추가했습니다. 기존 자막은 유지하며 실행 취소할 수 있습니다."));
+  }
   function exportText(kind: "srt" | "md" | "csv", speakerId?: string | null) {
     try {
       const base = safeFilename(project.name);
@@ -534,6 +551,7 @@ export default function App() {
         />}>
         <EditorWorkspace noteReveal={revealNote} tools={<>
           <button disabled={!project.captions.some(caption => caption.speakerId === null)} onClick={() => setDialog("speaker-review")}>{t("미배정 보완 검토")}</button>
+          <button onClick={() => setDialog("speech-tools")}>{t("음성 보완 도구")}</button>
           <button onClick={() => setDialog("mixer")}>{t("오디오 트랙 믹서")}</button>
           <button onClick={()=>setDialog("history")}><History size={15}/>{t("작업 이력·저장 공간")}</button>
           <button className={recoveryWarning?"recovery-warning":""} onClick={()=>setDialog("recovery")}><ArchiveRestore size={15}/>{t("자동 저장 복구")}</button>
@@ -566,6 +584,7 @@ export default function App() {
                 previewRange={(from,to)=>{flushSync(()=>setEditedPreview(false));playerRef.current?.previewRange(from,to);}} stopPreview={()=>videoRef.current?.pause()} mediaAvailable={!!source}/>
               <PreviewWidthResizer/>
               <CaptionEditor
+                editRequest={captionEditRequest}
                 project={project}
                 playing={playing}
                 followSuspended={dialog !== null || confirm !== null}
@@ -589,6 +608,7 @@ export default function App() {
             />
           </div>
           <Timeline
+            restructureCaption={(id, action) => { setSelected(id); setCaptionEditRequest({ id, action }); }}
             project={project}
             file={file}
             update={update}
@@ -721,6 +741,7 @@ export default function App() {
           project={project}
           onClose={() => setDialog(null)}
           onApply={applyAnalysis}
+          onVocabularySave={terms => update(previous => ({ ...previous, vocabulary: terms }))}
           onJob={background.track}
           onMediaReady={duration=>{if(Number.isFinite(duration)&&duration>0)update(p=>p.duration>0?p:{...p,duration});}}
         />
@@ -733,6 +754,9 @@ export default function App() {
           flushSync(() => setEditedPreview(false));
           setSelected(captionId); setTime(start); playerRef.current?.previewRange(start, end);
         }}/>}
+      {dialog === "speech-tools" && <SpeechToolsDialog key={projectSession} project={project} session={projectSession}
+        file={file} selectedCaptionId={selected} onClose={() => setDialog(null)} onUpdate={update}
+        onApplyVoice={applyAcousticVoice} onApplyOverlap={applyOverlapExperiment}/>}
       {dialog === "shortcuts" && <ShortcutDialog bindings={shortcuts.bindings} status={shortcuts.status} onSave={shortcuts.save} onClose={() => setDialog(null)}/>}
       {dialog === "export" && (
         <Dialog title={t("자막과 노트 내보내기")} onClose={() => setDialog(null)}>

@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('voicesubsepDesktop', Object.freeze({
   appVersion: () => ipcRenderer.invoke('desktop:version'),
+  listFonts: () => ipcRenderer.invoke('desktop:list-fonts'),
   saveDocumentPdf: request => ipcRenderer.invoke('desktop:save-document-pdf', request),
   rememberMedia: (file, request) => {
     // Never accept a filesystem path from renderer JSON or expose it back.

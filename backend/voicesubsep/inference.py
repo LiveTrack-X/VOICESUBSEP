@@ -230,8 +230,11 @@ def _transcribe(path: Path, *, model_name: str, language: str, device: str,
                 duration: float, progress: Progress, cancelled: Cancelled,
                 clip_timestamps: list[float] | None = None,
                 recognition_preview: RecognitionPreview | None = None,
-                silence_warnings: list[str] | None = None) -> list[dict]:
+                silence_warnings: list[str] | None = None,
+                vocabulary: list[str] | None = None) -> list[dict]:
     _checkpoint(cancelled)
+    from .vocabulary import validate_vocabulary
+    terms = validate_vocabulary([] if vocabulary is None else vocabulary)
     if device == "cuda":
         from .gpu_runtime import ensure_cuda_runtime
 
@@ -249,6 +252,14 @@ def _transcribe(path: Path, *, model_name: str, language: str, device: str,
         _checkpoint(cancelled)
         model = model_class(model_path, device=device, compute_type="int8" if device == "cpu" else "float16")
         _checkpoint(cancelled)
+        if terms:
+            # faster-whisper truncates hotwords inside get_prompt. Check its
+            # exact tokenizer/window first so a saved term is never silently lost.
+            hint_tokens = model.hf_tokenizer.encode(" " + ", ".join(terms), add_special_tokens=False).ids
+            hint_limit = model.max_length // 2 - 1
+            if len(hint_tokens) > hint_limit:
+                raise ValueError(f"Whisper 용어 힌트는 이 모델에서 {hint_limit}토큰까지 지원합니다. "
+                                 "용어를 줄이거나 Qwen을 선택하세요. 용어를 자동으로 자르지 않습니다.")
         progress("대사 전사", 0.17)
         segments, _ = model.transcribe(
             str(path), language=None if language == "auto" else language,
@@ -261,6 +272,7 @@ def _transcribe(path: Path, *, model_name: str, language: str, device: str,
             # timestamps and all uncertain voice/noise boundaries.
             word_timestamps=True, vad_filter=False, condition_on_previous_text=False,
             beam_size=5,
+            **({"hotwords": ", ".join(terms)} if terms else {}),
             **({"clip_timestamps": clip_timestamps} if clip_timestamps else {}),
         )
         speech_activity = SpeechActivityGate(path, cancelled)
@@ -656,8 +668,12 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
             cloud_consent: bool = False, get_provider_key: Callable[[], str] | None = None,
             local_asr_engine: str = "whisper", qwen_model: str = "1.7b",
             diarization_provider: str = "nemotron", diarization_consent: bool = False,
-            get_diarization_key: Callable[[], str] | None = None) -> dict:
+            get_diarization_key: Callable[[], str] | None = None,
+            vocabulary: list[str] | None = None) -> dict:
     _checkpoint(cancelled)
+    from .vocabulary import validate_vocabulary, vocabulary_for_provider, UNSUPPORTED as VOCABULARY_UNSUPPORTED
+    requested_terms = validate_vocabulary([] if vocabulary is None else vocabulary)
+    terms = vocabulary_for_provider(requested_terms, asr_provider, provider_model)
     _validate_speaker_boundary_ms(speaker_boundary_ms)
     if mode not in {"standard", "overlap"} or device not in {"cpu", "cuda"}:
         raise RuntimeError("지원하지 않는 분석 모드 또는 장치입니다.")
@@ -774,12 +790,14 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
             _checkpoint(cancelled)
             records = transcribe_qwen(asr_path, model_path=qwen_path, aligner_path=aligner_path, language=language,
                                       device=device, duration=duration, clip_timestamps=clips, progress=asr_progress,
-                                      cancelled=cancelled, recognition_preview=recognition_preview)
+                                      cancelled=cancelled, recognition_preview=recognition_preview,
+                                      **({"vocabulary": terms} if terms else {}))
         elif asr_provider == "local":
             silence_warnings: list[str] = []
             records = _transcribe(asr_path, model_name=whisper_model, language=language, device=device,
                                   duration=duration, clip_timestamps=clips, progress=asr_progress,
                                   **({"recognition_preview": recognition_preview} if recognition_preview is not None else {}),
+                                  **({"vocabulary": terms} if terms else {}),
                                   cancelled=cancelled, silence_warnings=silence_warnings)
         else:
             from .cloud_asr import transcribe_cloud, CloudASRCancelled
@@ -788,7 +806,8 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
                 records = transcribe_cloud(asr_path, provider=asr_provider, model=provider_model,
                                            language=language, consent=cloud_consent, get_key=get_provider_key,
                                            progress=asr_progress, cancelled=cancelled,
-                                           recognition_preview=recognition_preview)
+                                           recognition_preview=recognition_preview,
+                                           **({"vocabulary": terms} if terms else {}))
             except CloudASRCancelled as exc:
                 raise AnalysisCancelled(str(exc)) from None
         _checkpoint(cancelled)
@@ -797,6 +816,8 @@ def analyze(media_path: Path, *, audio_track: int, mode: str, speaker_count: int
                               speaker_boundary_ms=speaker_boundary_ms, diarization_provider=diarization_provider, cancelled=cancelled)
         if asr_provider == "local" and local_asr_engine != "qwen":
             result["warnings"].extend(silence_warnings)
+        if requested_terms and not terms:
+            result["warnings"].append(VOCABULARY_UNSUPPORTED)
         if asr_provider != "local":
             result["warnings"].append(f"{asr_provider} 클라우드에서 선택한 트랙의 음성을 전사했습니다.")
         if diarization:

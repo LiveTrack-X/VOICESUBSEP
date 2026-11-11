@@ -111,8 +111,9 @@ def runtime(monkeypatch, tmp_path):
                             generated=np.array([[1, 2, 3, 8, 9]]), fail_align=False, generate_hook=None)
 
     class Processor:
-        def apply_transcription_request(self, *, audio, language):
+        def apply_transcription_request(self, *, audio, language, prompt=None):
             state.events.append(('audio', len(audio), language))
+            state.events.append(('prompt', prompt))
             return Inputs()
 
         def decode(self, generated, **kwargs):
@@ -189,6 +190,14 @@ def test_forced_language_works_when_generated_language_marker_is_absent(runtime)
     runtime.language = None
     assert qwen.transcribe_qwen(runtime.path, **{**runtime.kwargs, 'language': 'ko'})
     assert ('align_language', 'ko') in runtime.events
+
+
+def test_project_terms_reach_each_qwen_chunk_without_changing_alignment(runtime):
+    pcm(runtime.path, 31)
+    result = qwen.transcribe_qwen(runtime.path, **{**runtime.kwargs, 'duration': 31}, vocabulary=['젠야타', 'D.Va'])
+    assert [event[1] for event in runtime.events if event[0] == 'prompt'] == ['Vocabulary: 젠야타, D.Va'] * 2
+    assert result[0]['text'] == result[0]['words'][0]['text'] == 'Hello!'
+    assert result[1]['words'][0]['start'] == 30.08
 
 
 def test_silence_does_not_create_captions_or_fake_preview(runtime):

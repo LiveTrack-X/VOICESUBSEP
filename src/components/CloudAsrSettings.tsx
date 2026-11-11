@@ -43,7 +43,7 @@ export function CloudAsrSettings({ selection, onChange, consent, onConsent, disa
       <p>{t("선택한 단일 오디오 트랙을 외부 API로 전송합니다. OBS 분리 트랙 분석은 현재 로컬 모드에서 사용할 수 있습니다.")}</p>
       <ProviderCredentialPanel key={selection.provider} provider={selection.provider} disabled={disabled} onStateChange={onCredentialState}/>
       <label className="cloud-consent"><input type="checkbox" checked={consent} disabled={disabled || credentialBusy} onChange={event => onConsent(event.target.checked)}/>
-        <span>{t("이번 분석에서 음성을 {provider}로 보내고 해당 API 계정에 사용료가 발생할 수 있음에 동의합니다.", { provider: providerName(selection.provider) })}</span></label>
+        <span>{t("이번 분석에서 음성과 지원되는 저장 용어를 {provider}로 보내고 해당 API 계정에 사용료가 발생할 수 있음에 동의합니다.", { provider: providerName(selection.provider) })}</span></label>
       <small>{t("동의는 저장하지 않습니다. 제공자·모델 변경 또는 다음 분석 때 다시 확인합니다.")}</small>
     </>}
     <p>{t("클라우드 음성 인식은 제공자별 API 키가 필요합니다. ChatGPT 구독 로그인과는 별개입니다.")}</p>

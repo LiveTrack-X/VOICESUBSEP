@@ -13,6 +13,9 @@ import { renameTimelineSpeaker } from "../timelineSpeakerName";
 import { deleteTimelineTarget, moveTimelineTarget, timelineMovePlan, timelineTarget, type TimelineMenuAnchor, type TimelineTarget } from "../timelineContext";
 import { TimelineContextMenu } from "./TimelineContextMenu";
 import "./timeline-layout.css";
+import { orderedCaptions, type CaptionEditAction } from "../captionRestructure";
+import { CaptionEditActions } from "./CaptionEditActions";
+import { captureTimelineZoomAnchor, clampTimelineZoom, timelineRulerTicks, timelineZoomScrollLeft, TIMELINE_ZOOM_LEVELS, type TimelineZoomAnchor, type TimelineZoomGeometry } from "../timelineZoom";
 
 const LAYOUT_STORAGE_KEY = "voicesubsep-timeline-layout-v1";
 const DEFAULT_HEIGHT = 180;
@@ -53,6 +56,7 @@ export function Timeline({
   seek,
   editCaption,
   editNote,
+  restructureCaption,
 }: {
   project: Project;
   file: MediaSource | null;
@@ -66,12 +70,18 @@ export function Timeline({
   seek: (time: number) => void;
   editCaption: (id: string) => void;
   editNote: (id: string) => void;
+  restructureCaption?: (id: string, action: CaptionEditAction) => void;
 }) {
   const {t}=useI18n();
   const [zoom, setZoom] = useState(1);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const rulerRef = useRef<HTMLDivElement>(null);
+  const pendingZoomAnchor = useRef<{ projectId: string; anchor: TimelineZoomAnchor } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ projectId: string; target: TimelineTarget; anchor: TimelineMenuAnchor } | null>(null);
   const menuItem = contextMenu?.projectId === project.id ? timelineTarget(project,contextMenu.target) : undefined;
   const movePlan = contextMenu && menuItem ? timelineMovePlan(project,contextMenu.target,time) : null;
+  const ordered = useMemo(() => orderedCaptions(project.captions), [project.captions]);
+  const contextCaptionIndex = contextMenu?.target.kind === "caption" ? ordered.findIndex(item => item.id === contextMenu.target.id) : -1;
   const [layout, setLayout] = useState(readLayout);
   const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 1000px)").matches);
   const [focusExpanded, setFocusExpanded] = useState(false);
@@ -171,6 +181,29 @@ export function Timeline({
     ...project.captions.map((c) => c.end),
     ...project.notes.map((n) => n.end ?? n.start),
   );
+  const rulerTicks = useMemo(() => timelineRulerTicks(duration, zoom), [duration, zoom]);
+  function zoomGeometry(): TimelineZoomGeometry | null {
+    const scroller = scrollRef.current, track = rulerRef.current;
+    if (!scroller || !track) return null;
+    const viewport = scroller.getBoundingClientRect(), bounds = track.getBoundingClientRect();
+    return { scrollLeft: scroller.scrollLeft, viewportWidth: scroller.clientWidth, scrollWidth: scroller.scrollWidth,
+      trackLeft: bounds.left - viewport.left - scroller.clientLeft + scroller.scrollLeft, trackWidth: bounds.width, duration };
+  }
+  function changeZoom(value: number) {
+    const next = clampTimelineZoom(value);
+    if (next === zoom) return;
+    const geometry = zoomGeometry();
+    const anchor = geometry && captureTimelineZoomAnchor(geometry, time);
+    pendingZoomAnchor.current = anchor ? { projectId: project.id, anchor } : null;
+    setZoom(next);
+  }
+  useLayoutEffect(() => {
+    const pending = pendingZoomAnchor.current;
+    pendingZoomAnchor.current = null;
+    if (!pending || pending.projectId !== project.id) return;
+    const geometry = zoomGeometry();
+    if (geometry && scrollRef.current) scrollRef.current.scrollLeft = timelineZoomScrollLeft(pending.anchor, geometry);
+  }, [zoom, project.id, duration]);
   const speakers = editableSpeakers(project);
   const lanes = [
     ...speakers,
@@ -244,15 +277,17 @@ export function Timeline({
           <button
             aria-label={t("타임라인 축소")}
             disabled={zoom <= 1}
-            onClick={() => setZoom((z) => z / 2)}
+            onClick={() => changeZoom(zoom / 2)}
           >
             <ZoomOut size={15} />
           </button>
-          <span>{zoom}×</span>
+          <select aria-label={t("타임라인 확대 비율")} value={zoom} onChange={event => changeZoom(Number(event.target.value))}>
+            {TIMELINE_ZOOM_LEVELS.map(value => <option key={value} value={value}>{value}×</option>)}
+          </select>
           <button
             aria-label={t("타임라인 확대")}
-            disabled={zoom >= 8}
-            onClick={() => setZoom((z) => z * 2)}
+            disabled={zoom >= TIMELINE_ZOOM_LEVELS.at(-1)!}
+            onClick={() => changeZoom(zoom * 2)}
           >
             <ZoomIn size={15} />
           </button>
@@ -270,12 +305,13 @@ export function Timeline({
           </button>
         </div>
       </div>
-      <div className="timeline-scroll" id={contentId} hidden={collapsed}>
+      <div ref={scrollRef} className="timeline-scroll" id={contentId} hidden={collapsed}>
         <div
           className="timeline-content"
           style={{ minWidth: `${zoom * 100}%` }}
         >
           <div
+            ref={rulerRef}
             className="timeline-ruler"
             onClick={(e) => {
               const box = e.currentTarget.getBoundingClientRect();
@@ -284,17 +320,17 @@ export function Timeline({
               );
             }}
           >
-            {Array.from({ length: 7 }, (_, i) => (
+            {rulerTicks.map(tick => (
               <button
-                key={i}
-                style={{ left: `${(i / 6) * 100}%` }}
-                aria-label={t("{time}부터 재생",{time:formatTime((duration * i) / 6)})}
+                key={tick.time}
+                style={{ left: `${tick.left}%` }}
+                aria-label={t("{time}부터 재생",{time:formatTime(tick.time)})}
                 onClick={(e) => {
                   e.stopPropagation();
-                  preview((duration * i) / 6);
+                  preview(tick.time);
                 }}
               >
-                {formatTime((duration * i) / 6).slice(3, 8)}
+                {tick.label}
               </button>
             ))}
           </div>
@@ -320,6 +356,8 @@ export function Timeline({
         title={`${formatTime(menuItem.start)} · ${menuItem.text || t("내용 없는 메모")}`}
         canMove={!!movePlan?.changed} adjustedStart={movePlan?.adjusted ? movePlan.start : null}
         onEdit={()=>contextAction("edit")} onSeek={()=>contextAction("seek")} onMove={()=>contextAction("move")} onDelete={()=>contextAction("delete")}
+        captionActions={contextCaptionIndex >= 0 && restructureCaption && <CaptionEditActions cursor={false} previous={contextCaptionIndex > 0} next={contextCaptionIndex < ordered.length - 1}
+          onAction={action => { restructureCaption(contextMenu.target.id, action); setContextMenu(null); }} />}
         onClose={()=>setContextMenu(null)} />}
     </section>
   );

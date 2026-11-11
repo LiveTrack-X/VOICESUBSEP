@@ -70,6 +70,11 @@ def run_worker(incoming, outgoing, analyzer=None):
 
     try:
         options = request["options"]
+        if options.pop("_speech_tool", False):
+            from .speech_tools import run_speech_tool
+            result = run_speech_tool(Path(request["mediaPath"]), **options, progress=progress, cancelled=cancelled.is_set)
+            send({"type": "result", "result": result})
+            return
         for name, slot in (("get_provider_key", "asr"), ("get_diarization_key", "diarization")):
             if slot in request.get("keySlots", []):
                 options[name] = lambda slot=slot: get_key(slot)

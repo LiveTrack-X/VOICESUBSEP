@@ -1,5 +1,4 @@
 import { exportNotesCsv, exportSrt, parseProject, resolveCaptionStyle, safeFilename, type CaptionStyle, type Project } from "./domain";
-import { contrastColor } from "./colors";
 
 const encoder = new TextEncoder();
 const FONT_NAMES: Record<CaptionStyle["fontFamily"], string> = { sans: "Malgun Gothic", serif: "Batang", mono: "Consolas" };
@@ -36,14 +35,17 @@ export function exportAss(project: Project): string {
     active[style.position] = [...occupied, { end, offset, height }];
     const x = ({ left: 60, center: 960, right: 1860 })[style.align];
     const y = style.position === "bottom" ? 1040 - offset : style.position === "top" ? 40 + offset : 540 + offset;
-    const position = `{\\pos(${x},${y})\\an${alignment(style)}}`;
+    const position = (shadow = false) => `{\\pos(${x + (shadow ? style.shadowOffsetX * 3 : 0)},${y + (shadow ? style.shadowOffsetY * 3 : 0)})\\an${alignment(style)}${shadow ? `\\blur${style.shadowBlur * 3}` : ""}}`;
     const id = `Caption${index}`;
-    const styleLine = (name: string, box: boolean) => `Style: ${[name, FONT_NAMES[style.fontFamily], size,
-      box ? color(style.textColor, 0) : color(style.textColor), color(style.textColor), box ? color(style.backgroundColor, style.backgroundOpacity) : color(contrastColor(style.textColor)),
-      color(style.backgroundColor, 0), style.bold ? -1 : 0, 0, 0, 0, 100, 100, 0, 0, box ? 3 : 1, box ? 4 : style.outline ? 2 : 0, 0, alignment(style), 60, 60, 40, 1].join(",")}`;
-    const event = (layer: number, selectedStyle: string, text: string) => `Dialogue: ${layer},${assTime(start)},${assTime(end)},${selectedStyle},,0,0,0,,${position}${text}`;
-    if (style.backgroundOpacity > 0) { styleLines.push(styleLine(`${id}Box`, true)); events.push(event(0, `${id}Box`, escapeAssText(plain))); }
-    styleLines.push(styleLine(id, false));
+    const styleLine = (name: string, kind: "box" | "text" | "shadow") => `Style: ${[name, style.fontName || FONT_NAMES[style.fontFamily], size,
+      kind === "box" ? color(style.textColor, 0) : color(kind === "shadow" ? style.shadowColor : style.textColor), color(style.textColor),
+      kind === "box" ? color(style.backgroundColor, style.backgroundOpacity) : color(style.outlineColor),
+      color(style.backgroundColor, 0), style.bold ? -1 : 0, 0, 0, 0, 100, 100, 0, 0, kind === "box" ? 3 : 1,
+      kind === "box" ? 4 : kind === "text" && style.outline ? style.outlineWidth * 3 : 0, 0, alignment(style), 60, 60, 40, 1].join(",")}`;
+    const event = (layer: number, selectedStyle: string, text: string, shadow = false) => `Dialogue: ${layer},${assTime(start)},${assTime(end)},${selectedStyle},,0,0,0,,${position(shadow)}${text}`;
+    if (style.backgroundOpacity > 0) { styleLines.push(styleLine(`${id}Box`, "box")); events.push(event(0, `${id}Box`, escapeAssText(plain))); }
+    if (style.shadow) { styleLines.push(styleLine(`${id}Shadow`, "shadow")); events.push(event(0, `${id}Shadow`, escapeAssText(plain), true)); }
+    styleLines.push(styleLine(id, "text"));
     const text = style.showSpeaker ? `{\\1c${inlineColor(speaker?.color ?? "#ffffff")}}${escapeAssText(name)}: {\\1c${inlineColor(style.textColor)}}${escapeAssText(caption.text)}` : escapeAssText(caption.text);
     events.push(event(1, id, text));
   });

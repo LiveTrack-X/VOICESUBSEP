@@ -72,7 +72,9 @@ def validate_cloud_options(provider: str, model: str | None, consent: bool) -> N
         raise CloudASRError("선택한 제공자로 음성을 전송하는 데 동의해야 합니다.")
 
 
-def _fields(provider: str, model: str, language: str) -> list[tuple[str, str]]:
+def _fields(provider: str, model: str, language: str, vocabulary: list[str] | None = None) -> list[tuple[str, str]]:
+    from .vocabulary import vocabulary_for_provider
+    terms = vocabulary_for_provider([] if vocabulary is None else vocabulary, provider, model)
     if provider == "gemini":
         _gemini_config(language)
         return []
@@ -84,10 +86,15 @@ def _fields(provider: str, model: str, language: str) -> list[tuple[str, str]]:
             if not re.fullmatch(r"[a-z]{2}", language):
                 raise CloudASRError("Groq 음성 언어는 AUTO 또는 두 글자 언어 코드여야 합니다.")
             fields.append(("language", language))
+        if terms:
+            # A conservative UTF-8 byte bound stays within the documented 224
+            # Whisper prompt tokens without downloading a tokenizer or truncating.
+            fields.append(("prompt", ", ".join(terms)))
     else:
         # xAI language is a formatting hint, not an ASR language constraint.
         # Keep fillers for an editable transcript and use local speaker attribution.
         fields += [("format", "false"), ("diarize", "false"), ("filler_words", "true")]
+        fields += [("keyterm", term) for term in terms]
     return fields
 
 
@@ -101,11 +108,12 @@ def _gemini_config(language: str) -> dict:
     return config
 
 
-def _post_audio(provider: str, model: str, language: str, key: str, path: Path, cancelled) -> dict:
+def _post_audio(provider: str, model: str, language: str, key: str, path: Path, cancelled,
+                vocabulary: list[str] | None = None) -> dict:
     _checkpoint(cancelled)
     # A caller cannot use this helper to select arbitrary hosts or models.
     validate_cloud_options(provider, model, True)
-    fields = _fields(provider, model, language)
+    fields = _fields(provider, model, language, vocabulary)
     if not isinstance(key, str) or not re.fullmatch(r"[!-~]{12,512}", key):
         raise CloudASRError("클라우드 API 키를 먼저 등록하세요.")
     size = path.stat().st_size
@@ -340,9 +348,12 @@ def _normalize_gemini(value: dict, duration: float, offset: float) -> list[dict]
 
 
 def transcribe_cloud(path: Path, *, provider: str, model: str, language: str, consent: bool,
-                     get_key, progress, cancelled, recognition_preview=None) -> list[dict]:
+                     get_key, progress, cancelled, recognition_preview=None,
+                     vocabulary: list[str] | None = None) -> list[dict]:
     validate_cloud_options(provider, model, consent)
-    _fields(provider, model, language)  # Reject invalid language before any upload.
+    from .vocabulary import vocabulary_for_provider
+    terms = vocabulary_for_provider([] if vocabulary is None else vocabulary, provider, model)
+    _fields(provider, model, language, terms)  # Reject invalid language/hints before any upload.
     records = []
     with wave.open(str(path), "rb") as source, tempfile.TemporaryDirectory(prefix="voicesubsep-cloud-") as temporary:
         if source.getframerate() != 16000 or source.getnchannels() != 1 or source.getsampwidth() != 2 or source.getnframes() <= 0:
@@ -374,7 +385,8 @@ def transcribe_cloud(path: Path, *, provider: str, model: str, language: str, co
             key = get_key()
             progress(f"{provider} 클라우드 음성 인식 · {done // frames + 1}/{math.ceil(total / frames)}", 0.17 + 0.47 * done / total)
             try:
-                response = _post_audio(provider, model, language, key, chunk, cancelled)
+                response = _post_audio(provider, model, language, key, chunk, cancelled,
+                                       **({"vocabulary": terms} if terms else {}))
             finally:
                 key = None
             normalized = normalize_response(response, provider, (read_end - read_start) / 16000, read_start / 16000)

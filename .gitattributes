@@ -4,3 +4,6 @@
 docs/evidence/*.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
 # Preserve upstream license bytes, including the original final blank line.
 third-party/**/LICENSE.txt -text whitespace=-blank-at-eof
+# Pinned upstream notices/model cards retain their original trailing spaces.
+third-party/speech-tools/* -text whitespace=-blank-at-eof,-trailing-space
+third-party/sentencepiece-0.2.3/NOTICES.txt -text whitespace=-blank-at-eof,-trailing-space

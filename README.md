@@ -6,10 +6,10 @@
 
 **인터뷰·회의·영상의 음성을 화자별 자막으로 만들고 직접 검수하세요.** VOICESUBSEP은 기본적으로 내 컴퓨터에서 음성 인식과 화자 분석을 실행하고, 원본을 들으며 결과를 고치는 타임라인 편집기를 제공합니다.
 
-[![Download VOICESUBSEP for Windows](https://img.shields.io/badge/Download-Windows%20x64-6846e8?style=for-the-badge)](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.5-Online-Setup-x64.exe)
+[![Download VOICESUBSEP for Windows](https://img.shields.io/badge/Download-Windows%20x64-6846e8?style=for-the-badge)](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.6-Online-Setup-x64.exe)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/livetrack)
 
-[Windows 다운로드](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.5-Online-Setup-x64.exe) · [모든 릴리즈](https://github.com/LiveTrack-X/VOICESUBSEP/releases) · [사용자 가이드](docs/USER-GUIDE.md) · [기능 현황과 제한](docs/FEATURE-STATUS.md)
+[Windows 다운로드](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.6-Online-Setup-x64.exe) · [모든 릴리즈](https://github.com/LiveTrack-X/VOICESUBSEP/releases) · [사용자 가이드](docs/USER-GUIDE.md) · [기능 현황과 제한](docs/FEATURE-STATUS.md)
 
 ## Made for careful subtitle work / 꼼꼼한 자막 작업을 위해
 
@@ -26,9 +26,9 @@
 
 ## Get started / 시작하기
 
-Download the [Windows x64 online setup](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.5-Online-Setup-x64.exe) from the latest release. The helper downloads and verifies the multi-gigabyte app package; speech-model weights are downloaded separately when needed. Keep at least **16 GiB free** for setup, working data and models. A compatible NVIDIA driver is needed for NVIDIA GPU acceleration; CPU-only processing is available but can take longer.
+Download the [Windows x64 online setup](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.6-Online-Setup-x64.exe) from the latest release. The helper downloads and verifies the multi-gigabyte app package; speech-model weights are downloaded separately when needed. Keep at least **16 GiB free** for setup, working data and models. A compatible NVIDIA driver is needed for NVIDIA GPU acceleration; CPU-only processing is available but can take longer.
 
-[최신 릴리즈의 Windows x64 온라인 설치기](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.5-Online-Setup-x64.exe)를 받으세요. 설치기가 수 GB 실행 패키지를 내려받아 검증합니다. 음성 모델 가중치는 필요할 때 별도로 받습니다. 설치·작업 파일·모델을 위해 **16GiB 이상 여유 공간**을 권장합니다. NVIDIA GPU 가속에는 호환 드라이버가 필요하며 CPU로도 처리할 수 있지만 시간이 더 걸릴 수 있습니다.
+[최신 릴리즈의 Windows x64 온라인 설치기](https://github.com/LiveTrack-X/VOICESUBSEP/releases/latest/download/VOICESUBSEP-0.3.6-Online-Setup-x64.exe)를 받으세요. 설치기가 수 GB 실행 패키지를 내려받아 검증합니다. 음성 모델 가중치는 필요할 때 별도로 받습니다. 설치·작업 파일·모델을 위해 **16GiB 이상 여유 공간**을 권장합니다. NVIDIA GPU 가속에는 호환 드라이버가 필요하며 CPU로도 처리할 수 있지만 시간이 더 걸릴 수 있습니다.
 
 Windows 10/11 x64 is supported. The setup requires an internet connection and .NET Framework 4.8 or later. The Windows executables are not Authenticode-signed. **The source ZIP is for developers; it is not the installer.** / Windows 10/11 x64에서 사용할 수 있습니다. 설치에는 인터넷 연결과 .NET Framework 4.8 이상이 필요합니다. Windows 실행 파일은 Authenticode 서명을 사용하지 않습니다. **소스 ZIP은 개발자용이며 설치 파일이 아닙니다.**
 
@@ -40,11 +40,11 @@ Speech recognition and speaker labels are drafts: listen to the original before 
 
 Project files save edits and references, **not the original media**. Keep the source file and a separate project backup. / 프로젝트 파일에는 편집 내용과 참조 정보가 저장되며 **원본 미디어는 포함되지 않습니다.** 원본과 별도 프로젝트 백업을 함께 보관하세요.
 
-## 0.3.5 / 변경 사항
+## 0.3.6 / 변경 사항
 
-Speaker-review evidence and conservative boundary suggestions, explicit selected-caption apply/undo, clearer native VST window states and focus controls, and direct repository links from the app header. See the [0.3.5 release record](docs/releases/v0.3.5.md) for package, verification and update status.
+Choose local subtitle fonts, outline and shadow settings; zoom the timeline up to 64× while keeping the viewed time; split at the text cursor or playback time and merge consecutive captions. Project vocabulary helps supported transcription engines. Confirmed-voice matching is beta, and selected-window separation/retranscription remains experimental. See the [0.3.6 release record](docs/releases/v0.3.6.md) for package, verification and publication status; this release candidate is not yet published.
 
-미배정 원인 근거와 보수적 경계 후보, 항목별 적용·실행 취소, VST 전용 창 상태와 앞으로 가져오기, 상단 로고의 저장소 링크를 추가했습니다. 패키지·검증·업데이트 상태는 [0.3.5 릴리즈 기록](docs/releases/v0.3.5.md)에서 확인하세요.
+자막 글꼴·획·그림자 설정, 보고 있던 위치를 유지하는 최대 64배 확대, 커서·재생 시점 나누기와 연속 자막 합치기를 추가했습니다. 프로젝트 사전은 지원하는 음성 인식 엔진에 용어를 전달합니다. 확인한 목소리 후보 찾기는 베타, 선택 구간 분리·재전사는 실험 기능입니다. 패키지·검증·게시 상태는 [0.3.6 릴리즈 기록](docs/releases/v0.3.6.md)을 따르며 현재 릴리즈 후보로 아직 게시 전입니다.
 
 ## Learn more / 더 알아보기
 

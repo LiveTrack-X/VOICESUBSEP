@@ -1,0 +1,12 @@
+.caption-change-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.caption-change-controls button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-text); border-color: var(--purple); }
+.caption-change-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin: 14px 0; }
+.caption-change-field textarea { width: 100%; min-height: 96px; resize: vertical; font: inherit; line-height: 1.7; }
+.caption-change-field select, .caption-change-field input { min-width: 0; max-width: 100%; }
+.caption-change-fields, .caption-change-previews { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.caption-change-preview { padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-alt); min-width: 0; }
+.caption-change-preview small { color: var(--muted); }
+.caption-change-preview p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; max-height: 230px; overflow: auto; margin-bottom: 0; }
+.caption-change-warning { padding: 10px 12px; border-left: 3px solid var(--purple); background: var(--accent-soft); }
+.caption-change-error { color: var(--danger-text); }
+@media (max-width: 620px) { .caption-change-fields, .caption-change-previews { grid-template-columns: 1fr; } }

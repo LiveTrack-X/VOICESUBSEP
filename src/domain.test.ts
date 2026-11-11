@@ -14,7 +14,10 @@ import {
   parseProject,
   parseSrt,
   parseTime,
+  isValidCaptionFontName,
+  normalizeCaptionFontName,
   resolveCaptionStyle,
+  resolveCaptionStyleFields,
   safeFilename,
   serializeProject,
   type Caption,
@@ -371,7 +374,7 @@ describe("caption style inheritance and portable validation", () => {
     delete cue.style.fontSize;
     expect(resolveCaptionStyle(cue, speaker).fontSize).toBe(24);
     delete cue.style;
-    expect(resolveCaptionStyle(cue, speaker)).toEqual({ ...DEFAULT_CAPTION_STYLE, ...speaker.subtitleStyle });
+    expect(resolveCaptionStyle(cue, speaker)).toEqual({ ...DEFAULT_CAPTION_STYLE, ...speaker.subtitleStyle, outlineColor: "#ffffff" });
     delete speaker.subtitleStyle;
     expect(resolveCaptionStyle(cue, speaker)).toEqual(DEFAULT_CAPTION_STYLE);
   });
@@ -396,7 +399,7 @@ describe("caption style inheritance and portable validation", () => {
     expect(restored.captions[1]!.style).toEqual({});
     expect(restored.speakers[0]!.subtitleStyle).not.toBe(full);
     expect(resolveCaptionStyle(restored.captions[0], restored.speakers[0])).toEqual({
-      ...full, ...project.captions[0]!.style,
+      ...DEFAULT_CAPTION_STYLE, ...full, ...project.captions[0]!.style,
     });
   });
 
@@ -409,6 +412,47 @@ describe("caption style inheritance and portable validation", () => {
     resolved.fontSize = 40;
     expect(DEFAULT_CAPTION_STYLE.fontSize).toBe(15);
     expect(JSON.stringify(cue)).toBe(before);
+  });
+
+  it("roundtrips installed font, stroke and shadow overrides without flattening inheritance", () => {
+    const project = demoProject(), speaker = project.speakers[0]!, cue = project.captions[0]!;
+    speaker.subtitleStyle = { fontName: "나눔고딕", outline: true, outlineWidth: 2.5, outlineColor: "#aBcDeF", shadow: true, shadowColor: "#123456", shadowBlur: 4, shadowOffsetX: -3, shadowOffsetY: 5 };
+    cue.style = { fontName: "", outlineWidth: 0, shadowOffsetY: -12 };
+    const restored = parseProject(JSON.stringify(project));
+    expect(restored).toEqual(project);
+    expect(resolveCaptionStyle(restored.captions[0], restored.speakers[0])).toMatchObject({
+      ...speaker.subtitleStyle, ...cue.style,
+    });
+    delete cue.style.fontName;
+    expect(resolveCaptionStyle(cue, speaker).fontName).toBe("나눔고딕");
+    delete cue.style;
+    expect(resolveCaptionStyle(cue, speaker).shadowOffsetY).toBe(5);
+    expect(Object.keys(restored.captions[0]!.style!)).toEqual(["fontName", "outlineWidth", "shadowOffsetY"]);
+  });
+
+  it("keeps automatic contrasting outlines for legacy styles until a color is chosen", () => {
+    const project = demoProject(), speaker = project.speakers[0]!, cue = project.captions[0]!;
+    speaker.subtitleStyle = { textColor: "#000000", outline: true };
+    expect(resolveCaptionStyle(cue, speaker).outlineColor).toBe("#ffffff");
+    expect(resolveCaptionStyleFields({ textColor: "#000000", outline: true })).toMatchObject({ outlineColor: "#ffffff", outlineWidth: 1, shadow: false, fontName: "" });
+    cue.style = { textColor: "#ffffff" };
+    expect(resolveCaptionStyle(cue, speaker).outlineColor).toBe("#000000");
+    speaker.subtitleStyle.outlineColor = "#123456";
+    expect(resolveCaptionStyle(cue, speaker).outlineColor).toBe("#123456");
+    cue.style.outlineColor = "#abcdef";
+    expect(resolveCaptionStyle(cue, speaker).outlineColor).toBe("#abcdef");
+  });
+
+  it("accepts one safe installed font name and normalizes Unicode and surrounding spaces", () => {
+    for (const name of ["", "Arial", "나눔고딕", "Noto Sans CJK KR", "Font's Family (UI) & Sans-2.0_Regular", "C++ Sans"])
+      expect(isValidCaptionFontName(name), name).toBe(true);
+    expect(isValidCaptionFontName("𝒜".repeat(120))).toBe(true);
+    expect(isValidCaptionFontName("𝒜".repeat(121))).toBe(false);
+    for (const unsafe of ["Arial, serif", "Arial; color:red", 'Arial"', "Arial\\N", "Arial\n", "Arial\t", "Arial\u0000", "Arial\u202e"])
+      expect(isValidCaptionFontName(unsafe), unsafe).toBe(false);
+    expect(normalizeCaptionFontName("  Cafe\u0301 Sans  ")).toBe("Café Sans");
+    const project = demoProject(); project.captions[0]!.style = { fontName: "  Cafe\u0301 Sans  " };
+    expect(parseProject(JSON.stringify(project)).captions[0]!.style?.fontName).toBe("Café Sans");
   });
 
   it.each([
@@ -432,6 +476,24 @@ describe("caption style inheritance and portable validation", () => {
     ["unsafe background color", { backgroundColor: "url(x)" }],
     ["string bold", { bold: "true" }],
     ["numeric outline", { outline: 1 }],
+    ["negative outline width", { outlineWidth: -0.1 }],
+    ["excess outline width", { outlineWidth: 8.1 }],
+    ["named outline color", { outlineColor: "white" }],
+    ["numeric shadow", { shadow: 1 }],
+    ["unsafe shadow color", { shadowColor: "url(x)" }],
+    ["negative shadow blur", { shadowBlur: -1 }],
+    ["excess shadow blur", { shadowBlur: 12.1 }],
+    ["excess shadow x", { shadowOffsetX: -12.1 }],
+    ["excess shadow y", { shadowOffsetY: 12.1 }],
+    ["string shadow x", { shadowOffsetX: "1" }],
+    ["nonfinite shadow y", { shadowOffsetY: Number.POSITIVE_INFINITY }],
+    ["long font name", { fontName: "A".repeat(121) }],
+    ["font fallback list", { fontName: "Arial, serif" }],
+    ["font CSS injection", { fontName: 'Arial"; color:red' }],
+    ["font ASS injection", { fontName: "Arial{\\p1}" }],
+    ["font line injection", { fontName: "Arial\nStyle: Bad" }],
+    ["font tab control", { fontName: "Arial\t" }],
+    ["font object", { fontName: { family: "Arial" } }],
     ["null speaker visibility", { showSpeaker: null }],
     ["unknown position", { position: "baseline" }],
     ["unknown alignment", { align: "justify" }],

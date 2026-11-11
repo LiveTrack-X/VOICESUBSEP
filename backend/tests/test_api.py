@@ -108,6 +108,19 @@ def test_media_rejects_unsupported_and_empty_files(tmp_path):
         assert list((tmp_path / "data" / "media").iterdir()) == []
 
 
+def test_analysis_queue_transports_normalized_vocabulary_snapshot(tmp_path):
+    seen = {}
+    def analyze(path, **kwargs):
+        seen.update(kwargs)
+        return result_for()
+    with client_for(tmp_path, analyzer=analyze, probe=fake_probe) as client:
+        media = upload(client)
+        response = client.post("/api/jobs", json=request_for(media["id"], vocabulary=[" 젠야타 ", "cafe\u0301", "café"]))
+        assert response.status_code == 202, response.text
+        assert wait_job(client, response.json()["id"])["status"] == "completed"
+        assert seen["vocabulary"] == ["젠야타", "café"]
+
+
 @pytest.mark.parametrize("legacy_limit", ["10", "0", "not-a-size"])
 def test_media_ignores_retired_size_setting_but_control_bodies_remain_bounded(tmp_path, monkeypatch, legacy_limit):
     monkeypatch.setenv("VOICESUBSEP_MAX_UPLOAD_BYTES", legacy_limit)

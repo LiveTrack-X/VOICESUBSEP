@@ -1,0 +1,54 @@
+{
+  "date": "2026-11-11",
+  "branch": "codex/speech-tools-20261111",
+  "scope": "Development source: named local subtitle fonts, configurable outline/shadow, and timeline zoom through 64x. Existing uncommitted caption editing and speech-tool work was preserved.",
+  "checks": {
+    "frontend": {"command": "node node_modules/vitest/vitest.mjs run src --reporter=dot", "filesPassed": 81, "passed": 1007, "failed": 0},
+    "desktopAndDev": {"command": "node --test --test-reporter=spec scripts/dev.test.mjs desktop/*.test.cjs", "passed": 88, "failed": 0},
+    "installedFontsIndependentRerun": {"command": "node --test desktop/installed-fonts.test.cjs", "passed": 4, "failed": 0},
+    "productionWebBuild": {"command": "npm run build", "passed": true, "warning": "Main chunk exceeds Vite's 500 kB advisory threshold"},
+    "trackedWhitespace": {"command": "git diff --check", "passed": true},
+    "independentReview": {"passed": true, "scope": "Style persistence/export/UI, timeline anchoring, desktop font discovery/IPC/packaging and export documentation", "concreteUnresolvedFindings": 0}
+  },
+  "actualAppSmoke": {
+    "command": "node scripts/caption-style-zoom-smoke.cjs",
+    "passed": true,
+    "entry": "src/main.tsx",
+    "actualPreloadAndFontIPC": true,
+    "installedFontCount": 387,
+    "project": {"synthetic": true, "captions": 2000, "durationSeconds": 600, "mediaPlayback": false},
+    "style": {"selectedFont": "Consolas", "outlineColor": "#123456", "outlineWidthCssPx": 3, "shadowColor": "#abcdef", "shadowBlurCssPx": 5, "shadowOffsetCssPx": [-4, 6], "badgeStrokeAndShadowUnchanged": true, "applyAutosaveReopenCancelReset": true},
+    "layout": {"desktopViewportCssPx": [1440, 999], "narrowDialogViewportCssPx": [390, 843], "smallHeaderWidthCssPx": 320, "horizontalOverflowCssPx": 0, "dialogFooterButtonsVisible": true, "controlsReachableByScroll": true},
+    "zoom": {"allLevelsAndButtonsVerified": true, "maximum": 64, "viewedCenterDriftSeconds": 0.0010728168366540558, "visiblePlayheadDriftCssPx": 0, "devicePixelRatio": 1.25, "eachDensityCanvasBackingPixels": [1729, 29], "canvasSizing": "Viewport plus bounded overscan, independent of full 74018px timeline width"},
+    "runtimeErrors": 0,
+    "unexpectedNetworkRequests": 0,
+    "backendCalls": "Only mocked GET /api/history; no model, cloud or user-media requests",
+    "temporaryDetailedEvidence": "tmp/caption-style-zoom-smoke/app-smoke-result.json",
+    "temporaryScreenshots": ["tmp/caption-style-zoom-smoke/app-desktop-style.png", "tmp/caption-style-zoom-smoke/app-mobile-style-top.png", "tmp/caption-style-zoom-smoke/app-mobile-style-bottom.png", "tmp/caption-style-zoom-smoke/app-mobile-header320.png", "tmp/caption-style-zoom-smoke/app-desktop-timeline64.png"]
+  },
+  "assRenderSmoke": {
+    "synthetic": true,
+    "tool": "Local FFmpeg/libass",
+    "font": "Malgun Gothic / MalgunGothicBold",
+    "text": "Korean and English",
+    "renderedVariants": 5,
+    "allRenderExitCodesZero": true,
+    "missingGlyphOrRenderErrors": 0,
+    "visualInspectionPassed": true,
+    "sourceProjectUnchanged": true,
+    "srtUnchangedAndPlainText": true,
+    "cueStartEndSeconds": [1, 4],
+    "outsideCueFramesAreIdenticalBackground": true,
+    "outlineChangesPixels": true,
+    "shadowChangesPixelsWithoutChangingOutlineForegroundCore": true,
+    "temporaryDetailedEvidence": "tmp/caption-style-zoom-smoke/export-render-evidence.json"
+  },
+  "limits": [
+    "No new installer, install/update test, release publication or owner acceptance is established. The version remains 0.3.5.",
+    "The actual App smoke used synthetic captions without media playback; it is not a measured long-project playback benchmark.",
+    "ASS local libass rendering does not establish pixel-identical preview or all-player/all-font compatibility. Font files are not embedded.",
+    "SRT contains text/timing only; YTT approximates native effects and generic font categories, with outline taking priority over shadow. Exact custom fonts, width, blur, offsets and combined effects are not preserved in YTT.",
+    "New style fields may prevent older app versions from reading new projects; the updated app continues to accept legacy styles.",
+    "An intermediate focused DOM test reached all assertions but cleanup hit a Windows dictionary-file lock. The test now disables spellcheck and retries bounded scratch cleanup; the focused replay and final full suite passed."
+  ]
+}

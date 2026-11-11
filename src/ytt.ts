@@ -1,4 +1,4 @@
-import { DEFAULT_CAPTION_STYLE, parseProject, resolveCaptionStyle, type CaptionStyle, type Project } from "./domain";
+import { DEFAULT_CAPTION_STYLE, parseProject, resolveCaptionStyle, type CaptionStyle, type ResolvedCaptionStyle, type Project } from "./domain";
 import { contrastColor } from "./colors";
 
 // Independently written SRV3 serializer. Format/compatibility reference:
@@ -34,11 +34,13 @@ function foreground(hex: string): string {
   return upper === "#FFFFFF" ? "#FEFEFE" : upper;
 }
 
-function penAttributes(style: CaptionStyle, textColor: string): string {
+function penAttributes(style: ResolvedCaptionStyle, textColor: string, outlineColor: string): string {
   const opacity = Math.min(254, Math.round(style.backgroundOpacity * 255 / 100));
+  const outline = style.outline && style.outlineWidth > 0;
+  const effect = outline ? 3 : style.shadow ? 2 : 0;
   return `fc="${foreground(textColor)}" fo="254" bc="${style.backgroundColor.toUpperCase()}" bo="${opacity}"` +
     ` b="${style.bold ? 1 : 0}" fs="${FONT_CATEGORY[style.fontFamily]}" sz="${yttFontSize(style.fontSize)}"` +
-    ` et="${style.outline ? 3 : 0}" ec="${contrastColor(textColor).toUpperCase()}"`;
+    ` et="${effect}" ec="${(outline ? outlineColor : style.shadowColor).toUpperCase()}"`;
 }
 
 /** IDs are insertion ordered within each SRV3 element type, with no sparse IDs. */
@@ -114,15 +116,19 @@ export function exportYtt(project: Project): string {
     active[style.position] = [...occupied, {end,top:position.top,bottom:position.bottom}];
     const wp = positions.add(position.attributes);
     const ws = windows.add(`ju="${JUSTIFY[style.align]}" wfo="0"`);
-    const bodyPen = pens.add(penAttributes(style,style.textColor));
+    const explicitOutlineColor = caption.style?.outlineColor ?? speaker?.subtitleStyle?.outlineColor;
+    const bodyPen = pens.add(penAttributes(style,style.textColor,style.outlineColor));
     let text = escapeYttText(caption.text);
     if (style.showSpeaker) {
-      const namePen = pens.add(penAttributes(style,speaker?.color??"#ffffff"));
+      const nameColor = speaker?.color ?? "#ffffff";
+      const namePen = pens.add(penAttributes(style,nameColor,explicitOutlineColor ?? contrastColor(nameColor)));
       // Text outside the first span preserves its pen during SRV3 conversion.
       text = `<s p="${namePen}">${escapeYttText(name)}: </s>&#8203;<s p="${bodyPen}">${text}</s>`;
     }
     paragraphs.push(`    <p t="${start}" d="${end-start}" wp="${wp}" ws="${ws}" p="${bodyPen}">${text}</p>`);
   }
-  return `<?xml version="1.0" encoding="utf-8"?>\n<timedtext format="3">\n  <head>\n` +
+  return `<?xml version="1.0" encoding="utf-8"?>\n` +
+    `<!-- Custom font names use their generic category. Stroke width, shadow blur/offset and simultaneous outline/shadow are not preserved. Native edge effects are player-dependent approximations. -->\n` +
+    `<timedtext format="3">\n  <head>\n` +
     [...pens.xml(),...windows.xml(),...positions.xml()].join("\n") + `\n  </head>\n  <body>\n${paragraphs.join("\n")}\n  </body>\n</timedtext>\n`;
 }

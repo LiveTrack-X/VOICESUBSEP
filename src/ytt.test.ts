@@ -32,6 +32,7 @@ describe("experimental full-cue YTT SRV3 export",()=>{
     const spans=elements(cue.text,"s");
     expect(spans).toHaveLength(2);
     expect(pens.get(spans[0].attributes.p)?.fc).toBe("#123456");
+    expect(pens.get(spans[0].attributes.p)?.ec).toBe("#FFFFFF");
     expect(spans[0].text).toBe("다나 &amp; Dana: ");
     expect(spans[1].attributes.p).toBe(cue.attributes.p);
     expect(spans[1].text).toBe("안녕하세요 &amp; &lt;hello&gt;\nNext line");
@@ -145,5 +146,18 @@ describe("experimental full-cue YTT SRV3 export",()=>{
       const p=project();p.captions=[{...p.captions[1],style:{fontFamily:fontFamily as CaptionStyle["fontFamily"]}}];
       expect(elements(exportYtt(p),"pen")[0].attributes.fs).toBe(String(expected));
     }
+  });
+  it("uses native outline color or a shadow approximation and documents unsupported effect details",()=>{
+    const p=project();p.captions=[{...p.captions[1],style:{fontFamily:"serif",fontName:"Installed Serif",outline:true,outlineWidth:4,outlineColor:"#123456",shadow:true,shadowColor:"#abcdef",shadowBlur:8,shadowOffsetX:-5}}];
+    let xml=exportYtt(p),pen=elements(xml,"pen")[0].attributes;
+    expect(pen).toMatchObject({fs:"2",et:"3",ec:"#123456"});
+    expect(xml).toContain("Custom font names use their generic category");
+    expect(xml).toContain("Stroke width, shadow blur/offset and simultaneous outline/shadow are not preserved");
+    expect(xml).not.toContain("Installed Serif");
+    p.captions[0].style!.outlineWidth=0;
+    xml=exportYtt(p);pen=elements(xml,"pen")[0].attributes;
+    expect(pen).toMatchObject({et:"2",ec:"#ABCDEF"});
+    p.captions[0].style!.shadow=false;
+    expect(elements(exportYtt(p),"pen")[0].attributes.et).toBe("0");
   });
 });

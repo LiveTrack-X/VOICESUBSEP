@@ -37,7 +37,7 @@ line.textContent=(p?p.name+': ':'')+c.text;root.appendChild(line)}}catch(e){docu
 timer=setTimeout(tick,500)}tick();</script>"""
 
 
-def register_live_routes(app, manager: LiveManager, storage, jobs):
+def register_live_routes(app, manager: LiveManager, storage, jobs, speech_tools=None):
     def public(state, request):
         return {**state, "overlayUrl": str(request.base_url).rstrip("/") + state["overlayUrl"]}
 
@@ -58,6 +58,8 @@ def register_live_routes(app, manager: LiveManager, storage, jobs):
         with storage.media_lock:
             try:
                 jobs.require_idle()
+                if speech_tools is not None:
+                    speech_tools.require_idle()
             except PermissionError as exc:
                 raise HTTPException(409, str(exc)) from None
             except RuntimeError as exc:

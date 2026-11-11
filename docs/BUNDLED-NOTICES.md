@@ -1,5 +1,7 @@
 # Bundled dependency notices / 번들 의존성 고지
 
+Optional development speech tools use [pinned WeSpeaker/SepFormer model provenance](../third-party/speech-tools/SOURCE.md) and matching TorchAudio/SpeechBrain runtimes. The SentencePiece 0.2.3 Windows wheel omits original notices; its [exact upstream notice fallback](../third-party/sentencepiece-0.2.3/SOURCE.md) is preserved and hash-checked by the optional build flag. This does not change previously published installers. / 선택 개발 음성 도구의 모델·실행 환경 고지를 보존하며 SentencePiece 0.2.3 wheel의 누락 고지는 정확한 원본과 해시로 보완합니다. 기존 공개 설치본의 변경을 뜻하지 않습니다.
+
 This page identifies notices shipped in the Windows backend and the upstream source locations checked for the **v0.2.0 Windows preview** on **2026-09-25**. It supplements the unchanged installer artifacts; updating this page does not replace the notice file already inside those artifacts. Link to this page beside the release downloads.
 
 이 문서는 Windows 백엔드에 포함된 고지와 **v0.2.0 Windows Preview**에 대해 **2026-09-25** 확인한 원본 소스 위치를 안내합니다. 기존 설치 파일은 변경하지 않았으며, 이 문서의 수정이 이미 배포된 설치 파일 안의 고지를 바꾸지는 않습니다. 릴리즈 다운로드 옆에서 이 문서로 연결합니다.

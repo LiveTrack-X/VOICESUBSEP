@@ -29,6 +29,8 @@ import { AnalysisQueueControls } from "./AnalysisQueueControls";
 import { jobStageLabel } from "../jobStage";
 import { assertProjectMedia } from "../mediaIdentity";
 import "./analysis-language.css";
+import { VocabularyEditor } from "./VocabularyEditor";
+import { parseVocabulary, vocabularyBlockReason } from "../vocabulary";
 
 export function AnalysisDialog({
   file,
@@ -37,6 +39,7 @@ export function AnalysisDialog({
   onApply,
   onMediaReady,
   onJob,
+  onVocabularySave,
 }: {
   file: MediaSource;
   project: Project;
@@ -44,6 +47,7 @@ export function AnalysisDialog({
   onApply: (result: AnalysisResult) => void;
   onMediaReady?: (duration: number) => void;
   onJob?: (pointer: BackgroundJobPointer, job: Job) => void;
+  onVocabularySave?: (terms: string[]) => void;
 }) {
   const { t, locale } = useI18n();
   const speechLanguageId = useId();
@@ -59,6 +63,9 @@ export function AnalysisDialog({
   const [starting, setStarting] = useState(false);
   const [asr, setAsr] = useState<AsrSelection>(defaultAsrSelection);
   const [cloudConsent, setCloudConsent] = useState(false);
+  const [vocabularyDirty, setVocabularyDirty] = useState(false);
+  const vocabularyKey = JSON.stringify(project.vocabulary ?? []);
+  useEffect(() => { setCloudConsent(false); }, [project.id, vocabularyKey]);
   const [credential, setCredential] = useState<CredentialState>({ configured: false, busy: false });
   function changeAsr(selection: AsrSelection) {
     setCloudConsent(false);
@@ -113,7 +120,9 @@ export function AnalysisDialog({
   const unsupportedLanguage = asr.provider !== "xai" && language !== "auto" && supportedLanguages !== null && !supportedLanguages.includes(language);
   const diarizationBlock = cloudDiarization ? diarizationCredential.busy ? "API 키 상태 확인을 마칠 때까지 기다리세요." : !diarizationCredential.configured ? "Deepgram API 키를 고급 설정에서 등록하세요." : !diarizationConsent ? "고급 설정에서 Deepgram 음성 전송과 API 과금에 동의하세요." : null : null;
   const cloudBlockReason = cloudAsrBlockReason(asr, credential.configured, cloudConsent, credential.busy);
-  const blockedReason = analysisBlockReason(health, localDiarization, asr.provider, localAsrEngine) ?? (unsupportedLanguage ? "선택한 엔진이 지원하는 음성 언어를 선택하거나 AUTO로 변경하세요." : null) ?? cloudBlockReason ?? diarizationBlock;
+  const vocabularyBlock = vocabularyBlockReason(project.vocabulary ?? [], asr);
+  const vocabularyEditBlock = vocabularyDirty ? "분석 전에 용어 사전의 변경을 프로젝트에 저장하세요." : null;
+  const blockedReason = analysisBlockReason(health, localDiarization, asr.provider, localAsrEngine) ?? vocabularyEditBlock ?? vocabularyBlock ?? (unsupportedLanguage ? "선택한 엔진이 지원하는 음성 언어를 선택하거나 AUTO로 변경하세요." : null) ?? cloudBlockReason ?? diarizationBlock;
   const sharedRuntimeIssue = health ? analysisBlockReason(health, false, asr.provider, localAsrEngine) : null;
   const running = job?.status === "running" || job?.status === "queued";
   useEffect(() => {
@@ -230,6 +239,7 @@ export function AnalysisDialog({
           ...cloudAsrRequestFields(asr, credential.configured, cloudConsent),
           ...(isolatedTracks?{trackSpeakers:mappedTracks.map(item=>({audioTrack:item.audioTrack,speakerId:item.speaker!.id,name:item.speaker!.name,color:item.speaker!.color}))}:{}),
           speakerBoundaryMs,
+          vocabulary: parseVocabulary(project.vocabulary ?? []),
           ...(vstState.preprocessing ? { preprocessing: vstState.preprocessing } : {}),
         }),
       });
@@ -310,6 +320,10 @@ export function AnalysisDialog({
               <span className="analysis-language-separation">{t("앱 화면 언어와는 별개입니다.")}</span>
             </p>
           </div>
+          <VocabularyEditor key={project.id} terms={project.vocabulary ?? []} selection={asr}
+            disabled={starting || vstState.busy} onDirtyChange={setVocabularyDirty}
+            onSave={onVocabularySave ? terms => { setCloudConsent(false); onVocabularySave(terms); } : undefined}/>
+          {vocabularyEditBlock && <p className="info-box" role="status">{t(vocabularyEditBlock)}</p>}
           <div className="form-grid analysis-audio-track">
             <label>{t('오디오 트랙')}<select
                 aria-label={t("오디오 트랙")}

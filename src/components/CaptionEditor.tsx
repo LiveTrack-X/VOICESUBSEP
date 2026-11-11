@@ -1,5 +1,5 @@
 import { useI18n } from "../i18n";
-import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   FileText,
@@ -17,7 +17,7 @@ import { formatTime, parseTime, resolveCaptionStyle, type Caption, type Project 
 import { readableSpeakerColor } from "../speakerColor";
 import { THEME_PALETTES, useTheme } from "../theme";
 import { CaptionStyleDialog } from "./CaptionStyleDialog";
-import { addCaption, editCaption, splitCaption, mergeCaptions, bulkEditCaptions, replaceCaptionText,
+import { addCaption, editCaption, bulkEditCaptions, replaceCaptionText,
   replacementCount, nextCaptionToReview, MAX_CAPTION_TEXT,
   type BulkCaptionAction } from "../editorOperations";
 import { useCaptionVirtualList } from "../useCaptionVirtualList";
@@ -32,6 +32,12 @@ import "./caption-editor-density.css";
 import "./caption-virtual-list.css";
 import "./caption-follow.css";
 import "./caption-columns.css";
+import { applyCaptionMerge, applyCaptionSplit, consecutiveCaptions, orderedCaptions, type CaptionEditAction, type CaptionEditRequest } from "../captionRestructure";
+import { CaptionMergeDialog, CaptionSplitDialog } from "./CaptionRestructureDialog";
+import { ContextMenu } from "./TimelineContextMenu";
+import { CaptionEditActions } from "./CaptionEditActions";
+import type { TimelineMenuAnchor } from "../timelineContext";
+import { timelineMenuAnchor } from "../timelineContext";
 
 const DENSITY_STORAGE_KEY = "voicesubsep-caption-density-v1";
 type CaptionDensity = "compact" | "comfortable";
@@ -58,6 +64,7 @@ export function CaptionEditor({
   time,
   playing = false,
   followSuspended = false,
+  editRequest = null,
 }: {
   project: Project;
   update: (fn: (p: Project) => Project) => void;
@@ -70,6 +77,7 @@ export function CaptionEditor({
   time: number;
   playing?: boolean;
   followSuspended?: boolean;
+  editRequest?: CaptionEditRequest | null;
 }) {
   const { t } = useI18n();
   const { theme } = useTheme();
@@ -89,12 +97,15 @@ export function CaptionEditor({
   const [replacement, setReplacement] = useState("");
   const [replaceScope, setReplaceScope] = useState<"selected" | "filtered">("selected");
   const [bulkNotice, setBulkNotice] = useState("");
+  const cursor = useRef<{ id: string; text: string; offset: number } | null>(null);
+  const [changeDialog, setChangeDialog] = useState<null | { project: Project; captions: Caption[]; action: CaptionEditAction; cursor?: number }>(null);
+  const [context, setContext] = useState<{ id: string; anchor: TimelineMenuAnchor } | null>(null);
   const styleCaption = project.captions.find((c) => c.id === styleCaptionId);
   const styleSpeaker = project.speakers.find((s) => s.id === styleCaption?.speakerId);
   const revealed = useRef<typeof reveal>(null);
   const speakerOptions = useMemo(()=>selectableSpeakers(project),[project.speakers,project.speakerCount,project.captions]);
   const speakerById = useMemo(() => new Map(project.speakers.map((speaker) => [speaker.id, speaker])), [project.speakers]);
-  const sorted = useMemo(() => [...project.captions].sort((a, b) => a.start - b.start || a.end - b.end), [project.captions]);
+  const sorted = useMemo(() => orderedCaptions(project.captions), [project.captions]);
   const visible = useMemo(() => sorted.filter((caption) => caption.id===focusedCaptionId || (
     (!reviewOnly || (!caption.reviewed && caption.reasons.length > 0)) &&
     (speakerFilter === "all" || (caption.speakerId ?? "none") === speakerFilter) &&
@@ -103,7 +114,7 @@ export function CaptionEditor({
   const visibleIds = useMemo(()=>visible.map(caption=>caption.id),[visible]);
   const virtual = useCaptionVirtualList(visibleIds,project.id,density,focusedCaptionId,setFocusedCaptionId,columnWidths.measurementKey);
   const {listRef,rows}=virtual;
-  useCaptionFollow({ enabled: followPlayback, playing, suspended: followSuspended || styleCaptionId !== null || columnWidths.resizing, time, captions: visible, layout: virtual.layout, listRef, reveal: rowReveal, revealIndex: virtual.revealIndex });
+  useCaptionFollow({ enabled: followPlayback, playing, suspended: followSuspended || styleCaptionId !== null || changeDialog !== null || context !== null || columnWidths.resizing, time, captions: visible, layout: virtual.layout, listRef, reveal: rowReveal, revealIndex: virtual.revealIndex });
   const checkedIds = useMemo(() => new Set(visible.filter((caption) => checked.has(caption.id)).map((caption) => caption.id)), [visible, checked]);
   const replaceIds = replaceScope === "selected" ? checkedIds : new Set(visible.map((caption) => caption.id));
   const replaceCount = replacementCount(visible, replaceIds, find);
@@ -172,6 +183,27 @@ export function CaptionEditor({
   const current = visible.find((c) => c.id === selected);
   const following = current && sorted[sorted.indexOf(current) + 1];
   const next = following && visible.includes(following) ? following : undefined;
+  function openChange(action: CaptionEditAction, id = selected) {
+    const caption = project.captions.find(item => item.id === id);
+    if (!caption && action !== "mergeSelected") return;
+    try {
+      let captions = caption ? [caption] : [];
+      if (action === "mergeSelected") captions = consecutiveCaptions(project, [...checkedIds]);
+      else if (action === "mergePrevious" || action === "mergeNext") {
+        const neighbor = sorted[sorted.indexOf(caption!) + (action === "mergePrevious" ? -1 : 1)];
+        if (!neighbor || !visible.includes(neighbor)) throw new Error("현재 필터에서 합칠 이웃 자막이 없습니다.");
+        captions = consecutiveCaptions(project, [caption!.id, neighbor.id]);
+      }
+      const caret = cursor.current;
+      setChangeDialog({ project, captions, action, cursor: caret?.id === caption?.id && caret?.text === caption?.text ? caret?.offset : undefined });
+      setContext(null);
+    } catch (error) { onError(t((error as Error).message)); }
+  }
+  const openChangeRef = useRef(openChange); openChangeRef.current = openChange;
+  useEffect(() => { if (editRequest) openChangeRef.current(editRequest.action, editRequest.id); }, [editRequest]);
+  useEffect(() => { setChangeDialog(null); setContext(null); cursor.current = null; }, [project.id]);
+  const menuCaption = context && project.captions.find(caption => caption.id === context.id);
+  const menuIndex = menuCaption ? sorted.indexOf(menuCaption) : -1;
   function edit(id: string, change: Partial<Caption>) {
     run((p) => ({
       ...p,
@@ -197,14 +229,6 @@ export function CaptionEditor({
       input.value = formatTime(c[field]);
       onError(t((error as Error).message));
     }
-  }
-  function split() {
-    if (!current) return;
-    run((previous) => splitCaption(previous, current.id, time));
-  }
-  function merge() {
-    if (!current || !next || current.speakerId !== next.speakerId) return;
-    run((previous) => mergeCaptions(previous, current.id, next.id));
   }
   const pending = project.captions.filter(
     (c) => !c.reviewed && c.reasons.length > 0,
@@ -266,7 +290,7 @@ export function CaptionEditor({
               </option>
             ))}
           </select>
-          <button disabled={!current} onClick={split}>
+          <button disabled={!current} onClick={() => openChange("splitCursor")}>
             <Scissors size={14} />{t('나누기')}</button>
           <button
             disabled={!current}
@@ -275,9 +299,9 @@ export function CaptionEditor({
           >
             <Palette size={14} />{t('자막 스타일')}</button>
           <button
-            disabled={!current || !next || current.speakerId !== next.speakerId}
-            onClick={merge}
-            title={t("다음 자막과 인물이 같을 때 합칩니다. 선택한 자막의 스타일을 유지합니다.")}
+            disabled={checkedIds.size < 2 && (!current || !next)}
+            onClick={() => openChange(checkedIds.size >= 2 ? "mergeSelected" : "mergeNext")}
+            title={t("선택한 여러 자막 또는 다음 자막과 합칩니다.")}
           >
             <Combine size={14} />{t('합치기')}</button>
           <button
@@ -375,6 +399,17 @@ export function CaptionEditor({
               style={{transform:`translateY(${virtual.layout.offsets[index]}px)`}}
               className={`caption-row ${selected === c.id ? "selected" : ""} ${c.start <= time && c.end > time ? "current" : ""}`}
               onClick={() => setSelected(c.id)}
+              onFocusCapture={() => setSelected(c.id)}
+              onContextMenu={event => {
+                event.preventDefault(); setSelected(c.id);
+                setContext({ id: c.id, anchor: { x: event.clientX, y: event.clientY, trigger: event.target as HTMLElement } });
+              }}
+              onKeyDown={event => {
+                if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+                  event.preventDefault(); event.stopPropagation(); setSelected(c.id);
+                  setContext({ id: c.id, anchor: timelineMenuAnchor(event.target as HTMLElement) });
+                }
+              }}
             >
               <div className="caption-times">
                 <button
@@ -430,10 +465,12 @@ export function CaptionEditor({
                   <span className="caption-style-marker">{t('개별 스타일')}</span>
                 )}
                 <textarea
+                  data-caption-text="true"
                   aria-label={t("자막 내용 {id}", { id: c.id })}
                   value={c.text}
                   rows={density === "compact" ? 1 : 2}
                   maxLength={MAX_CAPTION_TEXT}
+                  onSelect={event => { const input = event.currentTarget; cursor.current = { id: c.id, text: input.value, offset: input.selectionStart === input.selectionEnd ? input.selectionStart : -1 }; }}
                   onChange={(e) =>
                     edit(c.id, { text: e.target.value })
                   }
@@ -466,6 +503,22 @@ export function CaptionEditor({
           </div>
         )}
       </div>
+      {context && menuCaption && <ContextMenu anchor={context.anchor} title={menuCaption.text} label="자막 편집 작업" onClose={() => setContext(null)}>
+        <CaptionEditActions previous={!!sorted[menuIndex - 1] && visible.includes(sorted[menuIndex - 1]!)} next={!!sorted[menuIndex + 1] && visible.includes(sorted[menuIndex + 1]!)} checked={checkedIds.size}
+          onAction={action => openChange(action, context.id)} />
+      </ContextMenu>}
+      {changeDialog && changeDialog.project.id === project.id && (changeDialog.action === "splitCursor" || changeDialog.action === "splitTime" ?
+        <CaptionSplitDialog caption={changeDialog.captions[0]!} mode={changeDialog.action === "splitCursor" ? "cursor" : "time"} cursor={changeDialog.cursor} time={time}
+          onClose={() => setChangeDialog(null)} onApply={plan => {
+            if (run(previous => { if (previous.id !== changeDialog.project.id) throw new Error("자막이 변경되었습니다. 편집 창을 다시 열어주세요."); return applyCaptionSplit(previous, plan); })) {
+              setChangeDialog(null); setSelected(plan.source.id); setRowReveal({ id: plan.source.id }); setChecked(new Set());
+            }
+          }} /> :
+        <CaptionMergeDialog project={changeDialog.project} captions={changeDialog.captions} onClose={() => setChangeDialog(null)} onApply={plan => {
+          if (run(previous => { if (previous.id !== changeDialog.project.id) throw new Error("자막이 변경되었습니다. 편집 창을 다시 열어주세요."); return applyCaptionMerge(previous, plan); })) {
+            setChangeDialog(null); setSelected(plan.result.id); setRowReveal({ id: plan.result.id }); setChecked(new Set());
+          }
+        }} />)}
       {styleCaption && (
         <CaptionStyleDialog
           key={`${project.id}-${styleCaption.id}`}
@@ -473,6 +526,7 @@ export function CaptionEditor({
           description={t("이 자막 한 개에만 적용됩니다. 별도로 바꾸지 않은 항목은 인물의 기본 스타일을 따릅니다.")}
           value={styleCaption.style}
           inherited={resolveCaptionStyle(undefined, styleSpeaker)}
+          inheritedOutlineColor={styleSpeaker?.subtitleStyle?.outlineColor}
           name={styleSpeaker?.name ?? t("미배정")}
           nameColor={styleSpeaker?.color ?? "#ffffff"}
           text={styleCaption.text}

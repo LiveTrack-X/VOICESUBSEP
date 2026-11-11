@@ -1,12 +1,23 @@
 # Feature status / 요청 기능 현황
 
-Scope of the **0.3.5 Windows release**, reviewed on 2026-09-26. Source, package, publication and public-file evidence are recorded in the [release record](releases/v0.3.5.md); local installation is tracked separately. Implemented means a usable code path, not a guarantee of device or recognition quality.
+Scope of the **0.3.6 Windows release candidate**, reviewed on 2026-11-11. Source, package, publication and public-file evidence are recorded in the [release record](releases/v0.3.6.md); publication is pending and local installation is tracked separately. Implemented means a usable code path, not a guarantee of device or recognition quality.
 
-2026-09-26 기준 **0.3.5 Windows 릴리즈** 범위입니다. 소스·패키지·게시·공개 파일 증거는 [릴리즈 기록](releases/v0.3.5.md)에 남기며 로컬 설치는 별도로 구분합니다. 구현은 사용 경로가 있다는 뜻이며 장치·인식 품질 보증이 아닙니다.
+2026-11-11 기준 **0.3.6 Windows 릴리즈 후보** 범위입니다. 소스·패키지·게시·공개 파일 증거는 [릴리즈 기록](releases/v0.3.6.md)에 남깁니다. 아직 게시 전이며 로컬 설치는 별도로 구분합니다. 구현은 사용 경로가 있다는 뜻이며 장치·인식 품질 보증이 아닙니다.
 
-Version labels preserve historical changes: [0.3.3](releases/v0.3.3.md), [0.3.2](releases/v0.3.2.md), [0.3.1](releases/v0.3.1.md). / 버전 표시는 각 시점의 변경을 구분하며 과거 기록을 보존합니다.
+Version labels preserve historical changes: [0.3.5](releases/v0.3.5.md), [0.3.4](releases/v0.3.4.md), [0.3.3](releases/v0.3.3.md), [0.3.2](releases/v0.3.2.md), [0.3.1](releases/v0.3.1.md). / 버전 표시는 각 시점의 변경을 구분하며 과거 기록을 보존합니다.
 
-## 0.3.5 changes / 0.3.5 변경
+## 0.3.6 changes / 0.3.6 변경
+
+| Change / 변경 | Source status / 소스 상태 | Actual scope / 실제 범위 |
+| --- | --- | --- |
+| Flexible split/merge / 유연한 나누기·합치기 | Implemented / 구현 | Preview cursor/playhead splits with editable boundary time; merge consecutive captions with spacing and explicit mixed-speaker choice; one Undo restores the edit. Hidden intervening captions and stale previews are protected / 커서·재생 시점 분할 미리보기와 시간 조절, 연속 자막 병합·문구 연결·다른 인물 명시 선택, 한 번의 실행 취소, 숨겨진 중간 자막·오래된 미리보기 보호 |
+| Subtitle fonts and effects / 자막 글꼴·효과 | Implemented; local render checked / 구현·로컬 렌더 확인 | Named installed fonts, outline width/color and independent shadow color/blur/offset. Project/ASS preserve settings; SRT is plain; YTT uses limited approximations. Fonts are not embedded / 설치 글꼴 이름·획 두께/색상·그림자 색상/흐림/거리, 프로젝트·ASS 저장, SRT 평문·YTT 제한 근사, 글꼴 미포함 |
+| Timeline through 64× / 최대 64배 확대 | Implemented; synthetic App checked / 구현·합성 앱 확인 | Keeps a visible playhead or viewed source center; millisecond ruler labels where needed; viewport-sized density canvas with bounded overscan. No new frame snap or automatic alignment / 보이는 재생 위치 또는 구간 중심 유지·필요시 밀리초 눈금·보이는 영역과 제한 여유만 그리기, 프레임 스냅·자동 정렬 추가 아님 |
+| Project vocabulary / 프로젝트 사전 | Implemented / 구현 | Saves proper names/game terms with the project and passes validated hints to supported engines; does not replace existing captions or guarantee recognition / 고유명사·게임 용어 저장·지원 엔진 힌트 전달, 기존 자막 자동 치환·인식 보장 없음 |
+| Confirmed-voice candidates / 확인한 목소리 후보 | Beta / 베타 | Explicitly registered and listened-to references rank unassigned solo speech; selected apply/undo preserves wording/times. Cosine scores are not calibrated speaker probabilities / 확인·청취·등록한 기준으로 미배정 단독 발화 비교, 선택 적용/실행 취소·원문/시간 유지, 유사도는 보정된 확률 아님 |
+| Selected-window separation/retranscription / 선택 구간 분리·재전사 | Experimental / 실험 | Local CPU two-source, 8 kHz English-trained separator; inspect/listen before adding candidates. Existing captions remain. The synthetic mixed English/Korean smoke did not recover the Korean phrase / 로컬 CPU·2인·8kHz 영어 학습 분리, 듣고 후보 추가·기존 자막 보존, 영한 합성 겹침 시험에서 한국어 복원 실패 |
+
+## Historical 0.3.5 changes / 이전 0.3.5 변경
 
 | Change / 변경 | Source status / 소스 상태 | Actual scope / 실제 범위 |
 | --- | --- | --- |
@@ -38,8 +49,15 @@ Verification / 검증: **843 frontend + 84 Node tests**, **1,023 backend passed 
 
 ## Editing / 자막 편집
 
+The 0.3.6 candidate includes [named local fonts, configurable outlines/shadows and anchored 1–64× timeline zoom](CAPTION-STYLE-ZOOM.md). Project/ASS output supports the richer styles; SRT stays plain and YTT retains documented approximations. / 0.3.6 후보에 실제 글꼴 이름, 획·그림자 설정과 현재 위치를 유지하는 1~64배 확대를 추가했습니다. 프로젝트·ASS에 새 스타일을 반영하며 SRT는 평문, YTT는 문서화된 근사 표현입니다.
+
+The 0.3.6 candidate adds [project vocabulary, acoustic reference candidates (beta) and selected-window separation/retranscription (experimental)](SPEECH-TOOLS.md). Model preparation and explicit review are required; local synthetic execution did not establish Korean overlap restoration quality. Package/runtime/publication checks belong in the release record. / 0.3.6 후보에 프로젝트 사전·기준 목소리 후보(베타)·선택 구간 분리/재전사(실험)를 추가했습니다. 모델 준비·명시적 검수가 필요하며 합성 음성 실행은 한국어 겹침 복원 품질을 입증하지 않습니다. 패키지·실행환경·게시 검증은 릴리즈 기록을 따릅니다.
+
+The 0.3.6 candidate includes flexible split/merge; see the [user guide](USER-GUIDE.md). / 0.3.6 후보에 유연한 나누기·합치기를 반영했습니다. [사용자 가이드](USER-GUIDE.md)를 참고하세요.
+
 | Request / 요청 | Status / 상태 | Actual scope / 실제 범위 |
 | --- | --- | --- |
+| Flexible split/merge / 유연한 나누기·합치기 | 0.3.6 candidate; unit and isolated browser checked / 0.3.6 후보·단위 및 격리 브라우저 확인 | Cursor/playback split, exact whitespace, time adjustment, previous/next/consecutive selection merge, explicit mixed-speaker choice, spacing/line breaks, preview/undo, context menus, customizable shortcuts and legacy preference migration. No automatic resegmentation or audio realignment / 커서·재생 시점 분할, 공백·줄바꿈 보존, 시간 조절, 이전·다음·연속 선택 병합, 화자 직접 선택, 연결 방식, 미리보기·실행 취소, 우클릭·단축키·이전 설정 호환. 자동 재분절·음성 재정렬 없음 |
 | Subtitle editor as main pane / 자막 중심 화면 | Implemented; 0.3.1 layout revision / 구현·0.3.1 배치 개선 | 0.3.1 preview fits available width/height with original aspect ratio; manual height/collapse/fullscreen remain. Notes below the editor collapse and use little room when empty; narrow layouts reserve caption space / 0.3.1은 원본 비율로 미리보기 폭·높이 자동 맞춤, 수동 높이·접기·전체 화면 유지. 편집기 아래 메모 접기·빈 공간 축소, 좁은 창 자막 공간 확보 |
 | Stable preview-height control / 미리보기 높이 조절 안정화 | Fixed in 0.3.3 / 0.3.3 수정 | The height slider changes only the video stage height; column width and the slider position stay stable / 높이 슬라이더가 영상 영역 높이만 변경하고 열 너비·슬라이더 위치는 유지 |
 | Light/Dark and clear Language control / 라이트·다크·Language 표시 | Implemented in 0.3.1 / 0.3.1 구현 | Explicit device-persisted theme, native controls follow theme; interface language visibly labeled separately from ASR language / 기기에 기억하는 테마 직접 선택·기본 선택 목록 반영, 화면 언어와 음성 언어 구분 |

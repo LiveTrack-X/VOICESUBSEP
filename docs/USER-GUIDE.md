@@ -1,12 +1,16 @@
 # VOICESUBSEP User Guide / 사용자 가이드
 
-This guide covers the **0.3.5 Windows release**. Check the [0.3.5 release record](releases/v0.3.5.md) for current download and installation evidence, and [feature status](FEATURE-STATUS.md) for limits. Earlier [0.3.4](releases/v0.3.4.md), [0.3.3](releases/v0.3.3.md), [0.3.2](releases/v0.3.2.md) and [0.3.1](releases/v0.3.1.md) records remain available. Versioned comparisons below explain compatibility.
+0.3.6 caption styling / 0.3.6의 글꼴·획·그림자 설정과 64× 타임라인은 [별도 사용법](CAPTION-STYLE-ZOOM.md)을 확인하세요. 공개 설치본·검증 여부는 릴리즈 기록을 따릅니다.
 
-이 가이드는 **0.3.5 Windows 릴리즈**를 안내합니다. 현재 다운로드·설치 증거는 [0.3.5 릴리즈 기록](releases/v0.3.5.md), 기능 한계는 [기능 현황](FEATURE-STATUS.md)을 확인하세요. 이전 [0.3.4](releases/v0.3.4.md)·[0.3.3](releases/v0.3.3.md)·[0.3.2](releases/v0.3.2.md)·[0.3.1](releases/v0.3.1.md) 기록도 보존합니다. 아래 버전별 비교는 호환 설명입니다.
+0.3.6 speech tools / 0.3.6의 프로젝트 사전·확인한 목소리 후보(베타)·겹침 분리(실험)는 [별도 사용법](SPEECH-TOOLS.md)을 확인하세요. 가중치는 별도 준비하며 한국어 겹침 복원 품질은 입증하지 않았습니다.
 
-**0.3.5 additions:** speaker-review and native VST window controls are available in this release. Check the [0.3.5 release record](releases/v0.3.5.md) for package and update evidence.
+This guide covers the **0.3.6 Windows release candidate**. Publication is pending; check the [0.3.6 release record](releases/v0.3.6.md) for current download and installation evidence, and [feature status](FEATURE-STATUS.md) for limits. Earlier [0.3.5](releases/v0.3.5.md), [0.3.4](releases/v0.3.4.md), [0.3.3](releases/v0.3.3.md), [0.3.2](releases/v0.3.2.md) and [0.3.1](releases/v0.3.1.md) records remain available. Versioned comparisons below explain compatibility.
 
-**0.3.5 추가 기능:** 미배정 검토와 VST 창 조작 개선을 사용할 수 있습니다. 패키지·업데이트 검증은 [0.3.5 릴리즈 기록](releases/v0.3.5.md)에서 확인하세요.
+이 가이드는 **0.3.6 Windows 릴리즈 후보**를 안내합니다. 아직 게시 전이며 현재 다운로드·설치 증거는 [0.3.6 릴리즈 기록](releases/v0.3.6.md), 기능 한계는 [기능 현황](FEATURE-STATUS.md)을 확인하세요. 이전 [0.3.5](releases/v0.3.5.md)·[0.3.4](releases/v0.3.4.md)·[0.3.3](releases/v0.3.3.md)·[0.3.2](releases/v0.3.2.md)·[0.3.1](releases/v0.3.1.md) 기록도 보존합니다. 아래 버전별 비교는 호환 설명입니다.
+
+**0.3.6 additions:** split/merge, local font/outline/shadow controls, 64× zoom, project vocabulary and explicitly reviewed beta/experimental speech tools. Check the [0.3.6 release record](releases/v0.3.6.md) for package and update evidence.
+
+**0.3.6 추가 기능:** 나누기·합치기, 글꼴·획·그림자 설정, 64배 확대, 프로젝트 사전과 직접 검수하는 베타·실험 음성 도구입니다. 패키지·업데이트 검증은 [0.3.6 릴리즈 기록](releases/v0.3.6.md)에서 확인하세요.
 
 Whisper transcribes **what was said**; Nemotron identifies **who spoke when**. Review both against the source. Diarization does not separate mixed voices into audio stems or reconstruct inaudible speech.
 
@@ -139,6 +143,18 @@ The UI stays in stopping state until owned-process exit is confirmed; only then 
 ## 4. 자막·인물·타임라인 편집
 
 *Edit captions, speakers and the timeline*
+
+### 0.3.6: flexible split and merge / 유연한 나누기·합치기
+
+These changes are included in the 0.3.6 candidate; final package and publication status follow its release record. / 아래 기능은 0.3.6 후보에 포함하며 최종 패키지·게시 상태는 릴리즈 기록을 따릅니다.
+
+- **나누기:** 자막 입력창에서 글자 사이에 커서를 놓고 `나누기` 또는 `Ctrl+Enter`를 누릅니다. 띄어쓰기 없는 한글도 나눌 수 있으며 원문 공백·줄바꿈을 보존합니다. 단어 시각이 원문과 일치하면 사용하고, 없으면 글자 수로 시간을 추정합니다. 미리보기에서 글자 분할 위치를 유지한 채 시간을 직접 바꿀 수 있습니다.
+- **재생 시점:** `Ctrl+Shift+Enter` 또는 우클릭의 `재생 시점에서 나누기`로 엽니다. 선택한 자막 안의 시간만 허용하며 결과 문구와 시각을 확인한 뒤 적용합니다.
+- **합치기:** 우클릭에서 이전/다음 자막과 합치거나, 연속된 자막을 체크하고 `합치기`를 누릅니다. 공백 자동 연결·공백 추가·줄바꿈·바로 붙이기를 선택합니다. 서로 다른 인물은 적용할 인물을 직접 정해야 하며 시간 간격·겹침을 표시합니다. 첫 자막의 개별 스타일을 유지하고 검수 완료는 해제합니다.
+- **단축키:** 이전 합치기 `Alt+J`, 다음 합치기 `Alt+K`, 선택 병합 `Ctrl+M`. F1에서 변경할 수 있으며 Mac은 Ctrl 대신 Command입니다. 자막 입력창에서는 보조키가 있는 해당 명령만 허용하고 Space·일반 줄바꿈·한글 조합은 보존합니다. 기존 개인 지정과 설정 백업은 유지하며 새 기본값과 충돌하면 해당 새 명령은 미지정으로 둡니다.
+- **복구:** 나누기·합치기는 각각 한 번의 실행 취소로 원래 자막을 복원합니다. 필터에 가려진 중간 자막은 자동 병합하지 않으며, 미리보기 이후 원본이 바뀌면 적용을 중단합니다.
+
+Use the text cursor (`Ctrl+Enter`) or playback time (`Ctrl+Shift+Enter`) to preview a split; cursor mode also permits an independent time adjustment. Merge adjacent or consecutively selected captions, choose spacing/line breaks and explicitly choose a speaker for mixed identities. Right-click menus and F1 shortcuts expose the same previews. One Undo restores all source captions. Existing bindings and backups migrate without overwriting custom assignments; hidden intervening captions and stale previews cannot be silently merged.
 
 ### 0.3.5: Review unassigned speakers / 미배정 보완 검토
 
@@ -359,9 +375,9 @@ There is **no automatic age/quota deletion**. Retained job history continues to 
 
 *App updates*
 
-The desktop updater uses the project's public GitHub releases. Open **App update**, explicitly **check**, then **download** a newer offered version. Save project JSON and finish live/analysis/render jobs before choosing **save and restart/install**. It does not automatically download or install on ordinary quit. Browser development mode has no installer update. Older builds with an unconfigured updater need a manually installed published version first. Check the [0.3.5 release record](releases/v0.3.5.md) for its publication status and actual upgrade evidence; a draft release is not an available update.
+The desktop updater uses the project's public GitHub releases. Open **App update**, explicitly **check**, then **download** a newer offered version. Save project JSON and finish live/analysis/render jobs before choosing **save and restart/install**. It does not automatically download or install on ordinary quit. Browser development mode has no installer update. Older builds with an unconfigured updater need a manually installed published version first. Check the [0.3.6 release record](releases/v0.3.6.md) for its publication status and actual upgrade evidence; a draft release is not an available update.
 
-설치형의 **앱 업데이트**는 프로젝트의 GitHub 공개 릴리즈를 사용합니다. **확인 → 다운로드 → 저장 후 다시 시작/설치**를 각각 누릅니다. 설치 전 프로젝트 JSON을 저장하고 라이브·분석·렌더를 끝내세요. 자동 다운로드·일반 종료 시 자동 설치는 하지 않습니다. 브라우저 개발 화면에는 설치 업데이트가 없으며, 업데이트 미설정인 이전 설치본은 게시된 버전을 먼저 수동 설치해야 합니다. 최신 게시 상태·실제 업그레이드 증거는 [0.3.5 릴리즈 기록](releases/v0.3.5.md)을 확인하세요. 초안 릴리즈는 받을 수 있는 업데이트가 아닙니다.
+설치형의 **앱 업데이트**는 프로젝트의 GitHub 공개 릴리즈를 사용합니다. **확인 → 다운로드 → 저장 후 다시 시작/설치**를 각각 누릅니다. 설치 전 프로젝트 JSON을 저장하고 라이브·분석·렌더를 끝내세요. 자동 다운로드·일반 종료 시 자동 설치는 하지 않습니다. 브라우저 개발 화면에는 설치 업데이트가 없으며, 업데이트 미설정인 이전 설치본은 게시된 버전을 먼저 수동 설치해야 합니다. 최신 게시 상태·실제 업그레이드 증거는 [0.3.6 릴리즈 기록](releases/v0.3.6.md)을 확인하세요. 초안 릴리즈는 받을 수 있는 업데이트가 아닙니다.
 
 The updater authenticates `installer-manifest.json` with its bundled **Ed25519 public key**, then checks each file and the assembled payload with SHA256, including another check before launching the installer. The private key is outside the repository. This authenticates the release manifest; **Windows EXEs remain Authenticode-unsigned**. Downloads run serially at **80 Mbps** and reuse complete verified files; an interrupted file restarts on retry. This differs from the online setup's partial Range resume. Neither feature reserves OS bandwidth or limits all model downloads. User data/model caches remain outside the install folder; keep a separate project backup.
 

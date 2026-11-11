@@ -1,5 +1,7 @@
 # 미배정 감소 전략 / Speaker-assignment improvement strategy
 
+**2026-11-11 개발 소스 추가:** 확인한 목소리의 음향 비교와 선택 구간 겹침 분리·재전사를 실험 기능으로 구현했습니다. [사용법·조건·검증 한계](SPEECH-TOOLS.md)를 확인하세요. 아래 0.3.5 기록과 후속 제안은 당시 범위를 보존하며, 실제 한국어 방송의 정확도 개선은 여전히 미측정입니다. / Development source now implements acoustic-reference suggestions and short-window overlap experiments; published 0.3.5 and real-audio quality claims remain separate.
+
 상태: **0.3.5 소스에 첫 개발 범위인 원인·근거 보존, 보수적 경계 후보 생성, 사용자 검토·선택 적용을 구현했다.** 기존 자동 배정 임계값과 경계 보정 동작은 유지하며 새 추천을 자동 확정하지 않는다. 과거 저장 결과나 실행 중인 이전 버전의 분석에 근거를 소급 생성하지 않는다. 소스 구현은 게시·설치 완료와 별개이며 인물별 음성 비교·겹침 복원과 실제 음성의 성능 평가는 아래 후속 단계로 남아 있다.
 
 **First scope implemented in 0.3.5 source:** retain attribution evidence, propose conservative boundary candidates, and let users review and selectively apply them. Existing automatic attribution is unchanged; proposals never assign speakers on their own. Older results are not retroactively enriched. Publication/installation is separate from source completion. Voice-reference matching, overlap recovery and real-audio accuracy evaluation remain future work.

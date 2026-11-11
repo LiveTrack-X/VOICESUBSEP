@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([switch]$VerifyNoticesOnly, [switch]$CheckDependenciesOnly, [switch]$ReuseBuildCache, [switch]$IncludeQwenRuntime)
+param([switch]$VerifyNoticesOnly, [switch]$CheckDependenciesOnly, [switch]$ReuseBuildCache, [switch]$IncludeQwenRuntime, [switch]$IncludeSpeechToolsRuntime)
 
 $ErrorActionPreference = 'Stop'
 if ($IncludeQwenRuntime) {
@@ -73,6 +73,8 @@ $vstRuntimeState = & $pythonExe -c $vstRuntimeCheck
 if ($LASTEXITCODE -ne 0) { throw 'Optional VST runtime discovery failed.' }
 $includeVstRuntime = ([string]$vstRuntimeState).Trim() -eq 'present'
 if ($includeVstRuntime) { $runtimePackages += 'pedalboard' }
+$speechToolPackages = @('torchaudio', 'speechbrain', 'hyperpyyaml', 'ruamel.yaml', 'ruamel.yaml.clib', 'sentencepiece')
+if ($IncludeSpeechToolsRuntime) { $runtimePackages += $speechToolPackages }
 $noticePackages = $runtimePackages + $nvidiaPackages
 # These imports are lazy or selected by the model's processor_config.json.
 # Do not collect all transformers models or model-conversion utilities.
@@ -101,6 +103,7 @@ records = []
 project_root = Path(sys.argv[1])
 fallback_notices = {
     ('DyNet38', '2.2'): ('third-party/DyNet38-2.2/LICENSE.txt', '08aded6d3bf7635e55b2f6f15d13fd442afd7069826bf7dc52f57824c7f08625'),
+    ('sentencepiece', '0.2.3'): ('third-party/sentencepiece-0.2.3/NOTICES.txt', '50fde1bf6870703f5de0be6d6f68c41cd4f8ac066b304569cf751ad7e5772726'),
 }
 for name in sys.argv[2:]:
     distribution = metadata.distribution(name)
@@ -134,6 +137,21 @@ $inventoryRecords = $inventoryJson | ConvertFrom-Json
 $noticeChecks = @(foreach ($record in $inventoryRecords) {
     [PSCustomObject]@{ Source = [string]$record.source; Relative = [string]$record.relative }
 })
+if ($IncludeSpeechToolsRuntime) {
+    $modelNotices = @(
+        @('third-party/speech-tools/WeSpeaker-MODEL-CARD.md', 'af2f6592a73d1333b872f75c6047f24bd1bb53346c0597edc1544140aa9c7e73'),
+        @('third-party/speech-tools/SepFormer-MODEL-CARD.md', '839e9b410929ccea560c75640438e8c8145ef812ebfe1ecd2ffbcf461edd8829'),
+        @('third-party/speech-tools/SpeechBrain-LICENSE.txt', 'c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4')
+    )
+    foreach ($notice in $modelNotices) {
+        $sourcePath = Join-Path $projectRoot $notice[0]
+        if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf) -or (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash -ne $notice[1]) {
+            throw "Pinned model notice is missing or altered: $($notice[0])"
+        }
+        $noticeChecks += [PSCustomObject]@{ Source = $sourcePath; Relative = [string]$notice[0] }
+    }
+    $noticeChecks += [PSCustomObject]@{ Source = (Join-Path $projectRoot 'third-party/speech-tools/SOURCE.md'); Relative = 'third-party/speech-tools/SOURCE.md' }
+}
 
 function Find-ToolNotices([string]$Executable) {
     $binaryDirectory = Split-Path -Parent $Executable
@@ -261,6 +279,16 @@ for path in models.iterdir():
     if ($includeVstRuntime) {
         # The package loads native extensions and accompanying Windows DLLs.
         $arguments += @('--collect-all', 'pedalboard', '--hidden-import', 'pedalboard_native', '--copy-metadata', 'pedalboard')
+    }
+    if ($IncludeSpeechToolsRuntime) {
+        foreach ($package in @('torchaudio', 'speechbrain', 'hyperpyyaml', 'ruamel.yaml', 'ruamel.yaml.clib', 'sentencepiece')) {
+            $arguments += @('--recursive-copy-metadata', $package)
+        }
+        foreach ($module in @('torchaudio', 'speechbrain', 'hyperpyyaml', 'ruamel', 'sentencepiece')) {
+            $arguments += @('--collect-all', $module)
+        }
+    } else {
+        $arguments += @('--exclude-module', 'torchaudio', '--exclude-module', 'speechbrain')
     }
     # Standard hooks handle torch DLLs/source, librosa lazy-loader .pyi/data,
     # llvmlite DLLs, scipy.libs and soundfile's libsndfile. No collect-all torch

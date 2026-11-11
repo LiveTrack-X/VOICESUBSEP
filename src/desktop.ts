@@ -8,6 +8,7 @@ export type UpdateStatus = {
   error?: string;
 };
 export interface DesktopBridge {
+  listFonts?(): Promise<{ available: boolean; fonts: string[]; issue?: string }>;
   rememberMedia?(file: File, request: { projectId: string; identity: import('./mediaIdentity').MediaIdentity; mediaId: string }): Promise<{ remembered: boolean }>;
   restoreMedia?(request: { projectId: string; identity: import('./mediaIdentity').MediaIdentity; operationId: string }): Promise<{ status: 'ready'; media: import('./api').MediaInfo } | { status: 'unremembered' | 'missing' | 'changed' | 'unavailable' | 'cancelled' }>;
   cancelMediaRestore?(operationId: string): Promise<{ cancelled: boolean }>;

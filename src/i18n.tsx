@@ -3,6 +3,11 @@ import { messages } from "./i18n-messages";
 import { extraMessages } from "./i18n-extra";
 import { mediaReconnectMessages } from "./i18n-media-reconnect";
 import { speakerReviewMessages } from "./i18n-speaker-review";
+import { captionRestructureMessages } from "./i18n-caption-restructure";
+import { vocabularyMessages } from "./i18n-vocabulary";
+import { speechToolsMessages } from "./i18n-speech-tools";
+import { timelineZoomMessages } from "./i18n-timeline-zoom";
+import { captionStyleMessages } from "./i18n-caption-style";
 import { I18nContext, type I18nValue } from "./i18n-context";
 
 export const LOCALES = ["ko", "en", "ja", "zh", "es"] as const;
@@ -13,7 +18,7 @@ export const LOCALE_STORAGE_KEY = "voicesubsep-ui-locale";
 export function parseLocale(value: unknown): Locale {
   return LOCALES.includes(value as Locale) ? value as Locale : "ko";
 }
-const catalog = { ...messages, ...extraMessages, ...mediaReconnectMessages, ...speakerReviewMessages };
+const catalog = { ...messages, ...extraMessages, ...mediaReconnectMessages, ...speakerReviewMessages, ...captionRestructureMessages, ...vocabularyMessages, ...speechToolsMessages, ...timelineZoomMessages, ...captionStyleMessages };
 export const dictionaries: Record<Locale, Record<string, string>> = Object.fromEntries(
   LOCALES.map((locale, index) => [locale, Object.fromEntries(Object.entries(catalog).map(([key, values]) => [key, index === 0 ? key : values[index - 1]]))]),
 ) as Record<Locale, Record<string, string>>;

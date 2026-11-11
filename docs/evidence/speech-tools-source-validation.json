@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-11",
+  "scope": "Development source only: project vocabulary, acoustic-reference candidates, and experimental selected-window separation/retranscription. Existing uncommitted caption editing changes were preserved.",
+  "branch": "codex/speech-tools-20261111",
+  "checks": {
+    "backend": {"command": ".venv/Scripts/python.exe -m pytest backend/tests -q", "passed": 1189, "skipped": 1, "failed": 0, "warning": "Existing Starlette BlockingPortal deprecation"},
+    "frontend": {"command": "npx vitest run src --reporter=dot", "filesPassed": 77, "passed": 959, "failed": 0},
+    "desktopAndDev": {"command": "node --test --test-reporter=spec scripts/dev.test.mjs desktop/*.test.cjs", "passed": 84, "failed": 0},
+    "productionWebBuild": {"command": "npm run build", "passed": true, "warning": "Main chunk exceeds Vite's 500 kB advisory threshold"},
+    "optionalRuntimeNotices": {"command": "powershell -NoProfile -File scripts/build-backend.ps1 -CheckDependenciesOnly -IncludeSpeechToolsRuntime", "passed": true, "originalNoticeFiles": 48},
+    "setupPrerequisites": {"command": "powershell -NoProfile -File scripts/setup.ps1 -Check -SpeechTools", "passed": true},
+    "trackedWhitespace": {"command": "git diff --check", "passed": true}
+  },
+  "renderedChecks": {
+    "vocabulary": {"command": "node scripts/vocabulary-smoke.cjs", "passed": true, "scope": "Hidden Chromium/React with synthetic fetch: portable save, unsaved/invalid blocking, consent reset, saved request snapshot, manual-caption preservation"},
+    "speechToolsForm": {"test": "src/speechToolsDialog.dom.test.ts", "passed": true, "scope": "Real hidden Electron DOM with synthetic fetch: vocabulary arrays, invalid hint blocking, saved vocabulary reset; separate tests cover stale requests and actual played-range gate"},
+    "actualApp": {"command": "node scripts/speech-tools-app-smoke.cjs", "passed": true, "scope": "Actual src/main.tsx/App toolbar, both tool tabs, close to editor; mocked local status/history only", "viewports": ["1440x1000", "680x760"], "horizontalOverflow": 0, "footersVisible": true, "consoleErrors": 0, "externalRequests": 0},
+    "narrowComponent": {"viewport": "390x844", "horizontalOverflow": 0, "footerVisible": true, "controlsReachableByScroll": true}
+  },
+  "realModelSmoke": {
+    "scope": "Local Windows Heami/Zira synthetic voices with independent reference and target phrases, CPU execution. No user audio or external audio upload.",
+    "environment": {"python": "3.12.13", "torch": "2.11.0+cu128", "torchaudio": "2.11.0+cu128", "speechbrain": "1.1.2", "onnxruntime": "1.30.0", "fasterWhisper": "1.2.1"},
+    "voiceEmbedding": {"model": "Wespeaker/wespeaker-voxceleb-resnet34-LM", "revision": "f0c48c298fd835726c27956a5d617bad7115627e", "actualOnnxScoring": true, "finiteScores": true, "bothSyntheticTargetsRankedExpectedVoiceFirst": true, "elapsedSeconds": 1.172},
+    "overlap": {"model": "speechbrain/sepformer-wsj02mix", "revision": "3a2826343a10e2d2e8a75f79aeab5ff3a2473531", "actualStrictCheckpointLoadAndForward": true, "whisper": "tiny/cpu/int8", "sourceStart": 1.25, "sourceEnd": 7.25, "outputs": 2, "sampleRate": 8000, "samplesPerOutput": 48000, "sourceHashesUnchanged": true, "sourceTimeBoundsValid": true, "productionClientParserPassed": true, "elapsedSeconds": 12.703,
+      "qualityObservation": "Both candidate transcripts resembled the English Zira phrase with incorrect endings. The Korean Heami phrase was not recovered. Operational execution passed; two-voice restoration quality was not established."},
+    "temporaryDetailedEvidence": "tmp/speech-tools-smoke/result.json"
+  },
+  "remainingLimits": [
+    "No representative Korean streamer/broadcast benchmark, calibrated speaker confidence, or measured editing-time improvement.",
+    "The experimental separator is English-trained, 8 kHz and two-source; it can omit or duplicate speech.",
+    "No real paid/cloud ASR calls were made.",
+    "No new frozen backend, installer, installation, publication or owner acceptance was verified. The published 0.3.5 installer is unchanged.",
+    "New voice/separation weights and optional runtime dependencies were explicitly prepared only for local development validation."
+  ]
+}

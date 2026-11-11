@@ -1,0 +1,7 @@
+.vocabulary-editor { margin: 18px 0; padding: 14px; border: 1px solid var(--border); border-radius: 10px; min-width: 0; }
+.vocabulary-editor legend { display: flex; align-items: center; gap: 7px; padding: 0 6px; font-weight: 600; }
+.vocabulary-editor label { display: block; margin-bottom: 7px; }
+.vocabulary-editor textarea { box-sizing: border-box; width: 100%; min-height: 88px; resize: vertical; line-height: 1.5; }
+.vocabulary-editor p { margin: 8px 0; }
+.vocabulary-editor small, .vocabulary-actions span { color: var(--muted); font-size: 12px; }
+.vocabulary-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }

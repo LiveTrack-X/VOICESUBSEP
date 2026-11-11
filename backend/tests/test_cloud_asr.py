@@ -103,6 +103,41 @@ def test_official_multipart_contracts(monkeypatch, tmp_path, provider, model):
     assert connection.closed
 
 
+@pytest.mark.parametrize("provider,model", [("groq", "whisper-large-v3"), ("xai", "grok-voice-transcribe-2.0")])
+def test_vocabulary_uses_supported_fields_before_the_file(monkeypatch, tmp_path, provider, model):
+    connection = FakeConnection(payload=reply(provider))
+    monkeypatch.setattr(cloud_asr.http.client, "HTTPSConnection", lambda *args, **kwargs: connection)
+    cloud_asr._post_audio(provider, model, "auto", KEY, wav(tmp_path / "a.wav"), lambda: False,
+                          vocabulary=["젠야타", "D.Va"])
+    body = b"".join(connection.sent)
+    if provider == "groq":
+        assert 'name="prompt"\r\n\r\n젠야타, D.Va'.encode() in body
+    else:
+        assert body.count(b'name="keyterm"') == 2
+        assert 'name="keyterm"\r\n\r\n젠야타'.encode() in body
+    assert body.rfind(b"Content-Disposition") == body.index(b'Content-Disposition: form-data; name="file"')
+
+
+@pytest.mark.parametrize("provider,model", [("gemini", "gemini-3.5-transcribe"), ("xai", "grok-voice-transcribe-1.0")])
+def test_unsupported_vocabulary_never_changes_timestamp_request(monkeypatch, tmp_path, provider, model):
+    connection = FakeConnection(payload=reply(provider))
+    monkeypatch.setattr(cloud_asr.http.client, "HTTPSConnection", lambda *args, **kwargs: connection)
+    cloud_asr._post_audio(provider, model, "auto", KEY, wav(tmp_path / "a.wav"), lambda: False, vocabulary=["PrivateTerm"])
+    body = b"".join(connection.sent)
+    assert b"PrivateTerm" not in body and b"custom_vocabulary" not in body and b"keyterm" not in body
+    if provider == "gemini":
+        assert b'"timestamp_granularities":["word"]' in body
+
+
+def test_vocabulary_cannot_bypass_consent_or_upload_overlong_groq_hint(monkeypatch, tmp_path):
+    monkeypatch.setattr(cloud_asr.http.client, "HTTPSConnection", lambda *args, **kwargs: pytest.fail("Must not connect"))
+    for consent, terms, match in [(False, ["D.Va"], "동의"), (True, ["한" * 50, "글" * 50], "224")]:
+        with pytest.raises((ValueError, cloud_asr.CloudASRError), match=match):
+            cloud_asr.transcribe_cloud(tmp_path / "absent.wav", provider="groq", model="whisper-large-v3", language="auto",
+                                      consent=consent, get_key=lambda: KEY, progress=lambda *_: None, cancelled=lambda: False,
+                                      vocabulary=terms)
+
+
 @pytest.mark.parametrize("provider,model", [("groq", "whisper-large-v3"), ("gemini", "gemini-3.5-transcribe")])
 @pytest.mark.parametrize("status", [301, 302, 307, 401, 403, 429, 500])
 def test_no_redirect_retry_or_remote_error_echo(monkeypatch, tmp_path, status, provider, model):

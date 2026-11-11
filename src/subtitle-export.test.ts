@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createProject, type Caption } from "./domain";
+import { createProject, exportSrt, type Caption } from "./domain";
 import { escapeAssText, exportAss, exportSpeakerSrtZip } from "./subtitle-export";
 import { exportMessages } from "./i18n-export";
 
@@ -64,6 +64,41 @@ describe("styled ASS export", () => {
     const p = project(); p.captions[0]!.start = 1.001; p.captions[0]!.end = 1.002;
     expect(exportAss(p)).toContain("0:00:01.00,0:00:01.01");
     p.captions[0]!.text = " "; expect(() => exportAss(p)).toThrow();
+  });
+  it("exports a real font, colored stroke and an independently blurred offset shadow", () => {
+    const p = project();
+    p.captions = [p.captions[0]!];
+    p.captions[0]!.style = { fontName: "Noto Sans KR", outline: true, outlineWidth: 2.5, outlineColor: "#123456", shadow: true, shadowColor: "#654321", shadowBlur: 4, shadowOffsetX: -2, shadowOffsetY: 3 };
+    const original = JSON.stringify(p), ass = exportAss(p);
+    const text = ass.split("\n").find(line => line.startsWith("Style: Caption0,"))!.slice(7).split(",");
+    expect(text[1]).toBe("Noto Sans KR");
+    expect(text[5]).toBe("&H00563412");
+    expect(text[16]).toBe("7.5");
+    expect(text[17]).toBe("0");
+    expect(ass).toContain("Style: Caption0Shadow,Noto Sans KR,45,&H00214365");
+    const shadow = ass.split("\n").find(line => line.startsWith("Dialogue: 0,") && line.includes("Caption0Shadow"))!;
+    expect(shadow).toContain("\\pos(54,49)");
+    expect(shadow).toContain("\\blur12");
+    expect(shadow).not.toContain("\\1c");
+    const foreground = ass.split("\n").find(line => line.startsWith("Dialogue: 1,"))!;
+    expect(foreground).toContain("\\pos(60,40)");
+    expect(foreground).not.toContain("\\blur");
+    expect(ass.indexOf(",Caption0Box,,")).toBeLessThan(ass.indexOf(",Caption0Shadow,,"));
+    expect(JSON.stringify(p)).toBe(original);
+  });
+  it("clears an inherited font with an empty override and keeps SRT text unchanged by effects", () => {
+    const p = project(), before = exportSrt(p);
+    p.speakers[0]!.subtitleStyle = { ...p.speakers[0]!.subtitleStyle, fontName: "Arial", shadow: true };
+    p.captions[0]!.style = { fontName: "", outline: true, outlineWidth: 0, outlineColor: "#ff0000", shadow: false };
+    const ass = exportAss(p), line = ass.split("\n").find(row => row.startsWith("Style: Caption0,"))!.slice(7).split(",");
+    expect(line[1]).toBe("Consolas");
+    expect(line[16]).toBe("0");
+    expect(ass).not.toContain("Caption0Shadow");
+    expect(exportSrt(p)).toBe(before);
+  });
+  it.each(["Arial,Injected", "Arial\nStyle: Injected", "Arial{\\fnInjected}"])("rejects unsafe custom font %s before export", fontName => {
+    const p = project(); p.captions[0]!.style = { fontName };
+    expect(() => exportAss(p)).toThrow(/fontName/u);
   });
 });
 

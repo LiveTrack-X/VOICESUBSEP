@@ -193,12 +193,15 @@ def _load_models(model_path: Path, aligner_path: Path, device: str):
 def transcribe_qwen(path: Path, *, model_path: Path, aligner_path: Path, language: str,
                     device: str, duration: float, progress, cancelled,
                     clip_timestamps: list[float] | None = None,
-                    recognition_preview: RecognitionPreview | None = None) -> list[dict]:
+                    recognition_preview: RecognitionPreview | None = None,
+                    vocabulary: list[str] | None = None) -> list[dict]:
     """Read bounded 16kHz PCM chunks, recognize and align each before publishing."""
     import numpy as np
     from transformers import StoppingCriteria, StoppingCriteriaList
 
     _checkpoint(cancelled)
+    from .vocabulary import validate_vocabulary
+    terms = validate_vocabulary([] if vocabulary is None else vocabulary)
     requested_language = alignment_language(language, allow_auto=True)
     if device not in {"cpu", "cuda"}:
         raise ValueError("Qwen 장치는 cpu 또는 cuda여야 합니다.")
@@ -236,7 +239,8 @@ def transcribe_qwen(path: Path, *, model_path: Path, aligner_path: Path, languag
                 if len(raw) != (end - begin) * 2:
                     raise ValueError("Qwen 입력 음원을 완전히 읽지 못했습니다.")
                 audio = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
-                inputs = processor.apply_transcription_request(audio=audio, language=requested_language)
+                inputs = processor.apply_transcription_request(audio=audio, language=requested_language,
+                    **({"prompt": "Vocabulary: " + ", ".join(terms)} if terms else {}))
                 inputs = inputs.to(model.device, model.dtype)
                 with torch.inference_mode():
                     output = model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=False,

@@ -1,10 +1,12 @@
 # Documentation / 문서 안내
 
-Start with the [0.3.5 release record](releases/v0.3.5.md) for the current Windows release, downloadable assets and verification. Local installation and device/recognition quality are separate evidence.
+Start with the [0.3.6 release record](releases/v0.3.6.md) for the current Windows release candidate, planned assets and verification. Publication is pending; local installation and device/recognition quality are separate evidence.
 
-[0.3.5 릴리즈 기록](releases/v0.3.5.md)에서 최신 Windows 릴리즈·설치 파일·검증을 확인하세요. 로컬 설치 및 장치·인식 품질은 별도로 구분합니다.
+[0.3.6 릴리즈 기록](releases/v0.3.6.md)에서 현재 Windows 릴리즈 후보·예정 설치 파일·검증을 확인하세요. 아직 게시 전이며 로컬 설치 및 장치·인식 품질은 별도로 구분합니다.
 
-**New in 0.3.5 / 새 기능:** evidence-based unassigned-speaker review, safer large-project saves, clearer native VST window states and corrected repository/creator links. / 근거 기반 미배정 화자 검토, 대형 프로젝트 저장 보호, VST 창 상태 구분, 저장소·제작자 링크 수정.
+**New in 0.3.6 / 새 기능:** subtitle fonts, outlines/shadows, anchored 64× zoom, flexible split/merge, project vocabulary, confirmed-voice candidates (beta), and selected-window separation/retranscription (experimental). / 자막 글꼴·획·그림자, 위치 유지 64배 확대, 유연한 나누기·합치기, 프로젝트 사전, 확인한 목소리 후보(베타), 선택 구간 분리·재전사(실험).
+
+**Historical 0.3.5 / 이전 0.3.5:** evidence-based unassigned-speaker review, safer large-project saves, clearer native VST window states and corrected repository/creator links. Its [release record](releases/v0.3.5.md) is preserved. / 근거 기반 미배정 화자 검토, 대형 프로젝트 저장 보호, VST 창 상태 구분, 저장소·제작자 링크 수정과 [당시 릴리즈 기록](releases/v0.3.5.md)을 보존합니다.
 
 **New in 0.3.4 / 0.3.4 새 기능:** panel/column/note resizing, automatic preview fit, original-media reconnection, timeline menus/clarity, progress controls, VST click fixes and connected-cache protection. / 패널·열·메모 크기 조절, 영상 자동 맞춤, 원본 재연결, 타임라인 메뉴·선명도, 진행창·VST 클릭 수정, 연결 캐시 보호.
 
@@ -18,7 +20,8 @@ Start with the [0.3.5 release record](releases/v0.3.5.md) for the current Window
 
 | Purpose / 목적 | Document / 문서 |
 | --- | --- |
-| Current 0.3.5 Windows release, installer and verification / 최신 0.3.5 Windows 릴리즈·설치 파일·검증 | [0.3.5 release record / 릴리즈 기록](releases/v0.3.5.md) |
+| Current 0.3.6 Windows release candidate, installer and verification / 현재 0.3.6 Windows 릴리즈 후보·설치 파일·검증 | [0.3.6 release record / 릴리즈 기록](releases/v0.3.6.md) |
+| 0.3.5 speaker review and VST window controls / 0.3.5 화자 검토·VST 창 조작 | [0.3.5 release record / 릴리즈 기록](releases/v0.3.5.md) |
 | 0.3.4 changes, package/public-file checks and installation status / 0.3.4 변경·패키지/공개 파일·설치 상태 | [0.3.4 release record / 릴리즈 기록](releases/v0.3.4.md) |
 | 0.3.3 changes, package/installation checks and publication status / 0.3.3 변경·패키지/설치 검증·게시 상태 | [0.3.3 release record / 릴리즈 기록](releases/v0.3.3.md) |
 | 0.3.1 publication, verified installer and checksums / 0.3.1 게시 상태·설치 검증·체크섬 | [0.3.1 release record / 릴리즈 기록](releases/v0.3.1.md) |
@@ -38,9 +41,11 @@ Start with the [0.3.5 release record](releases/v0.3.5.md) for the current Window
 
 ## Development and release / 개발·배포
 
+- [0.3.6 release candidate and verification record / 0.3.6 릴리즈 후보·검증 기록](releases/v0.3.6.md)
 - [0.3.5 release and verification record / 0.3.5 릴리즈·검증 기록](releases/v0.3.5.md)
 - [0.3.4 workspace changes and validation status / 0.3.4 편집 화면 변경·검증 상태](releases/v0.3.4.md)
 - [Speaker review: implemented first scope and future proposals / 미배정 검토: 첫 범위 구현·후속 제안](SPEAKER-ASSIGNMENT-STRATEGY.md)
+- [Speech tools: vocabulary, confirmed voices and overlap experiments / 음성 도구: 사전·기준 목소리·겹침 실험](SPEECH-TOOLS.md)
 - [Run from source / 소스 실행](../README.md#run-from-source--소스에서-실행)
 - [Desktop architecture, builds and updates / 설치형 구조·빌드·업데이트](DESKTOP.md)
 - [Model setup / 모델 환경](MODEL-SETUP.md), [GPU models and Faster Whisper XXL / GPU 모델·XXL](GPU-MODELS.md)
@@ -50,6 +55,7 @@ Start with the [0.3.5 release record](releases/v0.3.5.md) for the current Window
 - [0.3.1 runtime, installer and release evidence / 0.3.1 실행환경·설치·릴리즈 증거](releases/v0.3.1.md)
 - [0.3.2 source validation and remaining acceptance / 0.3.2 소스 검증·남은 수용 확인](releases/v0.3.2.md)
 - [Design system / 디자인 시스템](design/DESIGN-SYSTEM.md)
+- [Caption styling and 64x timeline / 자막 글꼴·획·그림자·64배 확대](CAPTION-STYLE-ZOOM.md)
 
 ## Historical evidence and proposals / 과거 증거·설계 제안
 

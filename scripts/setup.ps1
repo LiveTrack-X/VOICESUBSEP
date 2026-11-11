@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([switch]$Check)
+param([switch]$Check, [switch]$SpeechTools)
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -53,11 +53,17 @@ try {
     Invoke-Checked $uvExecutable @('pip', 'install', '--python', $pythonExecutable,
         'torch==2.11.0+cu128', '--index-url', 'https://download.pytorch.org/whl/cu128')
     Invoke-Checked $uvExecutable @('pip', 'install', '--python', $pythonExecutable, '--editable', './backend[whisper,diarization,test]')
+    if ($SpeechTools) {
+        Invoke-Checked $uvExecutable @('pip', 'install', '--python', $pythonExecutable,
+            'torchaudio==2.11.0+cu128', '--index-url', 'https://download.pytorch.org/whl/cu128')
+        Invoke-Checked $uvExecutable @('pip', 'install', '--python', $pythonExecutable, '--editable', './backend[voice-reference,separation]')
+    }
     Invoke-Checked $npmExecutable @('ci')
     Write-Host ''
     Write-Host 'VOICESUBSEP is ready. Start: node scripts/dev.mjs'
     Write-Host 'Whisper and Nemotron runtimes installed. GPU and model checks: docs/MODEL-SETUP.md'
     Write-Host 'Model weights are downloaded separately on first analysis; setup does not download them.'
+    if ($SpeechTools) { Write-Host 'Optional voice-reference/separation runtimes installed. Prepare their weights explicitly in Speech Tools. See docs/SPEECH-TOOLS.md.' }
 } finally {
     Pop-Location
 }

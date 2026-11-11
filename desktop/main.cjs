@@ -13,6 +13,7 @@ const { createAppLogger } = require('./startup-log.cjs');
 const { installCapturePermissions } = require('./capture-permissions.cjs');
 const { createDocumentPdfService } = require('./document-pdf.cjs');
 const { createMediaRelinkService } = require('./media-relink.cjs');
+const { createInstalledFontsService } = require('./installed-fonts.cjs');
 
 app.setName('VOICESUBSEP');
 if (process.platform === 'win32') app.setAppUserModelId('com.livetrack.voicesubsep');
@@ -134,10 +135,12 @@ function validSender(event) {
 }
 
 function installIpc(updates) {
+  const listFonts = createInstalledFontsService();
   const saveDocumentPdf = createDocumentPdfService({ BrowserWindow, session, dialog, getWindow: () => mainWindow });
   const mediaRelink = createMediaRelinkService({ registryPath: path.join(app.getPath('userData'), 'media-links.json'), getOrigin: () => backendOrigin || uiUrl });
   const methods = {
     'desktop:version': () => app.getVersion(),
+    'desktop:list-fonts': () => listFonts(),
     'desktop:update-status': () => updates.snapshot(),
     'desktop:update-check': () => updates.check(),
     'desktop:update-download': () => updates.download(),

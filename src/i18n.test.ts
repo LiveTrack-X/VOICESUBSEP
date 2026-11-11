@@ -28,6 +28,10 @@ describe("interface translations", () => {
         if (/[가-힣]/.test(match[2])&&!dictionaries.en[match[2]]) missing.push(`${name}: ${match[2]}`);
       }
     }
+    for (const name of ["CaptionRestructureDialog", "CaptionEditActions", "VocabularyEditor", "SpeechToolsDialog"]) {
+      const source = readFileSync(new URL(`./components/${name}.tsx`, import.meta.url), "utf8");
+      for (const match of source.matchAll(/\bt\((["'])(.*?)\1/g)) if (/[가-힣]/.test(match[2]) && !dictionaries.en[match[2]]) missing.push(`${name}: ${match[2]}`);
+    }
     expect(missing).toEqual([]);
   });
 

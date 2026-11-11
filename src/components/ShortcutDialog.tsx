@@ -48,7 +48,7 @@ export function ShortcutDialog({ bindings, status, onSave, onClose }: {
   return <Dialog title={t("단축키 허브")} onClose={onClose}>
     <div className="shortcut-hub">
       <p>{t("명령을 검색하고 변경 버튼을 누른 뒤 원하는 키 조합을 입력하세요. Ctrl은 Mac에서 Command에 해당합니다.")}</p>
-      <p className="shortcut-help">{t("텍스트 입력·한글 조합·다른 대화상자에서는 편집 단축키를 실행하지 않습니다. Ctrl/Command가 포함된 프로젝트 저장은 입력 중에도 사용할 수 있습니다.")}</p>
+      <p className="shortcut-help">{t("자막 입력창에서는 보조키가 있는 나누기·합치기 단축키를 사용할 수 있습니다. 일반 입력과 한글 조합 중에는 작동하지 않습니다.")}</p>
       <label className="shortcut-search"><Search size={16}/><input type="search" value={query} onChange={event => setQuery(event.target.value)} aria-label={t("단축키 검색")} placeholder={t("명령 또는 키 검색")}/></label>
       {status === "invalid" && <p className="error-box" role="status">{t("저장된 단축키를 읽을 수 없어 기본값을 표시합니다. 변경 전까지 원래 저장값을 유지합니다.")}</p>}
       {status === "unavailable" && <p className="error-box" role="status">{t("이 환경에서 단축키 저장소에 접근할 수 없습니다.")}</p>}

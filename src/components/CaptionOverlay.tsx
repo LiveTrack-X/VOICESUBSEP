@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { resolveCaptionStyle, type Caption, type CaptionStyle, type Speaker } from "../domain";
+import { resolveCaptionStyle, resolveCaptionStyleFields, type Caption, type CaptionStyle, type ResolvedCaptionStyle, type Speaker } from "../domain";
 import { contrastColor } from "../colors";
 
 export const CAPTION_FONTS: Record<CaptionStyle["fontFamily"], string> = {
@@ -26,19 +26,24 @@ export function captionAppearance(caption: Caption, speaker?: Speaker, unassigne
   };
 }
 
-function lineStyle(style: CaptionStyle): CSSProperties {
+function lineStyle(style: ResolvedCaptionStyle): CSSProperties {
   const alpha = Math.round(style.backgroundOpacity * 2.55).toString(16).padStart(2, "0");
-  const edge = contrastColor(style.textColor);
   return {
-    fontFamily: CAPTION_FONTS[style.fontFamily],
+    fontFamily: `${style.fontName ? `${JSON.stringify(style.fontName)}, ` : ""}${CAPTION_FONTS[style.fontFamily]}`,
     fontSize: style.fontSize,
     fontWeight: style.bold ? 700 : 500,
     color: style.textColor,
     backgroundColor: `${style.backgroundColor}${alpha}`,
     textAlign: style.align,
-    textShadow: style.outline
-      ? `-1px -1px 0 ${edge}, 1px -1px 0 ${edge}, -1px 1px 0 ${edge}, 1px 1px 0 ${edge}`
-      : "none",
+  };
+}
+
+function textStyle(style: ResolvedCaptionStyle): CSSProperties {
+  return {
+    // A centered CSS stroke needs twice the requested outside edge width.
+    WebkitTextStroke: style.outline && style.outlineWidth > 0 ? `${style.outlineWidth * 2}px ${style.outlineColor}` : "0px transparent",
+    paintOrder: "stroke fill",
+    textShadow: style.shadow ? `${style.shadowOffsetX}px ${style.shadowOffsetY}px ${style.shadowBlur}px ${style.shadowColor}` : "none",
   };
 }
 
@@ -51,25 +56,28 @@ export function CaptionOverlay({ entries }: { entries: CaptionAppearance[] }) {
         if (!group.length) return null;
         return (
           <div className={`caption-overlay caption-position-${position}`} key={position}>
-            {group.map((entry) => (
-              <div
-                key={entry.id}
-                data-caption-id={entry.id}
-                className={`styled-caption caption-align-${entry.style.align}`}
-                style={lineStyle(entry.style)}
-              >
-                {entry.style.showSpeaker && (
-                  <span className="preview-speaker" style={{
-                    color: entry.nameColor,
-                    backgroundColor: contrastColor(entry.nameColor),
-                    textShadow: "none",
-                  }}>
-                    {entry.name}
-                  </span>
-                )}
-                <span className="caption-text">{entry.text}</span>
-              </div>
-            ))}
+            {group.map((entry) => {
+              const style = resolveCaptionStyleFields(entry.style);
+              return (
+                <div
+                  key={entry.id}
+                  data-caption-id={entry.id}
+                  className={`styled-caption caption-align-${style.align}`}
+                  style={lineStyle(style)}
+                >
+                  {style.showSpeaker && (
+                    <span className="preview-speaker" style={{
+                      color: entry.nameColor,
+                      backgroundColor: contrastColor(entry.nameColor),
+                      textShadow: "none",
+                    }}>
+                      {entry.name}
+                    </span>
+                  )}
+                  <span className="caption-text" style={textStyle(style)}>{entry.text}</span>
+                </div>
+              );
+            })}
           </div>
         );
       })}

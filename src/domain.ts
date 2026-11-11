@@ -2,34 +2,74 @@ import { parseDocuments, type ProjectDocuments } from "./documents";
 import { parseAudioMix, type AudioMixPlan } from "./audioMixer";
 import { parseMediaIdentity, type MediaIdentity } from "./mediaIdentity";
 import { parseSpeakerEvidence, type SpeakerEvidence } from "./speakerEvidence";
+import { parseVoiceReferences, type VoiceReference } from "./voiceReferences";
+import { parseVocabulary } from "./vocabulary";
+import { contrastColor } from "./colors";
 /** Portable editing data. All times are seconds on the original source media. */
 export type Mode = "standard" | "overlap";
 export type ReviewReason =
   "overlap" | "unassigned" | "speaker_count" | "timing" | "speaker_boundary" | "edited" | "speech_uncertain";
 export type CaptionStyle = {
   fontFamily: "sans" | "serif" | "mono";
+  /** A single installed font family. Empty selects the generic category. */
+  fontName?: string;
   fontSize: number;
   textColor: string;
   bold: boolean;
   outline: boolean;
+  outlineWidth?: number;
+  /** Missing preserves the automatic contrast color used by older projects. */
+  outlineColor?: string;
+  shadow?: boolean;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
   backgroundColor: string;
   backgroundOpacity: number;
   position: "top" | "middle" | "bottom";
   align: "left" | "center" | "right";
   showSpeaker: boolean;
 };
-export const DEFAULT_CAPTION_STYLE: CaptionStyle = {
+export type ResolvedCaptionStyle = Required<CaptionStyle>;
+export const DEFAULT_CAPTION_STYLE: ResolvedCaptionStyle = {
   fontFamily: "sans",
+  fontName: "",
   fontSize: 15,
   textColor: "#ffffff",
   bold: false,
   outline: false,
+  outlineWidth: 1,
+  outlineColor: "#000000",
+  shadow: false,
+  shadowColor: "#000000",
+  shadowBlur: 2,
+  shadowOffsetX: 1,
+  shadowOffsetY: 1,
   backgroundColor: "#0c1222",
   backgroundOpacity: 85,
   position: "bottom",
   align: "center",
   showSpeaker: true,
 };
+
+export function normalizeCaptionFontName(value: string): string {
+  return value.normalize("NFC").trim();
+}
+
+/** Keep this a single CSS/ASS font family, never a fallback list or command. */
+export function isValidCaptionFontName(value: string): boolean {
+  return /^[\p{L}\p{N}\p{M} _.'+()&-]*$/u.test(value) &&
+    Array.from(normalizeCaptionFontName(value)).length <= 120;
+}
+
+/** Fill legacy or partial styles without storing resolved values as overrides. */
+export function resolveCaptionStyleFields(style: Partial<CaptionStyle>): ResolvedCaptionStyle {
+  const resolved = { ...DEFAULT_CAPTION_STYLE, ...style };
+  resolved.fontName = isValidCaptionFontName(resolved.fontName) ? normalizeCaptionFontName(resolved.fontName) : "";
+  resolved.outlineColor = style.outlineColor ?? contrastColor(resolved.textColor);
+  return resolved;
+}
 export type Speaker = {
   id: string;
   name: string;
@@ -65,12 +105,11 @@ export type Caption = {
 export function resolveCaptionStyle(
   caption: Caption | undefined,
   speaker: Speaker | undefined,
-): CaptionStyle {
-  return {
-    ...DEFAULT_CAPTION_STYLE,
+): ResolvedCaptionStyle {
+  return resolveCaptionStyleFields({
     ...speaker?.subtitleStyle,
     ...caption?.style,
-  };
+  });
 }
 export type NoteTag = "edit" | "highlight" | "subtitle" | "check";
 export type Note = {
@@ -98,6 +137,8 @@ export type Project = {
   cuts?: CutRange[];
   documents?: ProjectDocuments;
   audioMix?: AudioMixPlan;
+  vocabulary?: string[];
+  voiceReferences?: VoiceReference[];
   updatedAt: string;
 };
 
@@ -233,10 +274,18 @@ function styleColor(value: unknown, path: string): string {
 function parseCaptionStyle(value: unknown, path: string): Partial<CaptionStyle> {
   const item = object(value, path, [
     "fontFamily",
+    "fontName",
     "fontSize",
     "textColor",
     "bold",
     "outline",
+    "outlineWidth",
+    "outlineColor",
+    "shadow",
+    "shadowColor",
+    "shadowBlur",
+    "shadowOffsetX",
+    "shadowOffsetY",
     "backgroundColor",
     "backgroundOpacity",
     "position",
@@ -246,6 +295,11 @@ function parseCaptionStyle(value: unknown, path: string): Partial<CaptionStyle> 
   const style: Partial<CaptionStyle> = {};
   if (item.fontFamily !== undefined)
     style.fontFamily = choice<CaptionStyle["fontFamily"]>(item.fontFamily, `${path}.fontFamily`, ["sans", "serif", "mono"]);
+  if (item.fontName !== undefined) {
+    if (typeof item.fontName !== "string" || !isValidCaptionFontName(item.fontName))
+      invalid(`${path}.fontName`, "120자 이하의 설치된 글꼴 이름 하나가 필요합니다. 제어 문자와 CSS/ASS 명령은 사용할 수 없습니다.");
+    style.fontName = normalizeCaptionFontName(item.fontName);
+  }
   if (item.fontSize !== undefined) {
     const size = number(item.fontSize, `${path}.fontSize`, 48);
     if (size < 12) invalid(`${path}.fontSize`, "12~48 사이의 숫자가 필요합니다.");
@@ -257,6 +311,23 @@ function parseCaptionStyle(value: unknown, path: string): Partial<CaptionStyle> 
     style.bold = boolean(item.bold, `${path}.bold`);
   if (item.outline !== undefined)
     style.outline = boolean(item.outline, `${path}.outline`);
+  if (item.outlineWidth !== undefined)
+    style.outlineWidth = number(item.outlineWidth, `${path}.outlineWidth`, 8);
+  if (item.outlineColor !== undefined)
+    style.outlineColor = styleColor(item.outlineColor, `${path}.outlineColor`);
+  if (item.shadow !== undefined)
+    style.shadow = boolean(item.shadow, `${path}.shadow`);
+  if (item.shadowColor !== undefined)
+    style.shadowColor = styleColor(item.shadowColor, `${path}.shadowColor`);
+  if (item.shadowBlur !== undefined)
+    style.shadowBlur = number(item.shadowBlur, `${path}.shadowBlur`, 12);
+  for (const key of ["shadowOffsetX", "shadowOffsetY"] as const) {
+    if (item[key] === undefined) continue;
+    const offset = item[key];
+    if (typeof offset !== "number" || !Number.isFinite(offset) || Math.abs(offset) > 12)
+      invalid(`${path}.${key}`, "-12~12 사이의 유한한 숫자가 필요합니다.");
+    style[key] = offset;
+  }
   if (item.backgroundColor !== undefined)
     style.backgroundColor = styleColor(item.backgroundColor, `${path}.backgroundColor`);
   if (item.backgroundOpacity !== undefined)
@@ -318,6 +389,8 @@ export function parseProject(text: string): Project {
     "updatedAt",
     "documents",
     "audioMix",
+    "vocabulary",
+    "voiceReferences",
   ]);
   if (root.schemaVersion !== 1 && root.schemaVersion !== 2)
     invalid("schemaVersion", "Only project versions 1 and 2 are supported.");
@@ -507,6 +580,8 @@ export function parseProject(text: string): Project {
   if (root.mediaIdentity !== undefined) project.mediaIdentity = parseMediaIdentity(root.mediaIdentity);
   if (root.documents !== undefined) project.documents = parseDocuments(root.documents);
   if (root.audioMix !== undefined) project.audioMix = parseAudioMix(root.audioMix);
+  if (root.vocabulary !== undefined) project.vocabulary = parseVocabulary(root.vocabulary);
+  if (root.voiceReferences !== undefined) project.voiceReferences = parseVoiceReferences(root.voiceReferences);
   return project;
 }
 

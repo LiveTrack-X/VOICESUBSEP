@@ -1,0 +1,38 @@
+.dialog:has(> .speech-tools) { width: min(940px, calc(100vw - 32px)); max-width: 940px; max-height: calc(100dvh - 48px); display: flex; flex-direction: column; overflow: hidden; }
+.speech-tools { display: flex; flex-direction: column; min-height: 0; min-width: 0; gap: 12px; }
+.speech-tools-scroll { min-height: 0; overflow: auto; padding: 0 2px 8px; }
+.speech-tools-tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--border); padding-bottom: 9px; }
+.speech-tools-tabs [aria-selected="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); }
+.speech-tools-common { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 10px; padding-block: 8px; }
+.speech-tools label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; min-width: 0; }
+.speech-tools label.speech-tools-check { flex-direction: row; align-items: start; line-height: 1.5; }
+.speech-tools-check input { flex: 0 0 auto; margin-top: 3px; }
+.speech-tools select, .speech-tools input, .speech-tools textarea { max-width: 100%; }
+.speech-tools-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.speech-tools-card { min-width: 0; border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.speech-tools-card h3, .speech-tools-card h4 { margin: 0; font-size: 13px; }
+.speech-tools-card p { margin: 0; overflow-wrap: anywhere; }
+.speech-tools-card > button { align-self: flex-start; }
+.speech-tools-card > select { width: 100%; }
+.speech-tools-caption { font-size: 12px; white-space: pre-wrap; max-height: 112px; overflow: auto; }
+.speech-tools-reference-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.speech-tools-reference-list li { display: flex; align-items: start; justify-content: space-between; gap: 8px; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }
+.speech-tools-reference-list li > div { min-width: 0; overflow-wrap: anywhere; }
+.speech-tools-reference-list button { flex: 0 0 auto; font-size: 11px; }
+.speech-tools-preview { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
+.speech-tools audio { display: block; width: 100%; max-width: 100%; min-height: 38px; margin-block: 8px; }
+.speech-tools-result { margin-top: 12px; }
+.speech-tools-scores { width: 100%; border-collapse: collapse; font-size: 12px; }
+.speech-tools-scores th, .speech-tools-scores td { text-align: start; padding: 7px; border-bottom: 1px solid var(--border); }
+.speech-tools-fields { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.speech-tools-fields label { flex: 1 1 130px; }
+.speech-tools-fields input { width: 100%; }
+.speech-tools-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.speech-tools-progress { border: 1px solid var(--border); border-radius: 6px; padding: 10px; }
+.speech-tools-progress progress { width: 100%; margin-block: 6px; }
+.speech-tools-recovered { display: flex; flex-direction: column; gap: 9px; max-height: 360px; overflow: auto; }
+.speech-tools-recovered-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; padding-block: 9px; border-top: 1px solid var(--border); }
+.speech-tools-recovered-row > input { margin-top: 4px; }
+.speech-tools-recovered-row p { margin-bottom: 7px; }
+.speech-tools > .dialog-actions { flex: 0 0 auto; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 0; }
+@media (max-width: 700px) { .speech-tools-grid { grid-template-columns: minmax(0, 1fr); } .speech-tools-common > label { width: 100%; } }
