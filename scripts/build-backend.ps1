@@ -175,6 +175,13 @@ $noticeArguments = @(foreach ($record in $inventoryRecords) {
         ([string]$record.source + ';' + (Split-Path -Parent ([string]$record.relative)))
     }
 })
+# Model documents are repository files, not distribution metadata. Include the
+# same pinned files that the post-build notice checks require.
+foreach ($notice in $noticeChecks) {
+    if ($notice.Relative -like 'third-party/speech-tools/*') {
+        $noticeArguments += @('--add-data', ($notice.Source + ';' + (Split-Path -Parent $notice.Relative)))
+    }
+}
 $noticeDirectories = @{}
 foreach ($tool in @(
     [PSCustomObject]@{ Name = 'ffmpeg'; Executable = $ffmpegExe },

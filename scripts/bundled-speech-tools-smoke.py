@@ -42,8 +42,11 @@ def require(condition, message):
 
 
 def digest(path):
+    checksum = hashlib.sha256()
     with path.open("rb") as source:
-        return hashlib.file_digest(source, "sha256").hexdigest()
+        for block in iter(lambda: source.read(4 * 1024 * 1024), b""):
+            checksum.update(block)
+    return checksum.hexdigest()
 
 
 def wait_job(port, identity, timeout, *, expected="completed"):
@@ -172,6 +175,10 @@ def run(args):
                         pass
                     time.sleep(.25)
                 require(identified, "Frozen server readiness timed out.")
+                info = base.request_json(port, "GET", "/openapi.json").get("info") or {}
+                report["backendVersion"] = info.get("version")
+                require(report["backendVersion"] == args.expected_version,
+                        f"Frozen backend version {report['backendVersion']} does not match {args.expected_version}.")
                 report["status"] = status = base.request_json(port, "GET", "/api/speech-tools/status", timeout=120)
                 for kind in ("voice", "overlap"):
                     require(status.get(kind, {}).get("runtimeAvailable") is True and status[kind].get("ready") is True,
@@ -257,6 +264,8 @@ def main():
     parser.add_argument("--fixtures", type=Path, default=ROOT / "tmp/speech-tools-smoke")
     parser.add_argument("--output", type=Path, default=ROOT / "tmp/bundled-speech-tools-smoke.json")
     parser.add_argument("--timeout", type=int, default=180)
+    parser.add_argument("--expected-version", default=json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"],
+                        help="Require this OpenAPI backend version (default: current package.json version)")
     args = parser.parse_args()
     for field in ("executable", "web_dir", "fixtures", "output"):
         setattr(args, field, getattr(args, field).resolve())
