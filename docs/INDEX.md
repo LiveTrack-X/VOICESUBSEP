@@ -1,8 +1,8 @@
 # Documentation / 문서 안내
 
-Start with the [0.3.6 release record](releases/v0.3.6.md) for the current Windows release candidate, planned assets and verification. Publication is pending; local installation and device/recognition quality are separate evidence.
+Start with the [0.3.6 release record](releases/v0.3.6.md) for the current Windows release, assets and verification. Local installation and device/recognition quality are separate evidence.
 
-[0.3.6 릴리즈 기록](releases/v0.3.6.md)에서 현재 Windows 릴리즈 후보·예정 설치 파일·검증을 확인하세요. 아직 게시 전이며 로컬 설치 및 장치·인식 품질은 별도로 구분합니다.
+[0.3.6 릴리즈 기록](releases/v0.3.6.md)에서 현재 Windows 릴리즈·설치 파일·검증을 확인하세요. 로컬 설치 및 장치·인식 품질은 별도로 구분합니다.
 
 **New in 0.3.6 / 새 기능:** subtitle fonts, outlines/shadows, anchored 64× zoom, flexible split/merge, project vocabulary, confirmed-voice candidates (beta), and selected-window separation/retranscription (experimental). / 자막 글꼴·획·그림자, 위치 유지 64배 확대, 유연한 나누기·합치기, 프로젝트 사전, 확인한 목소리 후보(베타), 선택 구간 분리·재전사(실험).
 
@@ -20,7 +20,7 @@ Start with the [0.3.6 release record](releases/v0.3.6.md) for the current Window
 
 | Purpose / 목적 | Document / 문서 |
 | --- | --- |
-| Current 0.3.6 Windows release candidate, installer and verification / 현재 0.3.6 Windows 릴리즈 후보·설치 파일·검증 | [0.3.6 release record / 릴리즈 기록](releases/v0.3.6.md) |
+| Current 0.3.6 Windows release, installer and verification / 현재 0.3.6 Windows 릴리즈·설치 파일·검증 | [0.3.6 release record / 릴리즈 기록](releases/v0.3.6.md) |
 | 0.3.5 speaker review and VST window controls / 0.3.5 화자 검토·VST 창 조작 | [0.3.5 release record / 릴리즈 기록](releases/v0.3.5.md) |
 | 0.3.4 changes, package/public-file checks and installation status / 0.3.4 변경·패키지/공개 파일·설치 상태 | [0.3.4 release record / 릴리즈 기록](releases/v0.3.4.md) |
 | 0.3.3 changes, package/installation checks and publication status / 0.3.3 변경·패키지/설치 검증·게시 상태 | [0.3.3 release record / 릴리즈 기록](releases/v0.3.3.md) |

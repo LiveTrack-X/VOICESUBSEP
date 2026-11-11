@@ -4,9 +4,9 @@
 
 0.3.6 speech tools / 0.3.6의 프로젝트 사전·확인한 목소리 후보(베타)·겹침 분리(실험)는 [별도 사용법](SPEECH-TOOLS.md)을 확인하세요. 가중치는 별도 준비하며 한국어 겹침 복원 품질은 입증하지 않았습니다.
 
-This guide covers the **0.3.6 Windows release candidate**. Publication is pending; check the [0.3.6 release record](releases/v0.3.6.md) for current download and installation evidence, and [feature status](FEATURE-STATUS.md) for limits. Earlier [0.3.5](releases/v0.3.5.md), [0.3.4](releases/v0.3.4.md), [0.3.3](releases/v0.3.3.md), [0.3.2](releases/v0.3.2.md) and [0.3.1](releases/v0.3.1.md) records remain available. Versioned comparisons below explain compatibility.
+This guide covers the **0.3.6 Windows release**. Check the [0.3.6 release record](releases/v0.3.6.md) for current download and installation evidence, and [feature status](FEATURE-STATUS.md) for limits. Earlier [0.3.5](releases/v0.3.5.md), [0.3.4](releases/v0.3.4.md), [0.3.3](releases/v0.3.3.md), [0.3.2](releases/v0.3.2.md) and [0.3.1](releases/v0.3.1.md) records remain available. Versioned comparisons below explain compatibility.
 
-이 가이드는 **0.3.6 Windows 릴리즈 후보**를 안내합니다. 아직 게시 전이며 현재 다운로드·설치 증거는 [0.3.6 릴리즈 기록](releases/v0.3.6.md), 기능 한계는 [기능 현황](FEATURE-STATUS.md)을 확인하세요. 이전 [0.3.5](releases/v0.3.5.md)·[0.3.4](releases/v0.3.4.md)·[0.3.3](releases/v0.3.3.md)·[0.3.2](releases/v0.3.2.md)·[0.3.1](releases/v0.3.1.md) 기록도 보존합니다. 아래 버전별 비교는 호환 설명입니다.
+이 가이드는 **0.3.6 Windows 릴리즈**를 안내합니다. 아직 게시 전이며 현재 다운로드·설치 증거는 [0.3.6 릴리즈 기록](releases/v0.3.6.md), 기능 한계는 [기능 현황](FEATURE-STATUS.md)을 확인하세요. 이전 [0.3.5](releases/v0.3.5.md)·[0.3.4](releases/v0.3.4.md)·[0.3.3](releases/v0.3.3.md)·[0.3.2](releases/v0.3.2.md)·[0.3.1](releases/v0.3.1.md) 기록도 보존합니다. 아래 버전별 비교는 호환 설명입니다.
 
 **0.3.6 additions:** split/merge, local font/outline/shadow controls, 64× zoom, project vocabulary and explicitly reviewed beta/experimental speech tools. Check the [0.3.6 release record](releases/v0.3.6.md) for package and update evidence.
 

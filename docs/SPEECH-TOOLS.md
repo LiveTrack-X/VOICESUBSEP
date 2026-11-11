@@ -1,6 +1,6 @@
 # Project speech tools / 프로젝트 음성 보완 도구
 
-2026-11-11 개발 소스 기능입니다. 게시된 0.3.5 설치본의 기능이나 실제 방송 정확도 개선을 주장하지 않습니다.
+0.3.6 대상 기능입니다. 패키지·게시·설치 검증 상태는 [0.3.6 릴리즈 기록](releases/v0.3.6.md)을 따릅니다. 실제 방송 정확도 개선은 입증하지 않았습니다.
 
 [소스·화면·실제 모델 실행 검증 기록](evidence/speech-tools-source-validation.json)
 
@@ -53,6 +53,6 @@ TorchAudio는 기존 PyTorch 2.11.0과 맞춥니다. 의존성이 없으면 화�
 
 임시 음원은 앱 데이터의 `speech-tools`에 저장하고 결과 폐기·재시작 때 정리합니다. 작업 중 원본 캐시를 보호하며 일반 분석·라이브와 동시 실행하지 않습니다. 별도 소유 프로세스에서 실행하고 중지·종료 때 회수합니다.
 
-향후 설치본에 포함하려면 `scripts/build-backend.ps1 -IncludeSpeechToolsRuntime`과 실제 동결 실행 검증이 필요합니다. 기본 빌드는 선택 TorchAudio/SpeechBrain을 제외합니다. [모델 고지](../third-party/speech-tools/SOURCE.md), [SentencePiece 원본 고지 보완](../third-party/sentencepiece-0.2.3/SOURCE.md).
+0.3.6 패키지는 `scripts/build-backend.ps1 -IncludeSpeechToolsRuntime`으로 선택 TorchAudio/SpeechBrain을 포함했습니다. 시스템 경로만 허용한 오프라인 동결 실행에서 실제 목소리 비교·후보 생성·작업 중지·폐기·정상 종료를 확인했습니다. 기본 빌드는 이 선택 런타임을 제외하므로 다시 빌드할 때도 같은 옵션과 검증이 필요합니다. [모델 고지](../third-party/speech-tools/SOURCE.md), [SentencePiece 원본 고지 보완](../third-party/sentencepiece-0.2.3/SOURCE.md).
 
 공식 힌트 계약: [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [고정 Qwen processor](https://github.com/huggingface/transformers/blob/4b28d51d0d5f17ec20c23a187d0475a8e68810c8/src/transformers/models/qwen3_asr/processing_qwen3_asr.py), [Groq](https://console.groq.com/docs/speech-to-text), [xAI](https://docs.x.ai/developers/model-capabilities/audio/speech-to-text), [Gemini](https://ai.google.dev/gemini-api/docs/transcribe).

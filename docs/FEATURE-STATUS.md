@@ -1,8 +1,8 @@
 # Feature status / 요청 기능 현황
 
-Scope of the **0.3.6 Windows release candidate**, reviewed on 2026-11-11. Source, package, publication and public-file evidence are recorded in the [release record](releases/v0.3.6.md); publication is pending and local installation is tracked separately. Implemented means a usable code path, not a guarantee of device or recognition quality.
+Scope of the **0.3.6 Windows release**, reviewed on 2026-11-11. Source, package, publication and public-file evidence are recorded in the [release record](releases/v0.3.6.md); local installation is tracked separately. Implemented means a usable code path, not a guarantee of device or recognition quality.
 
-2026-11-11 기준 **0.3.6 Windows 릴리즈 후보** 범위입니다. 소스·패키지·게시·공개 파일 증거는 [릴리즈 기록](releases/v0.3.6.md)에 남깁니다. 아직 게시 전이며 로컬 설치는 별도로 구분합니다. 구현은 사용 경로가 있다는 뜻이며 장치·인식 품질 보증이 아닙니다.
+2026-11-11 기준 **0.3.6 Windows 릴리즈** 범위입니다. 소스·패키지·게시·공개 파일 증거는 [릴리즈 기록](releases/v0.3.6.md)에 남깁니다. 로컬 설치는 별도로 구분합니다. 구현은 사용 경로가 있다는 뜻이며 장치·인식 품질 보증이 아닙니다.
 
 Version labels preserve historical changes: [0.3.5](releases/v0.3.5.md), [0.3.4](releases/v0.3.4.md), [0.3.3](releases/v0.3.3.md), [0.3.2](releases/v0.3.2.md), [0.3.1](releases/v0.3.1.md). / 버전 표시는 각 시점의 변경을 구분하며 과거 기록을 보존합니다.
 

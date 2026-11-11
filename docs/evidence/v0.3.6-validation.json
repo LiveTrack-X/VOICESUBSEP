@@ -1,0 +1,441 @@
+{
+  "version": "0.3.6",
+  "verifiedAt": "2026-11-11T12:32:10.523392+00:00",
+  "applicationSourceCommit": "5094a3a67c1a0df1ee32f4de3c8b59f987dd0bd0",
+  "tests": {
+    "vitestPassed": 1007,
+    "nodePassed": 88,
+    "backendPassed": 1189,
+    "backendSkipped": 1,
+    "onlineInstallerPassed": 15,
+    "productionWebBuildPassed": true,
+    "focusedVersionAndDistributionTestsPassed": 55
+  },
+  "sourceCI": {
+    "commit": "e151c13a038da54fe26ccd192fd4224f43f98e89",
+    "runId": 43018477268,
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/43018477268",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "online-installer",
+        "conclusion": "success"
+      },
+      {
+        "name": "backend",
+        "conclusion": "success"
+      },
+      {
+        "name": "web",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "frozenSource": {
+    "passed": true,
+    "modules": 50,
+    "executableSha256": "f5cfa28da27210c8314f8871183b272d4991581894432345e13731e736e2bb83",
+    "method": "all application PYZ modules plus entry script versus fresh optimize=0 compile; only co_filename normalized recursively",
+    "originalNoticeFilesHashVerified": 48
+  },
+  "runtime": {
+    "passed": true,
+    "apiVersion": "0.3.6",
+    "offline": true,
+    "executableSha256": "f5cfa28da27210c8314f8871183b272d4991581894432345e13731e736e2bb83",
+    "hashesStableAcrossExecution": true,
+    "shutdown": {
+      "requested": true,
+      "clean": true,
+      "forced": false,
+      "exitCode": 0,
+      "portClosed": true
+    }
+  },
+  "speechTools": {
+    "passed": true,
+    "backendVersion": "0.3.6",
+    "offline": true,
+    "systemOnlyChildPath": true,
+    "executableSha256": "f5cfa28da27210c8314f8871183b272d4991581894432345e13731e736e2bb83",
+    "realVoiceScoresAndExpectedRanksPassed": true,
+    "voiceTargets": 2,
+    "separationAudio": [
+      {
+        "sampleRate": 8000,
+        "frames": 48000,
+        "channels": 1,
+        "sampleWidth": 2,
+        "sha256": "af9d9ddf076d86136b2a2452a5488db5de87b30b2903827a228e3d4be1614e49"
+      },
+      {
+        "sampleRate": 8000,
+        "frames": 48000,
+        "channels": 1,
+        "sampleWidth": 2,
+        "sha256": "008c69466621aad11869f02e570f3eaf8f57353fd7cad01ee51fd96288807934"
+      },
+      {
+        "sampleRate": 8000,
+        "frames": 48000,
+        "channels": 1,
+        "sampleWidth": 2,
+        "sha256": "b7bdb83331edd226ac5b2011c44c122ad0eb0ed09e98e6dd053165cd7b862f0c"
+      }
+    ],
+    "sourceHashesUnchanged": true,
+    "discardRevokesAudio": true,
+    "activeWorkerCancel": {
+      "stage": "SepFormer로 두 후보 음성 분리 (CPU)",
+      "progress": 0.12
+    },
+    "cancelledJobReapedAndDiscarded": true,
+    "shutdown": {
+      "requested": true,
+      "clean": true,
+      "forced": false,
+      "exitCode": 0,
+      "portClosed": true
+    },
+    "elapsedSeconds": 31.407,
+    "qualityObservation": "Both synthetic overlap transcripts remained English-biased and inaccurate; the Korean phrase was not recovered. Operational integration passed, Korean/broadcast quality is not established."
+  },
+  "packagedUI": {
+    "passed": true,
+    "version": "0.3.6",
+    "profileIsolated": true,
+    "syntheticCaptions": 2000,
+    "noUserMedia": true,
+    "phases": [
+      {
+        "passed": true,
+        "phase": "first",
+        "version": "0.3.6",
+        "actualPackagedMain": true,
+        "actualPackagedPreload": true,
+        "actualPackagedWeb": true,
+        "actualFrozenBackend": true,
+        "installerExecuted": false,
+        "nativePackagedExeStarted": false,
+        "harnessOverrides": [
+          "development Electron executable",
+          "app.isPackaged=true",
+          "app.getAppPath=release app.asar",
+          "app.getVersion=packaged metadata",
+          "process.resourcesPath=release resources",
+          "fresh isolated userData/sessionData",
+          "BrowserWindow show/showInactive/focus suppressed",
+          "spellchecker disabled",
+          "synthetic JSON File supplied to actual project-open input"
+        ],
+        "errors": [],
+        "blockedRequests": [],
+        "dialogs": [],
+        "evidence": [
+          {
+            "stage": "packaged-origin-and-bridge",
+            "url": "voicesubsep://app/",
+            "bridge": "0.3.6",
+            "ready": {
+              "app": "voicesubsep",
+              "status": "ok"
+            },
+            "api": "0.3.6",
+            "rendererRequire": "undefined",
+            "rendererProcess": "undefined"
+          },
+          {
+            "stage": "packaged-font-preview",
+            "installedFontCount": 387,
+            "computed": {
+              "font": "Consolas, \"Noto Sans KR\", \"Malgun Gothic\", sans-serif",
+              "stroke": "6px rgb(18, 52, 86)",
+              "shadow": "rgb(171, 205, 239) -4px 6px 5px"
+            },
+            "screenshot": "tmp\\v0.3.6-packaged-ui\\packaged-style.png"
+          },
+          {
+            "stage": "packaged-narrow-style",
+            "width": 480,
+            "height": 800,
+            "bodyOverflow": 0,
+            "dialogOverflow": 0,
+            "footerVisible": true,
+            "buttons": [
+              {
+                "text": "기본값으로 되돌리기",
+                "inside": true
+              },
+              {
+                "text": "취소",
+                "inside": true
+              },
+              {
+                "text": "적용",
+                "inside": true
+              }
+            ],
+            "screenshot": "tmp\\v0.3.6-packaged-ui\\packaged-style-narrow.png"
+          },
+          {
+            "stage": "packaged64x",
+            "zoom": "64",
+            "minWidth": "6400%",
+            "viewport": 1190,
+            "content": 74018,
+            "dpr": 1.25,
+            "rasters": [
+              {
+                "width": 1467,
+                "height": 29,
+                "cssWidth": 1173.5999755859375
+              },
+              {
+                "width": 1467,
+                "height": 29,
+                "cssWidth": 1173.5999755859375
+              }
+            ],
+            "screenshot": "tmp\\v0.3.6-packaged-ui\\packaged-first-64x.png"
+          }
+        ],
+        "artifacts": {
+          "asarSha256": "b70452ece071e7bf004d3151983e8d2cf4b69a4203822e05d6563e927b013e63",
+          "backendExeSha256": "f5cfa28da27210c8314f8871183b272d4991581894432345e13731e736e2bb83"
+        },
+        "backend": {
+          "origin": "http://127.0.0.1:12933",
+          "cleanExit": true,
+          "portClosedAfterExit": true
+        },
+        "electronExitCode": 0
+      },
+      {
+        "passed": true,
+        "phase": "restart",
+        "version": "0.3.6",
+        "actualPackagedMain": true,
+        "actualPackagedPreload": true,
+        "actualPackagedWeb": true,
+        "actualFrozenBackend": true,
+        "installerExecuted": false,
+        "nativePackagedExeStarted": false,
+        "harnessOverrides": [
+          "development Electron executable",
+          "app.isPackaged=true",
+          "app.getAppPath=release app.asar",
+          "app.getVersion=packaged metadata",
+          "process.resourcesPath=release resources",
+          "fresh isolated userData/sessionData",
+          "BrowserWindow show/showInactive/focus suppressed",
+          "spellchecker disabled",
+          "synthetic JSON File supplied to actual project-open input"
+        ],
+        "errors": [],
+        "blockedRequests": [],
+        "dialogs": [],
+        "evidence": [
+          {
+            "stage": "packaged-origin-and-bridge",
+            "url": "voicesubsep://app/",
+            "bridge": "0.3.6",
+            "ready": {
+              "app": "voicesubsep",
+              "status": "ok"
+            },
+            "api": "0.3.6",
+            "rendererRequire": "undefined",
+            "rendererProcess": "undefined"
+          },
+          {
+            "stage": "packaged-restart-autosave-cancel",
+            "captions": 2000,
+            "subtitleStyle": {
+              "fontName": "Consolas",
+              "outline": true,
+              "outlineWidth": 3,
+              "outlineColor": "#123456",
+              "shadow": true,
+              "shadowColor": "#abcdef",
+              "shadowBlur": 5,
+              "shadowOffsetX": -4,
+              "shadowOffsetY": 6
+            },
+            "cancelPreserved": true
+          },
+          {
+            "stage": "packaged64x",
+            "zoom": "64",
+            "minWidth": "6400%",
+            "viewport": 1176,
+            "content": 73148,
+            "dpr": 1.25,
+            "rasters": [
+              {
+                "width": 1449,
+                "height": 29,
+                "cssWidth": 1159.2000732421875
+              },
+              {
+                "width": 1449,
+                "height": 29,
+                "cssWidth": 1159.2000732421875
+              }
+            ],
+            "screenshot": "tmp\\v0.3.6-packaged-ui\\packaged-restart-64x.png"
+          }
+        ],
+        "artifacts": {
+          "asarSha256": "b70452ece071e7bf004d3151983e8d2cf4b69a4203822e05d6563e927b013e63",
+          "backendExeSha256": "f5cfa28da27210c8314f8871183b272d4991581894432345e13731e736e2bb83"
+        },
+        "backend": {
+          "origin": "http://127.0.0.1:2856",
+          "cleanExit": true,
+          "portClosedAfterExit": true
+        },
+        "electronExitCode": 0
+      }
+    ],
+    "profileCleaned": true
+  },
+  "package": {
+    "passed": true,
+    "asarSha256": "b70452ece071e7bf004d3151983e8d2cf4b69a4203822e05d6563e927b013e63",
+    "backendExeMatchesVerified": true,
+    "backendInventoryMatches": true,
+    "backendFileCount": 4836,
+    "resourceFileCount": 4846,
+    "webMatchesDist": true,
+    "archiveCrc": {
+      "exitCode": 0,
+      "signal": null,
+      "everythingIsOk": true,
+      "files": 4918,
+      "folders": 782,
+      "uncompressedBytes": 5466310493,
+      "archiveBytes": 2422341741,
+      "trailingBytes": 2519505,
+      "log": "tmp/v0.3.6-archive-crc.log",
+      "warning": "There are data after the end of archive",
+      "warningExplanation": "NSIS payload appends a compressed updater blockmap and four-byte length; account for every trailing byte below.",
+      "embeddedBlockMap": {
+        "compressedBytes": 2519501,
+        "lengthTrailerBytes": 4,
+        "version": "2",
+        "fileEntries": 1,
+        "chunksVerified": 115774,
+        "checksumAlgorithm": "BLAKE2b-144",
+        "allChunkChecksumsPassed": true,
+        "trailingBytesFullyAccountedFor": true
+      }
+    },
+    "rnnoiseAssetsPreserved": 3
+  },
+  "releaseAssets": [
+    {
+      "name": "VOICESUBSEP-0.3.6-Offline-Setup-x64.exe",
+      "size": 1045609,
+      "sha256": "673b5aceb45eb7ee11a81e76672cdcedc5c25e5d48bd74d4ed0e405b80fc5888"
+    },
+    {
+      "name": "voicesubsep-0.3.6-x64.nsis.7z.part001",
+      "size": 1073741824,
+      "sha256": "846e3b08fb13f3f3816c6dd829f8bf7b8023395cf3372ddc3710dfb4e910a33a"
+    },
+    {
+      "name": "voicesubsep-0.3.6-x64.nsis.7z.part002",
+      "size": 1073741824,
+      "sha256": "a49157ab82b3c6cce68d009128c999b7bc93d261091bb9417b72752507f6488e"
+    },
+    {
+      "name": "voicesubsep-0.3.6-x64.nsis.7z.part003",
+      "size": 277377598,
+      "sha256": "b76a677efba3e5c91f6ee1970c4da2a8a1c227450e2ec37336ac8b7245a52712"
+    },
+    {
+      "name": "installer-manifest.json",
+      "size": 1008,
+      "sha256": "c5acc858121a03cb6d1e72dd0a09475dc31a985156584d4c6fd393591fc6068e"
+    },
+    {
+      "name": "installer-manifest.sig",
+      "size": 64,
+      "sha256": "c84742f2ae0832905ac8a428d71da60eaf146a00fc62c4e3254516ef135c572b"
+    },
+    {
+      "name": "Assemble-Installer.ps1",
+      "size": 8603,
+      "sha256": "4e5128dc075044d9a4ead79034ad851bcfbfe20a901825d1a234e476e9f8fcdf"
+    },
+    {
+      "name": "VOICESUBSEP-0.3.6-Online-Setup-x64.exe",
+      "size": 166912,
+      "sha256": "43935774b0d95c7fbb97b47aeab420f2c84a30551a5c414751f6a94b0200160d"
+    },
+    {
+      "name": "Online-Setup-SHA256.txt",
+      "size": 105,
+      "sha256": "3938e65ca351fa71fc6fe3a70c8f8eb2ab2909595455a191fea664d1658f2765"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "size": 890,
+      "sha256": "b46a940947e6239d51366b2992ff0d13f434958ec80b46820841abcbef1c4a95"
+    }
+  ],
+  "installerManifest": {
+    "schemaVersion": 1,
+    "version": "0.3.6",
+    "installer": {
+      "name": "VOICESUBSEP-0.3.6-Offline-Setup-x64.exe",
+      "size": 1045609,
+      "sha256": "673b5aceb45eb7ee11a81e76672cdcedc5c25e5d48bd74d4ed0e405b80fc5888"
+    },
+    "payload": {
+      "name": "voicesubsep-0.3.6-x64.nsis.7z",
+      "size": 2424861246,
+      "sha256": "23e5b10f4be409a15ca68e72c54b7055ab8ecc8763226b0819500be0e4ca5a08",
+      "parts": [
+        {
+          "name": "voicesubsep-0.3.6-x64.nsis.7z.part001",
+          "size": 1073741824,
+          "sha256": "846e3b08fb13f3f3816c6dd829f8bf7b8023395cf3372ddc3710dfb4e910a33a"
+        },
+        {
+          "name": "voicesubsep-0.3.6-x64.nsis.7z.part002",
+          "size": 1073741824,
+          "sha256": "a49157ab82b3c6cce68d009128c999b7bc93d261091bb9417b72752507f6488e"
+        },
+        {
+          "name": "voicesubsep-0.3.6-x64.nsis.7z.part003",
+          "size": 277377598,
+          "sha256": "b76a677efba3e5c91f6ee1970c4da2a8a1c227450e2ec37336ac8b7245a52712"
+        }
+      ]
+    }
+  },
+  "manifestSignature": {
+    "algorithm": "Ed25519",
+    "valid": true,
+    "matchesBundledPublicKey": true,
+    "privateKeyBundled": false
+  },
+  "publication": {
+    "published": false,
+    "status": "Assets prepared; final tag CI, upload and public download verification pending"
+  },
+  "installation": {
+    "nsisExecuted": false,
+    "nativePackagedExeStarted": false,
+    "existingUserInstallationChanged": false,
+    "scope": "Hidden development Electron loads actual packaged ASAR main/preload/web and real frozen backend; harness overrides are listed in packagedUI. This is not NSIS installation/upgrade acceptance."
+  },
+  "limits": [
+    "Windows EXEs are Authenticode-unsigned. The online helper pins asset SHA256; the in-app updater authenticates an Ed25519 manifest.",
+    "Synthetic voice/overlap and 2000-caption UI checks do not establish field accuracy, long-media playback, microphone/VST compatibility or owner acceptance.",
+    "Font files are not embedded. SRT is plain text/timing; YTT approximates font/effects. Saved new style fields may prevent older apps from opening the project.",
+    "Qwen remains source-only and excluded from the frozen runtime. No paid/cloud ASR calls were made."
+  ],
+  "packagingCorrection": "An initial build failed because pinned model documents were only listed for checking. The build now also includes those documents in PyInstaller data; all48notice hashes and final package checks passed."
+}

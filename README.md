@@ -42,9 +42,9 @@ Project files save edits and references, **not the original media**. Keep the so
 
 ## 0.3.6 / 변경 사항
 
-Choose local subtitle fonts, outline and shadow settings; zoom the timeline up to 64× while keeping the viewed time; split at the text cursor or playback time and merge consecutive captions. Project vocabulary helps supported transcription engines. Confirmed-voice matching is beta, and selected-window separation/retranscription remains experimental. See the [0.3.6 release record](docs/releases/v0.3.6.md) for package, verification and publication status; this release candidate is not yet published.
+Choose local subtitle fonts, outline and shadow settings; zoom the timeline up to 64× while keeping the viewed time; split at the text cursor or playback time and merge consecutive captions. Project vocabulary helps supported transcription engines. Confirmed-voice matching is beta, and selected-window separation/retranscription remains experimental. See the [0.3.6 release record](docs/releases/v0.3.6.md) for package, verification and publication status.
 
-자막 글꼴·획·그림자 설정, 보고 있던 위치를 유지하는 최대 64배 확대, 커서·재생 시점 나누기와 연속 자막 합치기를 추가했습니다. 프로젝트 사전은 지원하는 음성 인식 엔진에 용어를 전달합니다. 확인한 목소리 후보 찾기는 베타, 선택 구간 분리·재전사는 실험 기능입니다. 패키지·검증·게시 상태는 [0.3.6 릴리즈 기록](docs/releases/v0.3.6.md)을 따르며 현재 릴리즈 후보로 아직 게시 전입니다.
+자막 글꼴·획·그림자 설정, 보고 있던 위치를 유지하는 최대 64배 확대, 커서·재생 시점 나누기와 연속 자막 합치기를 추가했습니다. 프로젝트 사전은 지원하는 음성 인식 엔진에 용어를 전달합니다. 확인한 목소리 후보 찾기는 베타, 선택 구간 분리·재전사는 실험 기능입니다. 패키지·검증·게시 상태는 [0.3.6 릴리즈 기록](docs/releases/v0.3.6.md)에서 확인하세요.
 
 ## Learn more / 더 알아보기
 
