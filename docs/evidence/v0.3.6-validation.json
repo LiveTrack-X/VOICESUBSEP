@@ -1,6 +1,6 @@
 {
   "version": "0.3.6",
-  "verifiedAt": "2026-11-11T12:32:10.523392+00:00",
+  "verifiedAt": "2026-11-11T12:45:50.656940+00:00",
   "applicationSourceCommit": "5094a3a67c1a0df1ee32f4de3c8b59f987dd0bd0",
   "tests": {
     "vitestPassed": 1007,
@@ -422,8 +422,107 @@
     "privateKeyBundled": false
   },
   "publication": {
-    "published": false,
-    "status": "Assets prepared; final tag CI, upload and public download verification pending"
+    "published": true,
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/releases/tag/v0.3.6",
+    "publishedAt": "2026-11-11T12:39:52Z",
+    "metadataTargetCommitish": "main",
+    "releaseTagCommit": "c601d240770fe077ce8256f2a87cabbd2deaf72e",
+    "prerelease": false,
+    "allGitHubDigestsMatch": true,
+    "assetCount": 10,
+    "anonymousDownloadsVerified": [
+      "voicesubsep-0.3.6-x64.nsis.7z.part001",
+      "voicesubsep-0.3.6-x64.nsis.7z.part002",
+      "voicesubsep-0.3.6-x64.nsis.7z.part003",
+      "VOICESUBSEP-0.3.6-Offline-Setup-x64.exe",
+      "installer-manifest.json",
+      "installer-manifest.sig",
+      "Assemble-Installer.ps1",
+      "VOICESUBSEP-0.3.6-Online-Setup-x64.exe",
+      "Online-Setup-SHA256.txt",
+      "SHA256SUMS.txt"
+    ],
+    "latestDownloadAliasVerified": true,
+    "signatureValid": true,
+    "updaterEvents": [
+      {
+        "version": "0.3.5",
+        "event": "available",
+        "offeredVersion": "0.3.6"
+      },
+      {
+        "version": "0.3.6",
+        "event": "not-available",
+        "offeredVersion": "0.3.6"
+      }
+    ],
+    "fullPayloadDownloaded": true,
+    "allAnonymousAssetsMatched": true,
+    "anonymousAssetChecks": [
+      {
+        "name": "voicesubsep-0.3.6-x64.nsis.7z.part001",
+        "bytes": 1073741824,
+        "digest": "sha256:846e3b08fb13f3f3816c6dd829f8bf7b8023395cf3372ddc3710dfb4e910a33a",
+        "matchedLocalAndGitHub": true
+      },
+      {
+        "name": "voicesubsep-0.3.6-x64.nsis.7z.part002",
+        "bytes": 1073741824,
+        "digest": "sha256:a49157ab82b3c6cce68d009128c999b7bc93d261091bb9417b72752507f6488e",
+        "matchedLocalAndGitHub": true
+      },
+      {
+        "name": "voicesubsep-0.3.6-x64.nsis.7z.part003",
+        "bytes": 277377598,
+        "digest": "sha256:b76a677efba3e5c91f6ee1970c4da2a8a1c227450e2ec37336ac8b7245a52712",
+        "matchedLocalAndGitHub": true
+      },
+      {
+        "name": "VOICESUBSEP-0.3.6-Offline-Setup-x64.exe",
+        "bytes": 1045609,
+        "digest": "sha256:673b5aceb45eb7ee11a81e76672cdcedc5c25e5d48bd74d4ed0e405b80fc5888",
+        "matchedLocalAndGitHub": true
+      },
+      {
+        "name": "installer-manifest.json",
+        "bytes": 1008,
+        "digest": "sha256:c5acc858121a03cb6d1e72dd0a09475dc31a985156584d4c6fd393591fc6068e",
+        "matchedLocalAndGitHub": true
+      },
+      {
+        "name": "installer-manifest.sig",
+        "bytes": 64,
+        "digest": "sha256:c84742f2ae0832905ac8a428d71da60eaf146a00fc62c4e3254516ef135c572b",
+        "matchedLocalAndGitHub": true
+      },
+      {
+        "name": "Assemble-Installer.ps1",
+        "bytes": 8603,
+        "digest": "sha256:4e5128dc075044d9a4ead79034ad851bcfbfe20a901825d1a234e476e9f8fcdf",
+        "matchedLocalAndGitHub": true
+      },
+      {
+        "name": "VOICESUBSEP-0.3.6-Online-Setup-x64.exe",
+        "bytes": 166912,
+        "digest": "sha256:43935774b0d95c7fbb97b47aeab420f2c84a30551a5c414751f6a94b0200160d",
+        "matchedLocalAndGitHub": true
+      },
+      {
+        "name": "Online-Setup-SHA256.txt",
+        "bytes": 105,
+        "digest": "sha256:3938e65ca351fa71fc6fe3a70c8f8eb2ab2909595455a191fea664d1658f2765",
+        "matchedLocalAndGitHub": true
+      },
+      {
+        "name": "SHA256SUMS.txt",
+        "bytes": 890,
+        "digest": "sha256:b46a940947e6239d51366b2992ff0d13f434958ec80b46820841abcbef1c4a95",
+        "matchedLocalAndGitHub": true
+      }
+    ],
+    "totalAnonymousDownloadedBytes": 2426084437,
+    "combinedPublicPayloadSha256": "23e5b10f4be409a15ca68e72c54b7055ab8ecc8763226b0819500be0e4ca5a08",
+    "fullPublicVerificationAt": "2026-11-11T12:44:11.503Z"
   },
   "installation": {
     "nsisExecuted": false,
@@ -437,5 +536,47 @@
     "Font files are not embedded. SRT is plain text/timing; YTT approximates font/effects. Saved new style fields may prevent older apps from opening the project.",
     "Qwen remains source-only and excluded from the frozen runtime. No paid/cloud ASR calls were made."
   ],
-  "packagingCorrection": "An initial build failed because pinned model documents were only listed for checking. The build now also includes those documents in PyInstaller data; all48notice hashes and final package checks passed."
+  "packagingCorrection": "An initial build failed because pinned model documents were only listed for checking. The build now also includes those documents in PyInstaller data; all48notice hashes and final package checks passed.",
+  "releaseCommit": "c601d240770fe077ce8256f2a87cabbd2deaf72e",
+  "tag": "v0.3.6",
+  "tagCI": {
+    "commit": "c601d240770fe077ce8256f2a87cabbd2deaf72e",
+    "runId": 43021452576,
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/43021452576",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "online-installer",
+        "conclusion": "success"
+      },
+      {
+        "name": "backend",
+        "conclusion": "success"
+      },
+      {
+        "name": "web",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "mainCI": {
+    "commit": "c601d240770fe077ce8256f2a87cabbd2deaf72e",
+    "runId": 43022284780,
+    "url": "https://github.com/LiveTrack-X/VOICESUBSEP/actions/runs/43022284780",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "online-installer",
+        "conclusion": "success"
+      },
+      {
+        "name": "web",
+        "conclusion": "success"
+      },
+      {
+        "name": "backend",
+        "conclusion": "success"
+      }
+    ]
+  }
 }
